@@ -3,56 +3,76 @@ import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import bcrypt from "bcryptjs"; // 1. Import bcrypt
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, string>;
     const { nip, password } = body;
 
-    // 1. Cek User di Database
+    // 2. Cari User berdasarkan NIP
     let userResult = await db.select().from(users).where(eq(users.nip, nip));
 
-    // --- FITUR AUTO-SEED (Hanya untuk Demo Pertama Kali) ---
-    // Jika tabel user kosong dan yang login adalah "199XXXXX" (sesuai HTML), kita buatkan akunnya otomatis.
+    // --- FITUR AUTO-SEED (Diperbarui dengan Hashing) ---
     if (
       userResult.length === 0 &&
       nip === "199XXXXX" &&
       password === "admin123"
     ) {
+      // Kita hash dulu password admin demo sebelum masuk ke DB
+      const hashedAdminPassword = await bcrypt.hash("admin123", 10);
+
       const [newUser] = await db
         .insert(users)
         .values({
           nip: "199XXXXX",
-          password: "admin123", // Di production wajib di-hash!
+          password: hashedAdminPassword, // Gunakan hash
           name: "Administrator IT",
           role: "admin",
         })
         .returning();
       userResult = [newUser];
     }
-    // -------------------------------------------------------
 
     const user = userResult[0];
 
-    // 2. Validasi Password
-    if (!user || user.password !== password) {
+    // 3. Validasi User & Password
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "NIP tidak terdaftar" },
+        { status: 401 },
+      );
+    }
+
+    // 4. Bandingkan password input (plain) dengan password di DB (hash)
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
       return NextResponse.json(
         { success: false, message: "NIP atau Kata Sandi salah" },
         { status: 401 },
       );
     }
 
-    // 3. Set Cookie (Session Sederhana)
-    // Di aplikasi Pro sungguhan, gunakan library seperti 'jose' atau 'next-auth' untuk JWT
+    // 5. Set Cookie (Session)
     const cookieStore = await cookies();
+
     cookieStore.set("auth_token", user.id.toString(), {
       httpOnly: true,
       path: "/",
-      maxAge: 60 * 60 * 24, // 1 Hari
+      maxAge: 60 * 60 * 24,
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    cookieStore.set("user_role", user.role || "pegawai", {
+      httpOnly: true,
+      path: "/",
+      maxAge: 60 * 60 * 24,
+      secure: process.env.NODE_ENV === "production",
     });
 
     return NextResponse.json({ success: true, message: "Login berhasil" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Login Error:", error);
     return NextResponse.json(
       { success: false, message: "Terjadi kesalahan server" },

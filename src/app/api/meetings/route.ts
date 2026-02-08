@@ -1,14 +1,38 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
-import { desc } from "drizzle-orm"; // Sekarang 'desc' akan terpakai di fungsi GET
+import { desc, eq } from "drizzle-orm"; // 1. Import eq untuk filter
+import { cookies } from "next/headers"; // 2. Import cookies
 
-// 1. GET: Ambil Semua Data (Untuk List/Archive)
+// 1. GET: Ambil Data Berdasarkan Role
 export async function GET() {
   try {
-    const data = await db.select().from(meetings).orderBy(desc(meetings.date)); // <--- Disini 'desc' digunakan
+    const cookieStore = await cookies();
+    const userId = cookieStore.get("auth_token")?.value;
+    const role = cookieStore.get("user_role")?.value;
 
-    return NextResponse.json({ success: true, data: data }, { status: 200 });
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    let data;
+
+    if (role === "admin") {
+      // Admin: Ambil semua data rapat
+      data = await db.select().from(meetings).orderBy(desc(meetings.date));
+    } else {
+      // Staff/Pegawai: Ambil hanya yang kolom user_id nya cocok dengan ID dia
+      data = await db
+        .select()
+        .from(meetings)
+        .where(eq(meetings.userId, Number(userId))) // Filter di DB
+        .orderBy(desc(meetings.date));
+    }
+
+    return NextResponse.json({ success: true, data }, { status: 200 });
   } catch (error) {
     console.error("API GET Error:", error);
     return NextResponse.json(
@@ -18,12 +42,21 @@ export async function GET() {
   }
 }
 
-// 2. POST: Buat Rapat Baru
+// 2. POST: Buat Rapat Baru & Simpan ID Pembuatnya
 export async function POST(request: Request) {
   try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get("auth_token")?.value;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, message: "Sesi habis, silakan login kembali" },
+        { status: 401 },
+      );
+    }
+
     const body = await request.json();
 
-    // Validasi input
     if (!body.title || !body.date) {
       return NextResponse.json(
         { success: false, message: "Judul dan Tanggal wajib diisi" },
@@ -31,7 +64,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert ke DB
+    // Insert ke DB dengan menyertakan userId pembuatnya
     const [inserted] = await db
       .insert(meetings)
       .values({
@@ -39,8 +72,9 @@ export async function POST(request: Request) {
         date: new Date(body.date),
         location: body.location || "",
         leader: body.leader || "",
-        status: "live", // Force status live
+        status: "live",
         attendanceCount: 0,
+        userId: Number(userId), // <--- POINT PENTING: Menghubungkan rapat dengan user pembuat
       })
       .returning({ id: meetings.id });
 
@@ -51,7 +85,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("API POST Error:", error);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error" },
+      { success: false, message: "Gagal menyimpan data ke database" },
       { status: 500 },
     );
   }

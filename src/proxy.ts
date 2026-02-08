@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// PERUBAHAN: Ganti nama fungsi dari 'middleware' menjadi 'proxy'
 export function proxy(request: NextRequest) {
-  const token = request.cookies.get("auth_token");
+  const token = request.cookies.get("auth_token")?.value;
+  const role = request.cookies.get("user_role")?.value; // Ambil role dari cookie
   const { pathname } = request.nextUrl;
 
   // 1. Jika user belum login dan mencoba akses dashboard -> Redirect ke Login
@@ -16,10 +16,18 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  // 3. PROTEKSI ROLE: Staff dilarang masuk ke menu Users
+  if (pathname.startsWith("/dashboard/users")) {
+    if (role !== "admin") {
+      // Jika bukan admin, lempar balik ke dashboard utama
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   return NextResponse.next();
 }
 
-// Konfigurasi Matcher tetap sama
 export const config = {
-  matcher: ["/", "/dashboard/:path*"],
+  // Gunakan matcher yang lebih aman agar tidak memproses file statis (mencegah loop)
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { LayoutDashboard, PlusCircle, Archive, Layers } from "lucide-react";
+import {
+  LayoutDashboard,
+  PlusCircle,
+  Archive,
+  Layers,
+  Users as UsersIcon,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -17,14 +23,20 @@ import {
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavUser } from "@/components/dashboard/nav-user";
 
-// 1. Konfigurasi Data Menu (Agar rapi & terpusat)
-const data = {
-  user: {
-    name: "Admin IT",
-    email: "admin@bapenda.go.id",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
+// 1. Definisikan Interface User (Tanpa Any)
+interface UserData {
+  name: string;
+  nip: string;
+  role: string; // "admin" atau "pegawai"/"staff"
+}
+
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: UserData;
+}
+
+export function AppSidebar({ user, ...props }: AppSidebarProps) {
+  // 2. Data Menu Dasar (Semua Role Bisa Lihat)
+  const navMainItems = [
     {
       title: "Dashboard",
       url: "/dashboard",
@@ -40,10 +52,17 @@ const data = {
       url: "/dashboard/archive",
       icon: Archive,
     },
-  ],
-};
+  ];
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  // 3. Tambahkan Menu Khusus Admin secara Kondisional
+  if (user.role === "admin") {
+    navMainItems.push({
+      title: "Manajemen User",
+      url: "/dashboard/users",
+      icon: UsersIcon, // Menggunakan icon Users yang lebih relevan
+    });
+  }
+
   return (
     <Sidebar
       collapsible="icon"
@@ -65,8 +84,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span className="truncate font-bold tracking-wide text-white">
                   E-NOTULEN
                 </span>
-                <span className="truncate text-xs text-slate-400 uppercase tracking-widest">
-                  Administrator
+                <span className="truncate text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
+                  {/* Menampilkan Role secara Dinamis */}
+                  {user.role === "admin" ? "Administrator" : "Staff Pegawai"}
                 </span>
               </div>
             </SidebarMenuButton>
@@ -76,14 +96,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* KONTEN MENU UTAMA */}
       <SidebarContent className="bg-slate-900">
-        {/* Panggil Component NavMain */}
-        <NavMain items={data.navMain} />
+        {/* Mengirim items yang sudah difilter */}
+        <NavMain items={navMainItems} />
       </SidebarContent>
 
       {/* FOOTER USER */}
       <SidebarFooter className="bg-slate-900 border-t border-slate-800">
-        {/* Panggil Component NavUser */}
-        <NavUser user={data.user} />
+        <NavUser user={user} />
       </SidebarFooter>
 
       <SidebarRail />

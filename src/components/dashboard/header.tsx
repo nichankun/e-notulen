@@ -13,6 +13,7 @@ export function Header() {
     if (pathname === "/dashboard") return "Dashboard Utama";
     if (pathname === "/dashboard/create") return "Buat Agenda Baru";
     if (pathname === "/dashboard/archive") return "Arsip Notulen";
+    if (pathname === "/dashboard/users") return "Manajemen Users";
     if (pathname.includes("/live")) return "Live Control Room";
     return "E-Notulen";
   };
