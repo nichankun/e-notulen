@@ -1,5 +1,5 @@
-import { db } from "@/db"; // Sesuaikan path ini
-import { meetings } from "@/db/database/schema"; // Sesuaikan path ini
+import { db } from "@/db";
+import { meetings } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
 import {
   Table,
@@ -12,18 +12,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Eye, Trash2, Search, FileText, Database } from "lucide-react";
+import { Eye, Search, FileText, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { DeleteMeetingButton } from "@/components/delete-meeting-button"; // Panggil tombol API kita
 
-// Ubah jadi ASYNC component
 export default async function ArchivePage() {
-  // --- REAL DATA FETCHING START ---
-  // Ambil semua data meeting, urutkan dari yang terbaru
+  // Direct DB Fetch (Standard Pro untuk Server Component)
   const allMeetings = await db
     .select()
     .from(meetings)
     .orderBy(desc(meetings.date));
-  // --- REAL DATA FETCHING END ---
 
   return (
     <Card className="border-slate-200 shadow-sm animate-in fade-in duration-500">
@@ -41,7 +39,6 @@ export default async function ArchivePage() {
             </p>
           </div>
         </div>
-
         <div className="relative w-full md:w-72">
           <Search className="absolute left-3 top-2.5 text-slate-400 h-4 w-4" />
           <Input
@@ -74,7 +71,6 @@ export default async function ArchivePage() {
           </TableHeader>
           <TableBody>
             {allMeetings.length === 0 ? (
-              // Empty State jika belum ada data
               <TableRow>
                 <TableCell
                   colSpan={5}
@@ -87,14 +83,12 @@ export default async function ArchivePage() {
                 </TableCell>
               </TableRow>
             ) : (
-              // Mapping Real Data
               allMeetings.map((item) => (
                 <TableRow
                   key={item.id}
                   className="hover:bg-blue-50/50 transition-colors group"
                 >
                   <TableCell className="font-medium text-slate-500">
-                    {/* Format Tanggal Indonesia */}
                     {new Date(item.date).toLocaleDateString("id-ID", {
                       day: "2-digit",
                       month: "short",
@@ -110,16 +104,13 @@ export default async function ArchivePage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {/* Badge Status Dinamis */}
                     <Badge
                       variant="outline"
-                      className={`
-                        ${
-                          item.status === "live"
-                            ? "border-blue-200 text-blue-700 bg-blue-50"
-                            : "border-slate-200 text-slate-600 bg-slate-50"
-                        }
-                      `}
+                      className={`${
+                        item.status === "live"
+                          ? "border-blue-200 text-blue-700 bg-blue-50"
+                          : "border-slate-200 text-slate-600 bg-slate-50"
+                      }`}
                     >
                       {item.status === "live" ? "Live Aktif" : "Selesai"}
                     </Badge>
@@ -132,13 +123,8 @@ export default async function ArchivePage() {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-red-400 hover:bg-red-100 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {/* Tombol Delete yang terhubung ke API */}
+                    <DeleteMeetingButton id={item.id} />
                   </TableCell>
                 </TableRow>
               ))

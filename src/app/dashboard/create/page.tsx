@@ -1,7 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation"; // 1. Import useRouter
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,32 +9,45 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Rocket, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import React from "react";
-import { createMeeting } from "@/actions/meeting";
 
 export default function CreateMeetingPage() {
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter(); // 2. Inisialisasi Router
+  const [loading, setLoading] = useState(false); // Manual Loading State
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setLoading(true);
+
     const formData = new FormData(e.currentTarget);
+    const payload = {
+      title: formData.get("title"),
+      date: formData.get("date"),
+      location: formData.get("location"),
+      leader: formData.get("leader"),
+    };
 
-    startTransition(async () => {
-      // 3. Panggil Server Action dan tangkap hasilnya
-      const result = await createMeeting(formData);
+    try {
+      // HIT API (Bukan Server Action)
+      const res = await fetch("/api/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-      // 4. Cek status sukses dari return value Server Action
-      if (result.success) {
-        // Jika sukses, Client yang melakukan redirect (lebih aman & smooth)
-        router.push(`/dashboard/live/${result.meetingId}`);
+      const json = await res.json();
+
+      if (json.success) {
+        // Redirect manual jika sukses
+        router.push(`/dashboard/live/${json.data.id}`);
       } else {
-        // Jika gagal, tampilkan pesan error dari server
-        console.error("Error creating meeting:", result.message);
-        alert(
-          result.message || "Gagal membuat agenda rapat. Silakan coba lagi.",
-        );
+        alert(json.message || "Gagal membuat rapat.");
       }
-    });
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan jaringan.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -65,7 +78,7 @@ export default function CreateMeetingPage() {
                 placeholder="Contoh: Rapat Evaluasi PAD Triwulan I"
                 required
                 name="title"
-                disabled={isPending}
+                disabled={loading}
               />
             </div>
 
@@ -79,7 +92,7 @@ export default function CreateMeetingPage() {
                   className="h-11"
                   required
                   name="date"
-                  disabled={isPending}
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
@@ -90,7 +103,7 @@ export default function CreateMeetingPage() {
                   className="h-11"
                   placeholder="Ruang Rapat Utama..."
                   name="location"
-                  disabled={isPending}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -103,7 +116,7 @@ export default function CreateMeetingPage() {
                 className="h-11"
                 placeholder="Nama Pejabat..."
                 name="leader"
-                disabled={isPending}
+                disabled={loading}
               />
             </div>
 
@@ -112,8 +125,8 @@ export default function CreateMeetingPage() {
                 <Button
                   variant="ghost"
                   type="button"
+                  disabled={loading}
                   className="text-slate-500 hover:text-slate-700"
-                  disabled={isPending}
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" /> Batal
                 </Button>
@@ -121,10 +134,10 @@ export default function CreateMeetingPage() {
 
               <Button
                 type="submit"
-                disabled={isPending}
+                disabled={loading}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all min-w-55"
               >
-                {isPending ? (
+                {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Memproses...
