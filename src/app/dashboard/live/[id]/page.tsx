@@ -1,6 +1,5 @@
 "use client";
 
-// 1. Hapus 'React' dan 'useRef' (Clean Import)
 import { useState, useEffect, use } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
   Save,
   Download,
   CheckCheck,
-  Clock,
+  Calendar,
   User,
   Loader2,
 } from "lucide-react";
@@ -27,19 +26,24 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
 
-  // State Data
+  // Data
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
-
-  // Input User
   const [notulen, setNotulen] = useState("");
+
+  // State untuk URL Origin (agar QR Code dinamis)
+  const [origin, setOrigin] = useState("");
 
   // UI State
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [timer, setTimer] = useState(0);
 
-  // 1. FETCH DATA RAPAT & NOTULEN TERAKHIR
+  // 1. AMBIL URL ORIGIN (Client Side Only)
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  // 2. FETCH DATA
   useEffect(() => {
     const initData = async () => {
       try {
@@ -60,7 +64,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
     initData();
   }, [id, router]);
 
-  // 2. REAL-TIME ATTENDANCE (Polling setiap 3 detik)
+  // 3. REAL-TIME ATTENDANCE (Polling)
   useEffect(() => {
     const fetchAttendees = async () => {
       try {
@@ -79,19 +83,9 @@ export default function LiveMeetingPage({ params }: PageProps) {
     return () => clearInterval(interval);
   }, [id]);
 
-  // 3. Timer Logic
-  useEffect(() => {
-    const interval = setInterval(() => setTimer((t) => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatTime = (seconds: number) =>
-    new Date(seconds * 1000).toISOString().substr(11, 8);
-
-  // FUNGSI 1: FINALISASI & SIMPAN KE DB
+  // FUNGSI UTAMA
   const handleFinish = async () => {
     if (!confirm("Selesaikan rapat dan simpan notulen ke database?")) return;
-
     setIsSaving(true);
     try {
       const res = await fetch(`/api/meetings/${id}`, {
@@ -102,7 +96,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
           status: "completed",
         }),
       });
-
       if (res.ok) {
         router.push("/dashboard/archive");
         router.refresh();
@@ -110,15 +103,13 @@ export default function LiveMeetingPage({ params }: PageProps) {
         alert("Gagal menyimpan data.");
       }
     } catch (e) {
-      // 2. Gunakan 'e' untuk logging agar tidak error 'defined but never used'
-      console.error("Error finalizing meeting:", e);
+      console.error(e);
       alert("Error jaringan.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // FUNGSI 2: TOMBOL SIMPAN SEMENTARA
   const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
@@ -127,32 +118,13 @@ export default function LiveMeetingPage({ params }: PageProps) {
         body: JSON.stringify({ content: notulen }),
       });
     } catch (e) {
-      console.error("Auto-save error:", e);
+      console.error(e);
     } finally {
       setIsSaving(false);
     }
   };
 
-  // FUNGSI 3: SIMULASI SCAN QR
-  const demoAddAttendee = async () => {
-    const demoNames = [
-      "Budi Santoso",
-      "Siti Aminah",
-      "Rudi Hartono",
-      "Dewi Sartika",
-      "Agus Setiawan",
-    ];
-    const randomName = demoNames[Math.floor(Math.random() * demoNames.length)];
-
-    try {
-      await fetch(`/api/meetings/${id}/attendees`, {
-        method: "POST",
-        body: JSON.stringify({ name: randomName, nip: "199XXXXX" }),
-      });
-    } catch (e) {
-      console.error("Demo scan error:", e);
-    }
-  };
+  // --- FUNGSI DEMO DIHAPUS ---
 
   if (loading)
     return (
@@ -172,8 +144,17 @@ export default function LiveMeetingPage({ params }: PageProps) {
           </span>
           <span className="font-bold tracking-tight">SESI RAPAT LIVE</span>
         </div>
+
         <div className="flex items-center gap-2 font-mono text-sm font-medium bg-white/50 px-3 py-1 rounded-md">
-          <Clock className="h-4 w-4" /> {formatTime(timer)}
+          <Calendar className="h-4 w-4" />
+          {meetingData?.date
+            ? new Date(meetingData.date).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "-"}
         </div>
       </div>
 
@@ -185,25 +166,21 @@ export default function LiveMeetingPage({ params }: PageProps) {
             <p className="text-xs text-slate-500 mb-4">
               ID Rapat: <span className="font-mono font-bold">{id}</span>
             </p>
+
             <div className="bg-white p-4 border-2 border-dashed border-slate-300 rounded-xl inline-block mb-4 mx-auto">
-              <QRCodeSVG
-                value={`https://bapenda.sultra.go.id/absen/${id}`}
-                size={140}
-                fgColor="#1e293b"
-              />
+              {origin ? (
+                <QRCodeSVG
+                  value={`${origin}/attend/${id}`}
+                  size={140}
+                  fgColor="#1e293b"
+                />
+              ) : (
+                <div className="h-35 w-35 bg-slate-100 animate-pulse rounded-md" />
+              )}
             </div>
 
-            {/* Tombol Demo */}
-            <Button
-              onClick={demoAddAttendee}
-              variant="outline"
-              size="sm"
-              className="w-full text-xs font-bold border-dashed border-blue-300 text-blue-600 hover:bg-blue-50"
-            >
-              + Simulasi Scan Pegawai (Demo)
-            </Button>
+            {/* TOMBOL DEMO SUDAH DIHAPUS DISINI */}
 
-            {/* Tombol Unduh QR */}
             <Button
               variant="outline"
               className="w-full text-xs font-bold h-9 bg-slate-50 border-slate-200 mt-2"

@@ -14,10 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Eye, Search, FileText, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { DeleteMeetingButton } from "@/components/delete-meeting-button"; // Panggil tombol API kita
+import { DeleteMeetingButton } from "@/components/delete-meeting-button";
+import Link from "next/link"; // Pastikan Link diimport
 
 export default async function ArchivePage() {
-  // Direct DB Fetch (Standard Pro untuk Server Component)
   const allMeetings = await db
     .select()
     .from(meetings)
@@ -116,14 +116,25 @@ export default async function ArchivePage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right space-x-2 pr-6">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-blue-600 hover:bg-blue-100"
+                    {/* MODIFIKASI DIMULAI DISINI */}
+                    <Link
+                      href={
+                        item.status === "live"
+                          ? `/dashboard/live/${item.id}`
+                          : `/dashboard/result/${item.id}`
+                      }
+                      passHref
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {/* Tombol Delete yang terhubung ke API */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-600 hover:bg-blue-100"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    {/* MODIFIKASI SELESAI */}
+
                     <DeleteMeetingButton id={item.id} />
                   </TableCell>
                 </TableRow>

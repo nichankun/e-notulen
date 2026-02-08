@@ -10,14 +10,14 @@ export default function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
+
+      {/* SidebarInset membungkus Header dan Konten agar layout responsif */}
       <SidebarInset className="bg-slate-50 min-h-screen flex flex-col">
-        {/* Header dipanggil disini */}
         <Header />
 
-        {/* Konten Utama */}
-        <div className="flex-1 p-4 pt-0 md:p-8 md:pt-6 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 md:p-8 pt-0 w-full max-w-7xl mx-auto">
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

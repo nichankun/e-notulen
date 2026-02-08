@@ -25,12 +25,25 @@ export const attendees = pgTable("attendees", {
   scannedAt: timestamp("scanned_at").defaultNow(),
 });
 
-// 3. Export Tipe Data (Select & Insert)
-// Tipe untuk data yang diambil dari DB (sudah ada ID, createdAt, dll)
+// 3. Tabel Users (Login)
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  nip: text("nip").notNull().unique(), // NIP sebagai Username
+  password: text("password").notNull(), // Password
+  name: text("name").notNull(),
+  role: text("role").default("admin"), // admin / staff
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// --- EXPORT TIPE DATA ---
+
+// 1. Tipe untuk SELECT (Data yang keluar dari DB, ada ID & CreatedAt)
 export type Meeting = InferSelectModel<typeof meetings>;
 export type Attendee = InferSelectModel<typeof attendees>;
+export type User = InferSelectModel<typeof users>;
 
-// Tipe untuk data baru yang akan diinput (ID biasanya belum ada)
-// INI YANG KURANG TADI:
+// 2. Tipe untuk INSERT (Data untuk input baru, ID biasanya tidak perlu)
+// --> Bagian ini yang memperbaiki error "Unused" <--
 export type NewMeeting = InferInsertModel<typeof meetings>;
 export type NewAttendee = InferInsertModel<typeof attendees>;
+export type NewUser = InferInsertModel<typeof users>;

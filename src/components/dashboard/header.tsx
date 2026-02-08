@@ -3,12 +3,13 @@
 import { usePathname } from "next/navigation";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { Building2, CalendarDays } from "lucide-react"; // Icon gedung & kalender
 
 export function Header() {
   const pathname = usePathname();
 
-  // Helper untuk menentukan judul & subtitle berdasarkan route
-  const getPageInfo = () => {
+  // Helper Judul Halaman
+  const getPageTitle = () => {
     if (pathname === "/dashboard") return "Dashboard Utama";
     if (pathname === "/dashboard/create") return "Buat Agenda Baru";
     if (pathname === "/dashboard/archive") return "Arsip Notulen";
@@ -16,49 +17,60 @@ export function Header() {
     return "E-Notulen";
   };
 
-  const currentDate = new Date().toLocaleDateString("id-ID", {
+  // Helper Tanggal (Format Indonesia Lengkap)
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("id-ID", {
     weekday: "long",
-    year: "numeric",
-    month: "long",
     day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md sticky top-0 z-10 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-      {/* 1. Kiri: Trigger Sidebar & Separator (Standar Dokumentasi Shadcn) */}
-      <div className="flex items-center gap-2 px-4">
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md sticky top-0 z-10 justify-between">
+      {/* --- BAGIAN KIRI: Navigasi & Judul --- */}
+      <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1 text-slate-500 hover:text-blue-600" />
         <Separator orientation="vertical" className="mr-2 h-4 bg-slate-200" />
+
+        {/* Judul Halaman (Besar & Jelas) */}
+        <h1 className="text-sm font-bold text-slate-800 md:text-base tracking-tight">
+          {getPageTitle()}
+        </h1>
       </div>
 
-      {/* 2. Tengah & Kanan: Konten Custom Aplikasi */}
-      <div className="flex flex-1 items-center justify-between">
-        {/* Judul Halaman */}
-        <div className="flex flex-col">
-          <h1 className="text-sm font-bold text-slate-800 md:text-base tracking-tight">
-            {getPageInfo()}
-          </h1>
-          <p className="text-[10px] text-slate-500 hidden md:block font-medium">
-            {currentDate}
-          </p>
+      {/* --- BAGIAN KANAN: Informasi Instansi (Statis) --- */}
+      <div className="flex items-center gap-4">
+        {/* Info 1: Tanggal Hari Ini (Hidden di Mobile) */}
+        <div className="hidden md:flex items-center gap-2 text-right">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              Hari Ini
+            </span>
+            <span className="text-xs font-medium text-slate-700">
+              {dateStr}
+            </span>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
+            <CalendarDays className="h-4 w-4" />
+          </div>
         </div>
 
-        {/* Profil User (Sesuai Desain HTML Anda) */}
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden md:block leading-tight">
-            <p className="text-xs font-bold text-slate-800">Admin IT Bapenda</p>
-            <div className="flex items-center justify-end gap-1">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
-              </span>
-              <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">
-                Online
-              </p>
-            </div>
+        {/* Separator */}
+        <div className="hidden md:block h-8 w-px bg-slate-100 mx-1"></div>
+
+        {/* Info 2: Identitas Instansi (Bapenda) */}
+        <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+          <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-blue-200 shadow-md">
+            <Building2 className="h-4 w-4" />
           </div>
-          <div className="h-9 w-9 rounded-full bg-linear-to-tr from-blue-600 to-blue-800 text-white flex items-center justify-center font-bold shadow-md border-2 border-white text-xs">
-            IT
+          <div className="flex flex-col pr-1">
+            <span className="text-xs font-bold text-slate-800 leading-none">
+              BAPENDA
+            </span>
+            <span className="text-[10px] font-medium text-slate-500 leading-none mt-0.5">
+              Prov. Sulawesi Tenggara
+            </span>
           </div>
         </div>
       </div>
