@@ -1,43 +1,58 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Rocket, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+
+const formSchema = z.object({
+  title: z.string().min(5, "Judul rapat minimal 5 karakter"),
+  date: z.string().refine((val) => val !== "", "Tanggal dan waktu wajib diisi"),
+  location: z.string().min(3, "Lokasi minimal 3 karakter"),
+  leader: z.string().min(3, "Nama pimpinan minimal 3 karakter"),
+});
 
 export default function CreateMeetingPage() {
-  const [loading, setLoading] = useState(false); // Manual Loading State
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      date: "",
+      location: "",
+      leader: "",
+    },
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const payload = {
-      title: formData.get("title"),
-      date: formData.get("date"),
-      location: formData.get("location"),
-      leader: formData.get("leader"),
-    };
+  // Ambil state isSubmitting langsung dari form
+  const { isSubmitting } = form.formState;
 
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
-      // HIT API (Bukan Server Action)
       const res = await fetch("/api/meetings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(data),
       });
 
       const json = await res.json();
 
       if (json.success) {
-        // Redirect manual jika sukses
         router.push(`/dashboard/live/${json.data.id}`);
       } else {
         alert(json.message || "Gagal membuat rapat.");
@@ -45,9 +60,8 @@ export default function CreateMeetingPage() {
     } catch (error) {
       console.error(error);
       alert("Terjadi kesalahan jaringan.");
-    } finally {
-      setLoading(false);
     }
+    // Tidak perlu setLoading(false) manual, RHF mengurusnya saat async function selesai
   };
 
   return (
@@ -68,89 +82,126 @@ export default function CreateMeetingPage() {
         </CardHeader>
 
         <CardContent className="p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-slate-700 font-semibold text-sm">
-                Judul Rapat / Kegiatan
-              </Label>
-              <Input
-                className="h-12 text-base"
-                placeholder="Contoh: Rapat Evaluasi PAD Triwulan I"
-                required
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Field Judul */}
+              <FormField
+                control={form.control}
                 name="title"
-                disabled={loading}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-slate-700 font-semibold text-sm">
-                  Tanggal & Waktu
-                </Label>
-                <Input
-                  type="datetime-local"
-                  className="h-11"
-                  required
-                  name="date"
-                  disabled={loading}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-slate-700 font-semibold text-sm">
-                  Lokasi / Ruangan
-                </Label>
-                <Input
-                  className="h-11"
-                  placeholder="Ruang Rapat Utama..."
-                  name="location"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-slate-700 font-semibold text-sm">
-                Pimpinan Rapat
-              </Label>
-              <Input
-                className="h-11"
-                placeholder="Nama Pejabat..."
-                name="leader"
-                disabled={loading}
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 mt-8">
-              <Link href="/dashboard">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  disabled={loading}
-                  className="text-slate-500 hover:text-slate-700"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Batal
-                </Button>
-              </Link>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all min-w-55"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="mr-2 h-4 w-4" />
-                    Buat & Buka Sesi Absensi
-                  </>
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 font-semibold text-sm">
+                      Judul Rapat / Kegiatan
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Contoh: Rapat Evaluasi PAD Triwulan I"
+                        disabled={isSubmitting} // Pakai isSubmitting
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
-            </div>
-          </form>
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Field Tanggal */}
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-slate-700 font-semibold text-sm">
+                        Tanggal & Waktu
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="datetime-local"
+                          disabled={isSubmitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Field Lokasi */}
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-slate-700 font-semibold text-sm">
+                        Lokasi / Ruangan
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Ruang Rapat Utama..."
+                          disabled={isSubmitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Field Pimpinan */}
+              <FormField
+                control={form.control}
+                name="leader"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-slate-700 font-semibold text-sm">
+                      Pimpinan Rapat
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Nama Pejabat..."
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 mt-8">
+                <Link href="/dashboard">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    disabled={isSubmitting}
+                    className="text-slate-500 hover:text-slate-700"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Batal
+                  </Button>
+                </Link>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all min-w-55"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Memproses...
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="mr-2 h-4 w-4" />
+                      Buat & Buka Sesi Absensi
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
