@@ -38,7 +38,7 @@ export function NavMain({
                 asChild
                 tooltip={item.title}
                 isActive={isActive} // Ini kunci agar highlight otomatis
-                className="hover:bg-slate-800 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white"
+                className="text-slate-300 hover:bg-slate-800 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white"
               >
                 <Link href={item.url}>
                   {/* Icon langsung dipanggil disini, Shadcn akan mengaturnya agar lurus */}
