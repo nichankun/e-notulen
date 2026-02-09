@@ -3,16 +3,8 @@
 import { useState, useEffect, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Printer,
-  Calendar,
-  MapPin,
-  User,
-  FileText,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ArrowLeft, Printer, Image as ImageIcon } from "lucide-react";
+
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import Link from "next/link";
 
@@ -22,30 +14,21 @@ interface PageProps {
 
 export default function ResultPage({ params }: PageProps) {
   const { id } = use(params);
-  const router = useRouter();
-
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Data (Sama seperti Live Page, tapi hanya sekali run)
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Ambil Detail Rapat
         const resMeeting = await fetch(`/api/meetings/${id}`);
         const jsonMeeting = await resMeeting.json();
-
-        // Ambil Peserta
         const resAttendees = await fetch(`/api/meetings/${id}/attendees`);
         const jsonAttendees = await resAttendees.json();
 
         if (jsonMeeting.success) {
           setMeetingData(jsonMeeting.data);
           setAttendees(jsonAttendees.data || []);
-        } else {
-          alert("Data tidak ditemukan");
-          router.push("/dashboard/archive");
         }
       } catch (e) {
         console.error(e);
@@ -54,170 +37,224 @@ export default function ResultPage({ params }: PageProps) {
       }
     };
     fetchData();
-  }, [id, router]);
+  }, [id]);
 
-  if (loading) return <div className="p-10 text-center">Memuat data...</div>;
+  if (loading) return <div className="p-10 text-center">Memuat laporan...</div>;
   if (!meetingData) return null;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
-      {/* Header Navigasi */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-0">
+      {/* Tombol Kontrol (Hilang saat Print) */}
+      <div className="flex items-center justify-between print:hidden">
         <Link href="/dashboard/archive">
-          <Button
-            variant="ghost"
-            className="text-slate-500 hover:text-slate-800"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Arsip
+          <Button variant="ghost" className="text-slate-500">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
           </Button>
         </Link>
         <Button
-          variant="outline"
           onClick={() => window.print()}
-          className="border-blue-200 text-blue-700 hover:bg-blue-50"
+          className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg"
         >
-          <Printer className="mr-2 h-4 w-4" /> Cetak Laporan
+          <Printer className="mr-2 h-4 w-4" /> Cetak ke PDF
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* KOLOM KIRI: Informasi Rapat & Absensi */}
-        <div className="md:col-span-1 space-y-6">
-          <Card className="p-6 border-slate-200 shadow-sm bg-white">
-            <h2 className="font-bold text-lg text-slate-800 mb-4 border-b border-slate-100 pb-2">
-              Detail Kegiatan
-            </h2>
+      <Card className="p-8 md:p-12 border-slate-200 shadow-sm bg-white print:shadow-none print:border-none print:p-0">
+        {/* 1. KOP SURAT */}
+        <div className="flex flex-col items-center text-center mb-6 border-b-4 border-double border-black pb-4">
+          <h1 className="text-lg font-bold uppercase">
+            Pemerintah Provinsi Sulawesi Tenggara
+          </h1>
+          <h2 className="text-xl font-extrabold uppercase leading-tight">
+            Badan Pendapatan Daerah
+          </h2>
+          <p className="text-[10px] italic">
+            Kompleks Bumi Praja Anduonohu, Kendari. Telp: (0401) 312xxxx, Email:
+            bapenda@sultraprov.go.id
+          </p>
+        </div>
 
-            <div className="space-y-4">
-              <div>
-                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-                  Judul Rapat
-                </span>
-                <p className="font-bold text-slate-700">{meetingData.title}</p>
-              </div>
+        {/* 2. JUDUL & INFORMASI RAPAT */}
+        <div className="text-center mb-8">
+          <h3 className="text-lg font-bold underline uppercase">
+            NOTULENSI KEGIATAN
+          </h3>
+        </div>
 
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-blue-500" />
-                <div>
-                  <span className="text-xs text-slate-400 block">Tanggal</span>
-                  <p className="text-sm font-medium text-slate-700">
-                    {new Date(meetingData.date).toLocaleDateString("id-ID", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
+        <div className="space-y-6 text-sm">
+          <table className="w-full border-collapse">
+            <tbody>
+              <tr>
+                <td className="w-32 py-1 font-bold">Kegiatan</td>
+                <td className="w-4 py-1 text-center">:</td>
+                <td className="py-1">{meetingData.title}</td>
+              </tr>
+              <tr>
+                <td className="py-1 font-bold">Hari / Tanggal</td>
+                <td className="py-1 text-center">:</td>
+                <td className="py-1">
+                  {new Date(meetingData.date).toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </td>
+              </tr>
+              <tr>
+                <td className="py-1 font-bold">Tempat</td>
+                <td className="py-1 text-center">:</td>
+                <td className="py-1">{meetingData.location || "-"}</td>
+              </tr>
+              <tr>
+                <td className="py-1 font-bold">Pimpinan</td>
+                <td className="py-1 text-center">:</td>
+                <td className="py-1">{meetingData.leader || "-"}</td>
+              </tr>
+            </tbody>
+          </table>
 
-              <div className="flex items-center gap-3">
-                <MapPin className="h-5 w-5 text-red-500" />
-                <div>
-                  <span className="text-xs text-slate-400 block">Lokasi</span>
-                  <p className="text-sm font-medium text-slate-700">
-                    {meetingData.location || "-"}
-                  </p>
-                </div>
-              </div>
+          <hr className="border-black" />
 
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-purple-500" />
-                <div>
-                  <span className="text-xs text-slate-400 block">
-                    Pimpinan Rapat
-                  </span>
-                  <p className="text-sm font-medium text-slate-700">
-                    {meetingData.leader || "-"}
-                  </p>
-                </div>
-              </div>
+          {/* 3. ISI NOTULEN */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-sm uppercase flex items-center gap-2">
+              I. RISALAH PEMBAHASAN
+            </h4>
+            <div className="prose max-w-none text-black whitespace-pre-wrap font-serif leading-relaxed text-justify px-2">
+              {meetingData.content || "Tidak ada catatan pembahasan."}
             </div>
+          </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-sm text-slate-800">
-                  Daftar Hadir
-                </h3>
-                <Badge
-                  variant="secondary"
-                  className="bg-green-100 text-green-700"
-                >
-                  {attendees.length} Orang
-                </Badge>
-              </div>
-
-              <div className="max-h-75 overflow-y-auto space-y-2 pr-2">
-                {attendees.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">
-                    Tidak ada data absensi.
-                  </p>
-                ) : (
+          {/* 4. TABEL DAFTAR HADIR (Permintaan User) */}
+          <div className="space-y-2 pt-4 break-inside-avoid">
+            <h4 className="font-bold text-sm uppercase flex items-center gap-2">
+              II. DAFTAR HADIR PESERTA
+            </h4>
+            <table className="w-full border-collapse border border-black text-xs">
+              <thead>
+                <tr className="bg-slate-100 print:bg-slate-200">
+                  <th className="border border-black px-2 py-2 text-center w-10">
+                    No
+                  </th>
+                  <th className="border border-black px-4 py-2 text-left">
+                    Nama Lengkap
+                  </th>
+                  <th className="border border-black px-4 py-2 text-center w-48">
+                    NIP
+                  </th>
+                  <th className="border border-black px-4 py-2 text-center w-24">
+                    Waktu Absen
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendees.length > 0 ? (
                   attendees.map((person, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded-md"
-                    >
-                      <span className="font-medium text-slate-700">
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="border border-black px-2 py-1.5 text-center">
+                        {idx + 1}
+                      </td>
+                      <td className="border border-black px-4 py-1.5 font-medium uppercase">
                         {person.name}
-                      </span>
-                      <span className="text-xs text-slate-400 font-mono">
+                      </td>
+                      <td className="border border-black px-4 py-1.5 text-center font-mono">
+                        {person.nip || "-"}
+                      </td>
+                      <td className="border border-black px-4 py-1.5 text-center">
                         {new Date(person.scannedAt!).toLocaleTimeString(
                           "id-ID",
                           { hour: "2-digit", minute: "2-digit" },
                         )}
-                      </span>
-                    </div>
+                      </td>
+                    </tr>
                   ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="border border-black px-4 py-4 text-center italic"
+                    >
+                      Belum ada data absensi
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </div>
-          </Card>
-        </div>
+              </tbody>
+            </table>
+            <p className="text-[10px] text-slate-500 italic">
+              Total Peserta: {attendees.length} Orang
+            </p>
+          </div>
 
-        {/* KOLOM KANAN: Hasil Notulen */}
-        <div className="md:col-span-2">
-          <Card className="min-h-125 p-8 border-slate-200 shadow-sm bg-white relative">
-            <div className="absolute top-0 right-0 p-4">
-              <FileText className="h-24 w-24 text-slate-100 -rotate-12" />
-            </div>
-
-            <div className="relative z-10">
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
-                Notulensi Rapat
-              </h2>
-              <p className="text-slate-500 text-sm mb-8">
-                Hasil catatan keputusan dan pembahasan rapat.
+          {/* 5. FOTO KEGIATAN */}
+          <div className="space-y-2 pt-4 break-inside-avoid">
+            <h4 className="font-bold text-sm uppercase flex items-center gap-2">
+              III. DOKUMENTASI FOTO
+            </h4>
+            <div className="w-full h-80 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-center bg-slate-50">
+              <ImageIcon className="h-10 w-10 text-slate-300 mb-2 print:hidden" />
+              <p className="text-slate-400 font-bold print:text-black">
+                TEMPEL DOKUMENTASI KEGIATAN DISINI
               </p>
-
-              <div className="prose max-w-none text-slate-700 leading-relaxed whitespace-pre-wrap font-serif bg-slate-50 p-6 rounded-xl border border-slate-100">
-                {meetingData.content || (
-                  <span className="text-slate-400 italic">
-                    Belum ada notulen yang dicatat.
-                  </span>
-                )}
-              </div>
             </div>
+          </div>
 
-            <div className="mt-12 pt-8 border-t border-slate-100 flex justify-end gap-12 text-center">
+          {/* 6. TANDA TANGAN */}
+          <div className="mt-12 grid grid-cols-2 gap-20 text-center break-inside-avoid">
+            <div className="space-y-16">
+              <p className="text-sm font-bold">Pimpinan Rapat,</p>
               <div>
-                <p className="text-xs text-slate-400 mb-16">Mengetahui,</p>
-                <p className="font-bold text-slate-800 border-b border-slate-300 pb-1 min-w-37.5">
+                <p className="font-bold underline uppercase">
                   {meetingData.leader}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Pimpinan Rapat</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-16">Notulis,</p>
-                <p className="font-bold text-slate-800 border-b border-slate-300 pb-1 min-w-37.5">
-                  Admin Notulen
-                </p>
-                <p className="text-xs text-slate-500 mt-1">Staf Bapenda</p>
+                <p className="text-xs">NIP. ...........................</p>
               </div>
             </div>
-          </Card>
+            <div className="space-y-16">
+              <p className="text-sm font-bold">Notulis,</p>
+              <div>
+                <p className="font-bold underline uppercase">Admin Notulis</p>
+                <p className="text-xs">NIP. ...........................</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </Card>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 1.5cm;
+          }
+          body {
+            background: white !important;
+            font-size: 12pt;
+          }
+          nav,
+          aside,
+          button,
+          .print:hidden,
+          footer {
+            display: none !important;
+          }
+          .print\:shadow-none {
+            border: none !important;
+            box-shadow: none !important;
+          }
+          table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+          }
+          th,
+          td {
+            border: 1px solid black !important;
+          }
+          hr {
+            border-top: 2px solid black !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
