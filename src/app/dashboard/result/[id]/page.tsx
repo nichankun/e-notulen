@@ -4,9 +4,8 @@ import { useState, useEffect, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Printer, Image as ImageIcon } from "lucide-react";
-
-import { type Meeting, type Attendee } from "@/db/database/schema";
 import Link from "next/link";
+import { type Meeting, type Attendee } from "@/db/database/schema";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -126,7 +125,7 @@ export default function ResultPage({ params }: PageProps) {
             </div>
           </div>
 
-          {/* 4. TABEL DAFTAR HADIR (Permintaan User) */}
+          {/* 4. TABEL DAFTAR HADIR (DIPERBARUI) */}
           <div className="space-y-2 pt-4 break-inside-avoid">
             <h4 className="font-bold text-sm uppercase flex items-center gap-2">
               II. DAFTAR HADIR PESERTA
@@ -134,37 +133,60 @@ export default function ResultPage({ params }: PageProps) {
             <table className="w-full border-collapse border border-black text-xs">
               <thead>
                 <tr className="bg-slate-100 print:bg-slate-200">
-                  <th className="border border-black px-2 py-2 text-center w-10">
+                  <th className="border border-black px-2 py-2 text-center w-8">
                     No
                   </th>
-                  <th className="border border-black px-4 py-2 text-left">
-                    Nama Lengkap
+                  <th className="border border-black px-3 py-2 text-left">
+                    Nama / NIP
                   </th>
-                  <th className="border border-black px-4 py-2 text-center w-48">
-                    NIP
+                  <th className="border border-black px-3 py-2 text-left w-32">
+                    Instansi / Bidang
                   </th>
-                  <th className="border border-black px-4 py-2 text-center w-24">
-                    Waktu Absen
+                  <th className="border border-black px-3 py-2 text-center w-24">
+                    Waktu
+                  </th>
+                  <th className="border border-black px-3 py-2 text-center w-24">
+                    Tanda Tangan
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {attendees.length > 0 ? (
                   attendees.map((person, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="border border-black px-2 py-1.5 text-center">
+                    <tr
+                      key={idx}
+                      className="hover:bg-slate-50 print:hover:bg-transparent"
+                    >
+                      <td className="border border-black px-2 py-1.5 text-center align-middle">
                         {idx + 1}
                       </td>
-                      <td className="border border-black px-4 py-1.5 font-medium uppercase">
-                        {person.name}
+                      <td className="border border-black px-3 py-1.5 align-middle">
+                        <div className="font-bold uppercase">{person.name}</div>
+                        <div className="font-mono text-[10px] text-slate-600 print:text-black">
+                          {person.nip || "-"}
+                        </div>
                       </td>
-                      <td className="border border-black px-4 py-1.5 text-center font-mono">
-                        {person.nip || "-"}
+                      <td className="border border-black px-3 py-1.5 align-middle uppercase text-[10px]">
+                        {person.department || "-"}
                       </td>
-                      <td className="border border-black px-4 py-1.5 text-center">
+                      <td className="border border-black px-3 py-1.5 text-center align-middle">
                         {new Date(person.scannedAt!).toLocaleTimeString(
                           "id-ID",
                           { hour: "2-digit", minute: "2-digit" },
+                        )}
+                      </td>
+                      <td className="border border-black px-2 py-1 text-center align-middle">
+                        {person.signature ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={person.signature}
+                            alt="ttd"
+                            className="h-8 mx-auto mix-blend-multiply"
+                          />
+                        ) : (
+                          <span className="text-[8px] italic text-slate-400">
+                            Manual
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -172,7 +194,7 @@ export default function ResultPage({ params }: PageProps) {
                 ) : (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="border border-black px-4 py-4 text-center italic"
                     >
                       Belum ada data absensi
@@ -181,8 +203,9 @@ export default function ResultPage({ params }: PageProps) {
                 )}
               </tbody>
             </table>
-            <p className="text-[10px] text-slate-500 italic">
-              Total Peserta: {attendees.length} Orang
+            <p className="text-[10px] text-slate-500 italic mt-1">
+              *Tanda tangan digital terekam otomatis saat pengisian daftar
+              hadir.
             </p>
           </div>
 
@@ -191,9 +214,9 @@ export default function ResultPage({ params }: PageProps) {
             <h4 className="font-bold text-sm uppercase flex items-center gap-2">
               III. DOKUMENTASI FOTO
             </h4>
-            <div className="w-full h-80 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-center bg-slate-50">
+            <div className="w-full h-64 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-center bg-slate-50">
               <ImageIcon className="h-10 w-10 text-slate-300 mb-2 print:hidden" />
-              <p className="text-slate-400 font-bold print:text-black">
+              <p className="text-slate-400 font-bold print:text-black text-xs">
                 TEMPEL DOKUMENTASI KEGIATAN DISINI
               </p>
             </div>
@@ -229,7 +252,7 @@ export default function ResultPage({ params }: PageProps) {
           }
           body {
             background: white !important;
-            font-size: 12pt;
+            font-size: 11pt;
           }
           nav,
           aside,
@@ -252,6 +275,10 @@ export default function ResultPage({ params }: PageProps) {
           }
           hr {
             border-top: 2px solid black !important;
+          }
+          /* Agar gambar TTD tidak hilang backgroundnya */
+          img {
+            -webkit-print-color-adjust: exact;
           }
         }
       `}</style>

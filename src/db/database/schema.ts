@@ -29,6 +29,8 @@ export const attendees = pgTable("attendees", {
   name: text("name").notNull(),
   nip: text("nip"),
   scannedAt: timestamp("scanned_at").defaultNow(),
+  department: text("department"), // Tambahkan ini
+  signature: text("signature"),
 });
 
 // 3. Tabel Users (Login)

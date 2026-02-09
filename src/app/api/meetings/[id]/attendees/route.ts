@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { meetings, attendees } from "@/db/database/schema";
 import { eq, desc } from "drizzle-orm";
 
-// GET: Ambil daftar peserta real-time untuk rapat ini
+// GET: Ambil daftar peserta (termasuk tanda tangan & instansi)
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -18,30 +18,41 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: list });
   } catch (error) {
-    // FIX: Log error agar tidak 'unused' dan memudahkan debugging
     console.error("API GET Attendees Error:", error);
-
     return NextResponse.json({ success: false, data: [] }, { status: 500 });
   }
 }
 
-// POST: Simulasi Scan QR (User scan -> Masuk DB)
+// POST: Simpan Absensi Baru (Lengkap)
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
-    const body = await request.json(); // { name: "Nama Pegawai" }
+    const body = await request.json();
 
-    // 1. Simpan Peserta
+    // Validasi sederhana
+    if (!body.name || !body.signature) {
+      return NextResponse.json(
+        { success: false, message: "Nama dan Tanda Tangan wajib diisi" },
+        { status: 400 },
+      );
+    }
+
+    // 1. Simpan Peserta ke Database
     await db.insert(attendees).values({
       meetingId: parseInt(id),
-      name: body.name || "Peserta Tanpa Nama",
+      name: body.name,
       nip: body.nip || "-",
+      // --- TAMBAHAN BARU ---
+      department: body.department || "-", // Simpan Instansi
+      signature: body.signature, // Simpan Base64 Tanda Tangan
+      // ---------------------
     });
 
-    // 2. Update counter di tabel meeting
+    // 2. Update counter jumlah hadir di tabel meeting
+    // (Cara ini memastikan jumlah sinkron dengan data asli)
     const allAttendees = await db
       .select()
       .from(attendees)
@@ -52,11 +63,15 @@ export async function POST(
       .set({ attendanceCount: allAttendees.length })
       .where(eq(meetings.id, parseInt(id)));
 
-    return NextResponse.json({ success: true, message: "Absensi berhasil" });
+    return NextResponse.json({
+      success: true,
+      message: "Absensi berhasil disimpan",
+    });
   } catch (error) {
-    // FIX: Log error agar tidak 'unused' dan memudahkan debugging
     console.error("API POST Attendee Error:", error);
-
-    return NextResponse.json({ success: false }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: "Gagal menyimpan ke database" },
+      { status: 500 },
+    );
   }
 }
