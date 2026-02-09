@@ -16,6 +16,7 @@ interface PageProps {
 }
 
 export default function LiveMeetingPage({ params }: PageProps) {
+  // Unwrapping params using React.use()
   const { id } = use(params);
   const router = useRouter();
 
@@ -23,6 +24,12 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [notulen, setNotulen] = useState("");
+
+  // --- TAMBAHAN PENTING ---
+  // State untuk menyimpan URL foto
+  const [photos, setPhotos] = useState<string[]>([]);
+  // ------------------------
+
   const [origin, setOrigin] = useState("");
 
   // UI State
@@ -31,15 +38,32 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   // 1. Initial Data Fetching
   useEffect(() => {
+    // Set origin hanya di client side
     setOrigin(window.location.origin);
 
     const initData = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}`);
         const json = await res.json();
+
         if (json.success) {
           setMeetingData(json.data);
           setNotulen(json.data.content || "");
+
+          // --- PARSE PHOTOS DARI JSON STRING ---
+          if (json.data.photos) {
+            try {
+              // Database menyimpan string JSON, kita ubah jadi array
+              const parsedPhotos = JSON.parse(json.data.photos);
+              if (Array.isArray(parsedPhotos)) {
+                setPhotos(parsedPhotos);
+              }
+            } catch (e) {
+              console.error("Gagal parse photos:", e);
+              setPhotos([]);
+            }
+          }
+          // -------------------------------------
         } else {
           router.push("/dashboard");
         }
@@ -75,13 +99,16 @@ export default function LiveMeetingPage({ params }: PageProps) {
     setIsSaving(true);
     try {
       const res = await fetch(`/api/meetings/${id}`, {
-        method: "PATCH",
+        method: "PATCH", // Gunakan PATCH untuk update sebagian
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: notulen,
+          // Kirim juga data photos terbaru ke API
+          photos: photos,
           status: "completed",
         }),
       });
+
       if (res.ok) {
         router.push("/dashboard/archive");
         router.refresh();
@@ -101,7 +128,11 @@ export default function LiveMeetingPage({ params }: PageProps) {
     try {
       await fetch(`/api/meetings/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ content: notulen }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: notulen,
+          photos: photos, // Simpan draft foto juga
+        }),
       });
     } catch (e) {
       console.error(e);
@@ -136,10 +167,15 @@ export default function LiveMeetingPage({ params }: PageProps) {
         <div className="lg:col-span-2 h-full">
           {/* 4. Editor Component */}
           <MeetingEditor
-            title={meetingData?.title || ""} // Tambahkan || ""
-            leader={meetingData?.leader || ""} // Tambahkan || "" agar null jadi string kosong
+            title={meetingData?.title || ""}
+            leader={meetingData?.leader || ""}
             content={notulen}
             setContent={setNotulen}
+            // --- PASSING STATE PHOTOS ---
+            photos={photos}
+            setPhotos={setPhotos}
+            // ----------------------------
+
             onSaveDraft={handleSaveDraft}
             onFinish={handleFinish}
             isSaving={isSaving}

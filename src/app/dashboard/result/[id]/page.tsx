@@ -15,6 +15,11 @@ export default function ResultPage({ params }: PageProps) {
   const { id } = use(params);
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
+
+  // --- STATE UNTUK FOTO ---
+  const [photos, setPhotos] = useState<string[]>([]);
+  // -----------------------
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,6 +32,18 @@ export default function ResultPage({ params }: PageProps) {
 
         if (jsonMeeting.success) {
           setMeetingData(jsonMeeting.data);
+
+          // --- PARSING FOTO DARI DATABASE ---
+          if (jsonMeeting.data.photos) {
+            try {
+              const parsed = JSON.parse(jsonMeeting.data.photos);
+              if (Array.isArray(parsed)) setPhotos(parsed);
+            } catch (e) {
+              console.error("Gagal parse foto:", e);
+            }
+          }
+          // ----------------------------------
+
           setAttendees(jsonAttendees.data || []);
         }
       } catch (e) {
@@ -120,12 +137,15 @@ export default function ResultPage({ params }: PageProps) {
             <h4 className="font-bold text-sm uppercase flex items-center gap-2">
               I. RISALAH PEMBAHASAN
             </h4>
-            <div className="prose max-w-none text-black whitespace-pre-wrap font-serif leading-relaxed text-justify px-2">
-              {meetingData.content || "Tidak ada catatan pembahasan."}
-            </div>
+            <div
+              className="prose max-w-none text-black font-serif leading-relaxed text-justify px-2 text-sm"
+              dangerouslySetInnerHTML={{
+                __html: meetingData.content || "Tidak ada catatan pembahasan.",
+              }}
+            />
           </div>
 
-          {/* 4. TABEL DAFTAR HADIR (DIPERBARUI) */}
+          {/* 4. TABEL DAFTAR HADIR */}
           <div className="space-y-2 pt-4 break-inside-avoid">
             <h4 className="font-bold text-sm uppercase flex items-center gap-2">
               II. DAFTAR HADIR PESERTA
@@ -142,7 +162,7 @@ export default function ResultPage({ params }: PageProps) {
                   <th className="border border-black px-3 py-2 text-left w-32">
                     Instansi / Bidang
                   </th>
-                  <th className="border border-black px-3 py-2 text-center w-24">
+                  <th className="border border-black px-3 py-2 text-center w-20">
                     Waktu
                   </th>
                   <th className="border border-black px-3 py-2 text-center w-24">
@@ -175,13 +195,13 @@ export default function ResultPage({ params }: PageProps) {
                           { hour: "2-digit", minute: "2-digit" },
                         )}
                       </td>
-                      <td className="border border-black px-2 py-1 text-center align-middle">
+                      <td className="border border-black px-2 py-1 text-center align-middle h-12">
                         {person.signature ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={person.signature}
                             alt="ttd"
-                            className="h-8 mx-auto mix-blend-multiply"
+                            className="h-10 mx-auto mix-blend-multiply"
                           />
                         ) : (
                           <span className="text-[8px] italic text-slate-400">
@@ -209,17 +229,36 @@ export default function ResultPage({ params }: PageProps) {
             </p>
           </div>
 
-          {/* 5. FOTO KEGIATAN */}
-          <div className="space-y-2 pt-4 break-inside-avoid">
+          {/* 5. FOTO KEGIATAN (DIPERBARUI) */}
+          <div className="space-y-4 pt-4 break-inside-avoid">
             <h4 className="font-bold text-sm uppercase flex items-center gap-2">
               III. DOKUMENTASI FOTO
             </h4>
-            <div className="w-full h-64 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-center bg-slate-50">
-              <ImageIcon className="h-10 w-10 text-slate-300 mb-2 print:hidden" />
-              <p className="text-slate-400 font-bold print:text-black text-xs">
-                TEMPEL DOKUMENTASI KEGIATAN DISINI
-              </p>
-            </div>
+
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {photos.map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="break-inside-avoid flex justify-center"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={src}
+                      alt={`Dokumentasi ${idx + 1}`}
+                      className="rounded-lg border border-slate-300 shadow-sm max-h-75 object-contain w-full"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="w-full h-32 border-2 border-dashed border-black rounded-lg flex flex-col items-center justify-center bg-slate-50">
+                <ImageIcon className="h-8 w-8 text-slate-300 mb-2 print:hidden" />
+                <p className="text-slate-400 font-bold print:text-black text-xs">
+                  TIDAK ADA DOKUMENTASI
+                </p>
+              </div>
+            )}
           </div>
 
           {/* 6. TANDA TANGAN */}
@@ -276,7 +315,6 @@ export default function ResultPage({ params }: PageProps) {
           hr {
             border-top: 2px solid black !important;
           }
-          /* Agar gambar TTD tidak hilang backgroundnya */
           img {
             -webkit-print-color-adjust: exact;
           }
