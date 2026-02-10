@@ -2,7 +2,6 @@ import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { desc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText } from "lucide-react";
 import { columns } from "./columns";
 import { DataTable } from "./data-table";
@@ -13,6 +12,8 @@ export default async function ArchivePage() {
   const role = cookieStore.get("user_role")?.value;
 
   let allMeetings;
+
+  // --- LOGIKA FETCHING TETAP SAMA ---
   if (role === "admin") {
     allMeetings = await db.select().from(meetings).orderBy(desc(meetings.date));
   } else {
@@ -24,27 +25,38 @@ export default async function ArchivePage() {
   }
 
   return (
-    <Card className="border-slate-200 shadow-sm animate-in fade-in duration-500">
-      <CardHeader className="border-b border-slate-200 px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-yellow-100 text-yellow-600 rounded-lg">
-            <FileText className="h-5 w-5" />
+    // 1. Wrapper responsive (p-4 mobile, p-0 desktop)
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
+      {/* 2. HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
+          {/* Ikon */}
+          <div className="shrink-0 p-3 bg-yellow-100 text-yellow-600 rounded-xl border border-yellow-200/50">
+            <FileText className="h-6 w-6" />
           </div>
+
+          {/* Judul & Deskripsi */}
           <div>
-            <CardTitle className="text-lg font-bold text-slate-800">
-              Arsip Digital {role !== "admin"}
-            </CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              Arsip Digital
+              {/* Badge Role */}
+              {role === "admin" && (
+                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  Admin
+                </span>
+              )}
+            </h2>
+            <p className="text-sm text-slate-500 mt-1">
               {role === "admin"
-                ? "Seluruh data notulen instansi"
-                : "Notulen yang Anda buat dan kelola"}
+                ? "Kelola seluruh data notulen instansi"
+                : "Riwayat notulen yang Anda buat"}
             </p>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      {/* MENGGUNAKAN DATA TABLE SHADCN */}
+      {/* 3. TABLE SECTION (Langsung DataTable) */}
       <DataTable columns={columns} data={allMeetings} />
-    </Card>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { type Meeting, type Attendee } from "@/db/database/schema";
+import { toast } from "sonner"; // 1. Import Sonner
 
 // Import Components Baru
 import { MeetingHeader } from "@/components/dashboard/live/meeting-header";
@@ -16,7 +17,6 @@ interface PageProps {
 }
 
 export default function LiveMeetingPage({ params }: PageProps) {
-  // Unwrapping params using React.use()
   const { id } = use(params);
   const router = useRouter();
 
@@ -24,12 +24,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [notulen, setNotulen] = useState("");
-
-  // --- TAMBAHAN PENTING ---
-  // State untuk menyimpan URL foto
   const [photos, setPhotos] = useState<string[]>([]);
-  // ------------------------
-
   const [origin, setOrigin] = useState("");
 
   // UI State
@@ -38,7 +33,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   // 1. Initial Data Fetching
   useEffect(() => {
-    // Set origin hanya di client side
     setOrigin(window.location.origin);
 
     const initData = async () => {
@@ -50,10 +44,8 @@ export default function LiveMeetingPage({ params }: PageProps) {
           setMeetingData(json.data);
           setNotulen(json.data.content || "");
 
-          // --- PARSE PHOTOS DARI JSON STRING ---
           if (json.data.photos) {
             try {
-              // Database menyimpan string JSON, kita ubah jadi array
               const parsedPhotos = JSON.parse(json.data.photos);
               if (Array.isArray(parsedPhotos)) {
                 setPhotos(parsedPhotos);
@@ -63,8 +55,8 @@ export default function LiveMeetingPage({ params }: PageProps) {
               setPhotos([]);
             }
           }
-          // -------------------------------------
         } else {
+          toast.error("Rapat tidak ditemukan");
           router.push("/dashboard");
         }
       } catch (e) {
@@ -96,28 +88,35 @@ export default function LiveMeetingPage({ params }: PageProps) {
   // 3. Handlers
   const handleFinish = async () => {
     if (!confirm("Selesaikan rapat dan simpan notulen ke database?")) return;
+
     setIsSaving(true);
     try {
       const res = await fetch(`/api/meetings/${id}`, {
-        method: "PATCH", // Gunakan PATCH untuk update sebagian
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: notulen,
-          // Kirim juga data photos terbaru ke API
           photos: photos,
           status: "completed",
         }),
       });
 
       if (res.ok) {
+        toast.success("Rapat Selesai", {
+          description: "Notulen dan data absensi telah diarsipkan.",
+        });
         router.push("/dashboard/archive");
         router.refresh();
       } else {
-        alert("Gagal menyimpan data.");
+        toast.error("Gagal Menyimpan", {
+          description: "Terjadi kesalahan saat menyimpan data.",
+        });
       }
     } catch (e) {
       console.error(e);
-      alert("Error jaringan.");
+      toast.error("Error Jaringan", {
+        description: "Periksa koneksi internet Anda.",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -126,16 +125,24 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
-      await fetch(`/api/meetings/${id}`, {
+      const res = await fetch(`/api/meetings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: notulen,
-          photos: photos, // Simpan draft foto juga
+          photos: photos,
         }),
       });
+
+      if (res.ok) {
+        toast.success("Draft Disimpan", {
+          description: "Perubahan notulen berhasil disimpan.",
+          duration: 2000,
+        });
+      }
     } catch (e) {
       console.error(e);
+      toast.error("Gagal Simpan Draft");
     } finally {
       setIsSaving(false);
     }
@@ -148,34 +155,28 @@ export default function LiveMeetingPage({ params }: PageProps) {
       </div>
     );
 
+  // UPDATE: Padding responsif p-4 md:p-0
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-0">
       {/* 1. Header Component */}
       <MeetingHeader date={meetingData?.date} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* KIRI: QR & Attendees */}
         <div className="lg:col-span-1 space-y-6">
-          {/* 2. QR Code Component */}
           <MeetingQRCode meetingId={id} origin={origin} />
-
-          {/* 3. Attendees List Component */}
           <MeetingAttendees attendees={attendees} />
         </div>
 
         {/* KANAN: Editor */}
         <div className="lg:col-span-2 h-full">
-          {/* 4. Editor Component */}
           <MeetingEditor
             title={meetingData?.title || ""}
             leader={meetingData?.leader || ""}
             content={notulen}
             setContent={setNotulen}
-            // --- PASSING STATE PHOTOS ---
             photos={photos}
             setPhotos={setPhotos}
-            // ----------------------------
-
             onSaveDraft={handleSaveDraft}
             onFinish={handleFinish}
             isSaving={isSaving}

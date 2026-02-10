@@ -1,6 +1,5 @@
 import { columns } from "./columns";
 import { DataTable } from "./data-table";
-// 1. Import Dialog Component yang baru
 import { CreateUserDialog } from "./create-user-dialog";
 
 // Import Database & Schema
@@ -8,7 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
 
-// Tipe data untuk frontend (Mapping)
+// Tipe data untuk frontend
 type UIUser = {
   id: string;
   name: string;
@@ -26,9 +25,9 @@ async function getUsers(): Promise<UIUser[]> {
       id: String(user.id),
       name: user.name,
       nip: user.nip,
-      email: "-", // Default karena belum ada di DB
+      email: "-",
       role: user.role === "admin" ? "admin" : "pegawai",
-      status: "active", // Default karena belum ada di DB
+      status: "active",
     };
   });
 }
@@ -37,24 +36,27 @@ export default async function UsersPage() {
   const data = await getUsers();
 
   return (
-    <div className="container mx-auto py-10 space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+    // P-4 di mobile agar tidak mepet layar
+    <div className="container mx-auto p-4 md:py-10 space-y-6 animate-in fade-in duration-500">
+      {/* HEADER: Flex-col (stack) di mobile, Row di desktop */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
             Manajemen Pengguna
           </h2>
-          <p className="text-slate-500 mt-1">
+          <p className="text-sm md:text-base text-slate-500 mt-1">
             Kelola data admin dan pegawai Bapenda di sini.
           </p>
         </div>
 
-        {/* 2. GANTI DISINI: Gunakan Dialog Component */}
-        <CreateUserDialog />
+        {/* Tombol Dialog: Full width di mobile */}
+        <div className="w-full md:w-auto">
+          <CreateUserDialog />
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-1">
-        <DataTable columns={columns} data={data} />
-      </div>
+      {/* LANGSUNG DATATABLE (Tanpa Wrapper Card Tambahan) */}
+      <DataTable columns={columns} data={data} />
     </div>
   );
 }

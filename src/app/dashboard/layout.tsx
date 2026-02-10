@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
-
+import { Toaster } from "@/components/ui/sonner";
 interface AuthenticatedUser {
   name: string;
   nip: string;
@@ -60,6 +60,7 @@ export default async function DashboardLayout({
         <main className="flex-1 p-4 md:p-8 pt-0 w-full max-w-7xl mx-auto">
           {children}
         </main>
+        <Toaster />
       </SidebarInset>
     </SidebarProvider>
   );

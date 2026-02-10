@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Save } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "sonner"; // Menggunakan Sonner
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// 1. Schema Validasi Client (Sesuaikan dengan kolom yang ada di DB)
+// 1. Schema Validasi
 const formSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   nip: z.string().min(5, "NIP wajib diisi (min 5)"),
@@ -59,7 +59,7 @@ export function CreateUserDialog() {
     },
   });
 
-  // 3. Handle Submit menggunakan Fetch API
+  // 3. Handle Submit
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsPending(true);
 
@@ -75,10 +75,10 @@ export function CreateUserDialog() {
       const result = await response.json();
 
       if (result.success) {
-        toast.success(result.message);
+        toast.success(result.message || "User berhasil ditambahkan");
         setOpen(false);
         form.reset();
-        router.refresh(); // Refresh data tabel
+        router.refresh(); // Refresh data tabel tanpa reload page
       } else {
         toast.error(result.message || "Gagal menambah user");
       }
@@ -93,11 +93,14 @@ export function CreateUserDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200">
+        {/* UPDATE: w-full di mobile, w-auto di desktop */}
+        <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 transition-all">
           <Plus className="mr-2 h-4 w-4" /> Tambah User Baru
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+
+      {/* Dialog Content */}
+      <DialogContent className="sm:max-w-md w-[95vw] rounded-xl">
         <DialogHeader>
           <DialogTitle>Tambah Pegawai Baru</DialogTitle>
           <DialogDescription>
@@ -115,7 +118,11 @@ export function CreateUserDialog() {
                 <FormItem>
                   <FormLabel>Nama Lengkap</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nama Lengkap" {...field} />
+                    <Input
+                      placeholder="Nama Lengkap"
+                      {...field}
+                      className="bg-slate-50 border-slate-200"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -130,7 +137,11 @@ export function CreateUserDialog() {
                 <FormItem>
                   <FormLabel>NIP / Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="199XXXXX" {...field} />
+                    <Input
+                      placeholder="199XXXXX"
+                      {...field}
+                      className="bg-slate-50 border-slate-200"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -145,7 +156,12 @@ export function CreateUserDialog() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••" {...field} />
+                    <Input
+                      type="password"
+                      placeholder="••••••"
+                      {...field}
+                      className="bg-slate-50 border-slate-200"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +180,7 @@ export function CreateUserDialog() {
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-slate-50 border-slate-200">
                         <SelectValue placeholder="Pilih Role" />
                       </SelectTrigger>
                     </FormControl>
@@ -178,11 +194,12 @@ export function CreateUserDialog() {
               )}
             />
 
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-4 gap-2 sm:gap-0">
+              {/* Tombol Simpan: Full width di mobile */}
               <Button
                 type="submit"
                 disabled={isPending}
-                className="w-full sm:w-auto bg-blue-600"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
               >
                 {isPending ? (
                   <>
