@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-
+import * as schema from "./database/schema";
 // 1. Pastikan URL ada
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not defined");
@@ -14,4 +14,4 @@ const pool = new Pool({
   ssl: true,
 });
 
-export const db = drizzle(pool);
+export const db = drizzle(pool, { schema });

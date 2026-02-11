@@ -1,4 +1,11 @@
-import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  integer,
+  unique,
+} from "drizzle-orm/pg-core";
 import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
 
 // 1. Tabel Users
@@ -7,25 +14,21 @@ export const users = pgTable("users", {
   nip: text("nip").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
-
-  // --- TAMBAHAN BARU: Field Instansi ---
   agency: text("agency"),
-  // -------------------------------------
-
-  role: text("role").default("pegawai"), // Default saya ubah ke pegawai agar aman
+  role: text("role").default("pegawai"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// 2. Tabel Rapat (Tidak ada perubahan, tetap disertakan agar lengkap)
+// 2. Tabel Rapat
 export const meetings = pgTable("meetings", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   date: timestamp("date").notNull(),
   location: text("location"),
   leader: text("leader"),
-  status: text("status").default("live"),
+  status: text("status").default("live"), //
   content: text("content"),
-  photos: text("photos"), // JSON String array URL foto
+  photos: text("photos"),
   attendanceCount: integer("attendance_count").default(0),
   userId: integer("user_id").references(() => users.id, {
     onDelete: "cascade",
@@ -33,18 +36,28 @@ export const meetings = pgTable("meetings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// 3. Tabel Peserta Absensi (Tidak ada perubahan)
-export const attendees = pgTable("attendees", {
-  id: serial("id").primaryKey(),
-  meetingId: integer("meeting_id").references(() => meetings.id, {
-    onDelete: "cascade",
-  }),
-  name: text("name").notNull(),
-  nip: text("nip"),
-  scannedAt: timestamp("scanned_at").defaultNow(),
-  department: text("department"),
-  signature: text("signature"),
-});
+// 3. Tabel Peserta Absensi
+export const attendees = pgTable(
+  "attendees",
+  {
+    id: serial("id").primaryKey(),
+    meetingId: integer("meeting_id").references(() => meetings.id, {
+      onDelete: "cascade",
+    }),
+    name: text("name").notNull(),
+    nip: text("nip").notNull(),
+    department: text("department"),
+    signature: text("signature"),
+    role: text("role").default("peserta"), //
+    deviceId: text("device_id"),
+    scannedAt: timestamp("scanned_at").defaultNow(),
+  },
+  (table) => {
+    return {
+      uniqueNipPerMeeting: unique().on(table.meetingId, table.nip),
+    };
+  },
+);
 
 // --- EXPORT TIPE DATA ---
 export type Meeting = InferSelectModel<typeof meetings>;
