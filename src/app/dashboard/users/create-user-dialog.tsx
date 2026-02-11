@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Plus, Save } from "lucide-react";
-import { toast } from "sonner"; // Menggunakan Sonner
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ import {
 const formSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   nip: z.string().min(5, "NIP wajib diisi (min 5)"),
+  agency: z.string().min(2, "Nama Instansi wajib diisi"),
   password: z.string().min(6, "Password minimal 6 karakter"),
   role: z.enum(["admin", "pegawai"]),
 });
@@ -54,6 +55,7 @@ export function CreateUserDialog() {
     defaultValues: {
       name: "",
       nip: "",
+      agency: "",
       password: "",
       role: "pegawai",
     },
@@ -78,7 +80,7 @@ export function CreateUserDialog() {
         toast.success(result.message || "User berhasil ditambahkan");
         setOpen(false);
         form.reset();
-        router.refresh(); // Refresh data tabel tanpa reload page
+        router.refresh();
       } else {
         toast.error(result.message || "Gagal menambah user");
       }
@@ -93,18 +95,20 @@ export function CreateUserDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {/* UPDATE: w-full di mobile, w-auto di desktop */}
-        <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 transition-all">
+        {/* Tambahkan suppressHydrationWarning untuk fix error hydration mismatch */}
+        <Button
+          suppressHydrationWarning
+          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 transition-all"
+        >
           <Plus className="mr-2 h-4 w-4" /> Tambah User Baru
         </Button>
       </DialogTrigger>
 
-      {/* Dialog Content */}
-      <DialogContent className="sm:max-w-md w-[95vw] rounded-xl">
+      <DialogContent className="sm:max-w-md w-[95vw] rounded-xl overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Tambah Pegawai Baru</DialogTitle>
           <DialogDescription>
-            Masukkan data pegawai baru. NIP digunakan sebagai ID login.
+            Masukkan data pegawai baru beserta instansinya.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,7 +125,7 @@ export function CreateUserDialog() {
                     <Input
                       placeholder="Nama Lengkap"
                       {...field}
-                      className="bg-slate-50 border-slate-200"
+                      className="bg-slate-50"
                     />
                   </FormControl>
                   <FormMessage />
@@ -140,7 +144,26 @@ export function CreateUserDialog() {
                     <Input
                       placeholder="199XXXXX"
                       {...field}
-                      className="bg-slate-50 border-slate-200"
+                      className="bg-slate-50"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Field Instansi */}
+            <FormField
+              control={form.control}
+              name="agency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Instansi / Dinas</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Contoh: Bapenda / Dinas Kesehatan"
+                      {...field}
+                      className="bg-slate-50"
                     />
                   </FormControl>
                   <FormMessage />
@@ -160,7 +183,7 @@ export function CreateUserDialog() {
                       type="password"
                       placeholder="••••••"
                       {...field}
-                      className="bg-slate-50 border-slate-200"
+                      className="bg-slate-50"
                     />
                   </FormControl>
                   <FormMessage />
@@ -180,7 +203,7 @@ export function CreateUserDialog() {
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className="bg-slate-50 border-slate-200">
+                      <SelectTrigger className="bg-slate-50">
                         <SelectValue placeholder="Pilih Role" />
                       </SelectTrigger>
                     </FormControl>
@@ -195,7 +218,6 @@ export function CreateUserDialog() {
             />
 
             <DialogFooter className="pt-4 gap-2 sm:gap-0">
-              {/* Tombol Simpan: Full width di mobile */}
               <Button
                 type="submit"
                 disabled={isPending}

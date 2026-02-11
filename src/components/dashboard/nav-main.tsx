@@ -25,24 +25,28 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">
+      <SidebarGroupLabel className="text-slate-500 text-[10px] uppercase tracking-wider font-bold group-data-[collapsible=icon]:hidden">
         Menu Utama
       </SidebarGroupLabel>
+
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url;
+          const isActive =
+            item.url === "/dashboard"
+              ? pathname === "/dashboard"
+              : pathname.startsWith(item.url);
 
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
-                isActive={isActive} // Ini kunci agar highlight otomatis
-                className="text-slate-300 hover:bg-slate-800 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white"
+                isActive={isActive}
+                className="text-slate-400 hover:bg-slate-800 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:shadow-md transition-all duration-200"
               >
                 <Link href={item.url}>
-                  {/* Icon langsung dipanggil disini, Shadcn akan mengaturnya agar lurus */}
                   <item.icon />
+
                   <span>{item.title}</span>
                 </Link>
               </SidebarMenuButton>

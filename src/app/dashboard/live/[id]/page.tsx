@@ -4,13 +4,25 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { type Meeting, type Attendee } from "@/db/database/schema";
-import { toast } from "sonner"; // 1. Import Sonner
+import { toast } from "sonner";
 
-// Import Components Baru
+// Import Components
 import { MeetingHeader } from "@/components/dashboard/live/meeting-header";
 import { MeetingQRCode } from "@/components/dashboard/live/meeting-qr";
 import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees";
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
+
+// Import UI Shadcn
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -30,6 +42,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
   // UI State
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // State untuk Modal
 
   // 1. Initial Data Fetching
   useEffect(() => {
@@ -87,8 +100,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   // 3. Handlers
   const handleFinish = async () => {
-    if (!confirm("Selesaikan rapat dan simpan notulen ke database?")) return;
-
     setIsSaving(true);
     try {
       const res = await fetch(`/api/meetings/${id}`, {
@@ -105,18 +116,15 @@ export default function LiveMeetingPage({ params }: PageProps) {
         toast.success("Rapat Selesai", {
           description: "Notulen dan data absensi telah diarsipkan.",
         });
+        setIsDialogOpen(false);
         router.push("/dashboard/archive");
         router.refresh();
       } else {
-        toast.error("Gagal Menyimpan", {
-          description: "Terjadi kesalahan saat menyimpan data.",
-        });
+        toast.error("Gagal Menyimpan");
       }
     } catch (e) {
       console.error(e);
-      toast.error("Error Jaringan", {
-        description: "Periksa koneksi internet Anda.",
-      });
+      toast.error("Error Jaringan");
     } finally {
       setIsSaving(false);
     }
@@ -155,7 +163,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
       </div>
     );
 
-  // UPDATE: Padding responsif p-4 md:p-0
   return (
     <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-0">
       {/* 1. Header Component */}
@@ -178,11 +185,45 @@ export default function LiveMeetingPage({ params }: PageProps) {
             photos={photos}
             setPhotos={setPhotos}
             onSaveDraft={handleSaveDraft}
-            onFinish={handleFinish}
+            onFinish={() => setIsDialogOpen(true)}
             isSaving={isSaving}
           />
         </div>
       </div>
+
+      {/* MODAL KONFIRMASI FINALISASI */}
+      <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Selesaikan Rapat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan mengakhiri absensi dan mengarsipkan notulensi
+              secara permanen. Pastikan semua data pembahasan telah tercatat
+              dengan benar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleFinish();
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </div>
+              ) : (
+                "Ya, Selesaikan"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,10 +15,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowRight, User, Lock, FileText } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Loader2,
+  ArrowRight,
+  User,
+  Lock,
+  FileText,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { toast } from "sonner";
 
-// 1. Schema Validasi
 const loginSchema = z.object({
   nip: z
     .string()
@@ -30,6 +38,8 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const router = useRouter();
   const [globalError, setGlobalError] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -41,9 +51,35 @@ export default function LoginPage() {
 
   const { isSubmitting } = form.formState;
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout;
+
+    if (isSubmitting) {
+      timeoutId = setTimeout(() => {
+        setProgress(15);
+      }, 0);
+
+      timer = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 92) return prev;
+          return prev + Math.floor(Math.random() * 8) + 2;
+        });
+      }, 250);
+    } else {
+      timeoutId = setTimeout(() => {
+        setProgress(0);
+      }, 0);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [isSubmitting]);
+
   const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     setGlobalError("");
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -54,8 +90,9 @@ export default function LoginPage() {
       const json = await res.json();
 
       if (json.success) {
+        setProgress(100);
         toast.success("Login Berhasil", {
-          description: "Mengalihkan ke dashboard...",
+          description: "Selamat datang di E-NOTULEN.",
         });
         router.push("/dashboard");
         router.refresh();
@@ -63,7 +100,6 @@ export default function LoginPage() {
         setGlobalError(
           json.message || "Login gagal, periksa NIP dan Password.",
         );
-        // Efek getar jika error (opsional jika pakai library animasi tambahan)
       }
     } catch (err) {
       console.error(err);
@@ -72,12 +108,20 @@ export default function LoginPage() {
   };
 
   return (
-    // FIX: bg-gradient-to-br
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-900 via-indigo-900 to-slate-900 p-4 font-sans">
-      <div className="bg-white rounded-3xl shadow-2xl flex max-w-5xl w-full overflow-hidden transition-all hover:shadow-blue-500/20 animate-in fade-in zoom-in-95 duration-500">
-        {/* KOLOM KIRI (BRAND - DESKTOP ONLY) */}
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-900 via-indigo-950 to-blue-900 p-4 font-sans">
+      <div className="bg-white rounded-3xl shadow-2xl flex max-w-5xl w-full overflow-hidden transition-all hover:shadow-blue-500/10 animate-in fade-in zoom-in-95 duration-500 relative">
+        {/* PROGRESS BAR */}
+        {isSubmitting && (
+          <div className="absolute top-0 left-0 w-full z-50">
+            <Progress
+              value={progress}
+              className="h-1.5 rounded-none bg-blue-100"
+            />
+          </div>
+        )}
+
+        {/* KOLOM KIRI (BRANDING) */}
         <div className="hidden md:flex w-5/12 bg-blue-600 items-center justify-center p-12 text-white flex-col relative overflow-hidden">
-          {/* Background Pattern */}
           <div
             className="absolute inset-0 bg-blue-700 opacity-20"
             style={{
@@ -85,108 +129,103 @@ export default function LoginPage() {
               backgroundSize: "24px 24px",
             }}
           ></div>
-
-          {/* Dekorasi Gradient Circle */}
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-50"></div>
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500 rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-400 rounded-full blur-3xl opacity-30"></div>
 
           <div className="z-10 text-center relative">
-            <div className="h-24 w-24 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-inner border border-white/20">
-              <FileText className="h-12 w-12 text-white drop-shadow-md" />
+            <div className="h-20 w-20 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl border border-white/20">
+              <FileText className="h-10 w-10 text-white" />
             </div>
-            <h2 className="text-4xl font-extrabold mb-3 tracking-tight">
+            <h2 className="text-3xl font-black mb-2 tracking-tight text-white">
               E-NOTULEN
             </h2>
-            <p className="text-blue-100 font-medium text-lg leading-relaxed opacity-90">
-              Sistem Terintegrasi
+            <p className="text-blue-100 font-medium opacity-80 leading-relaxed text-sm">
+              Sistem Digitalisasi
               <br />
-              Absensi & Notulensi Digital
+              Laporan & Absensi Rapat
             </p>
-            <div className="mt-10 py-2 px-6 bg-white/10 backdrop-blur-sm border border-white/10 rounded-full inline-block text-xs font-bold tracking-widest uppercase shadow-sm">
+            <div className="mt-8 py-1.5 px-4 bg-white/10 backdrop-blur-md border border-white/10 rounded-full inline-block text-[10px] font-black tracking-widest uppercase">
               Bapenda Prov. Sultra
             </div>
           </div>
         </div>
 
-        {/* KOLOM KANAN (FORM LOGIN) */}
-        <div className="w-full md:w-7/12 p-8 sm:p-12 md:p-14 flex flex-col justify-center bg-white relative">
-          {/* MOBILE BRANDING (Hanya muncul di HP) */}
-          <div className="md:hidden text-center mb-8">
-            <div className="inline-flex h-12 w-12 bg-blue-100 text-blue-600 rounded-xl items-center justify-center mb-3">
-              <FileText className="h-6 w-6" />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-800">E-NOTULEN</h2>
-            <p className="text-xs font-bold text-blue-600 tracking-wider uppercase mt-1">
-              Bapenda Prov. Sultra
-            </p>
-          </div>
-
-          <div className="mb-8 text-center md:text-left">
-            <h3 className="text-2xl md:text-3xl font-bold text-slate-800">
-              Selamat Datang
+        {/* KOLOM KANAN (FORM) */}
+        <div className="w-full md:w-7/12 p-8 sm:p-12 md:p-16 flex flex-col justify-center bg-white relative">
+          <div className="mb-10 text-center md:text-left">
+            <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
+              Login Pegawai
             </h3>
-            <p className="text-slate-500 mt-2 text-sm md:text-base">
-              Masuk menggunakan NIP untuk mengelola agenda.
+            <p className="text-slate-500 mt-2 text-sm md:text-base font-medium">
+              Masukkan kredensial Anda untuk mengakses dashboard.
             </p>
           </div>
 
-          {/* Alert Error */}
           {globalError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm font-medium animate-in slide-in-from-top-2 flex items-start gap-3 shadow-sm">
-              <span className="text-lg">⚠️</span>
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-xs font-bold animate-in slide-in-from-top-2 flex items-center gap-3">
+              <span className="text-base">⚠️</span>
               <p>{globalError}</p>
             </div>
           )}
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              {/* Field NIP */}
               <FormField
                 control={form.control}
                 name="nip"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-700 font-semibold ml-1">
-                      NIP / User ID
+                    <FormLabel className="text-slate-700 font-bold ml-1 text-xs uppercase tracking-wider">
+                      Nomor Induk Pegawai
                     </FormLabel>
                     <div className="relative group">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 transition-colors group-focus-within:text-blue-500" />
                       <FormControl>
                         <Input
-                          placeholder="Masukkan NIP Anda"
-                          className="pl-12 py-6 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-slate-700 text-base shadow-sm"
+                          placeholder="19970209xxxxxx"
+                          className="pl-12 py-6 rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold shadow-sm"
                           disabled={isSubmitting}
                           {...field}
                         />
                       </FormControl>
                     </div>
-                    <FormMessage className="ml-1" />
+                    <FormMessage className="text-[10px] font-bold" />
                   </FormItem>
                 )}
               />
 
-              {/* Field Password */}
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-700 font-semibold ml-1">
+                    <FormLabel className="text-slate-700 font-bold ml-1 text-xs uppercase tracking-wider">
                       Kata Sandi
                     </FormLabel>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5 transition-colors group-focus-within:text-blue-500" />
                       <FormControl>
                         <Input
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
-                          className="pl-12 py-6 rounded-xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-medium text-slate-700 text-base shadow-sm"
+                          className="pl-12 pr-12 py-6 rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold shadow-sm"
                           disabled={isSubmitting}
                           {...field}
                         />
                       </FormControl>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
                     </div>
-                    <FormMessage className="ml-1" />
+                    <FormMessage className="text-[10px] font-bold" />
                   </FormItem>
                 )}
               />
@@ -194,26 +233,27 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 rounded-xl transition-all shadow-lg shadow-blue-200 active:scale-[0.98] text-base mt-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-7 rounded-2xl transition-all shadow-xl shadow-blue-200 active:scale-[0.98] text-base mt-4"
               >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Memeriksa...
-                  </>
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    MEMVERIFIKASI AKSES...
+                  </div>
                 ) : (
-                  <>
-                    MASUK SISTEM <ArrowRight className="ml-2 h-5 w-5" />
-                  </>
+                  <div className="flex items-center gap-2 tracking-widest uppercase">
+                    MASUK SISTEM <ArrowRight className="h-5 w-5" />
+                  </div>
                 )}
               </Button>
             </form>
           </Form>
 
-          <p className="mt-8 text-center text-xs text-slate-400">
-            &copy; {new Date().getFullYear()} Badan Pendapatan Daerah.
-            <br className="md:hidden" /> All rights reserved.
-          </p>
+          <div className="mt-12 flex items-center justify-center gap-4 grayscale opacity-40">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
+              &copy; {new Date().getFullYear()} Bapenda Prov. Sultra
+            </p>
+          </div>
         </div>
       </div>
     </div>

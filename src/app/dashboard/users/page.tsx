@@ -7,14 +7,13 @@ import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
 
-// Tipe data untuk frontend
+// 1. UPDATE TIPE DATA (Sesuaikan dengan columns.tsx yang baru)
 type UIUser = {
-  id: string;
+  id: number;
   name: string;
   nip: string;
-  email: string;
-  role: "admin" | "pegawai";
-  status: "active" | "inactive";
+  role: string;
+  agency: string | null;
 };
 
 async function getUsers(): Promise<UIUser[]> {
@@ -22,12 +21,14 @@ async function getUsers(): Promise<UIUser[]> {
 
   return dbData.map((user) => {
     return {
-      id: String(user.id),
+      id: user.id,
       name: user.name,
       nip: user.nip,
-      email: "-",
-      role: user.role === "admin" ? "admin" : "pegawai",
-      status: "active",
+      role: user.role || "pegawai",
+
+      // 2. MAPPING FIELD AGENCY
+
+      agency: user.agency,
     };
   });
 }
@@ -36,26 +37,25 @@ export default async function UsersPage() {
   const data = await getUsers();
 
   return (
-    // P-4 di mobile agar tidak mepet layar
-    <div className="container mx-auto p-4 md:py-10 space-y-6 animate-in fade-in duration-500">
-      {/* HEADER: Flex-col (stack) di mobile, Row di desktop */}
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
             Manajemen Pengguna
           </h2>
           <p className="text-sm md:text-base text-slate-500 mt-1">
-            Kelola data admin dan pegawai Bapenda di sini.
+            Kelola data admin dan pegawai instansi di sini.
           </p>
         </div>
 
-        {/* Tombol Dialog: Full width di mobile */}
+        {/* Tombol Dialog */}
         <div className="w-full md:w-auto">
           <CreateUserDialog />
         </div>
       </div>
 
-      {/* LANGSUNG DATATABLE (Tanpa Wrapper Card Tambahan) */}
+      {/* DATATABLE */}
       <DataTable columns={columns} data={data} />
     </div>
   );

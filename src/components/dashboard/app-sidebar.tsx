@@ -23,11 +23,11 @@ import {
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavUser } from "@/components/dashboard/nav-user";
 
-// 1. Definisikan Interface User (Tanpa Any)
+// 1. Definisikan Interface
 interface UserData {
   name: string;
   nip: string;
-  role: string; // "admin" atau "pegawai"/"staff"
+  role: string;
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -35,33 +35,35 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
-  // 2. Data Menu Dasar (Semua Role Bisa Lihat)
-  const navMainItems = [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Buat Agenda Baru",
-      url: "/dashboard/create",
-      icon: PlusCircle,
-    },
-    {
-      title: "Arsip Notulen",
-      url: "/dashboard/archive",
-      icon: Archive,
-    },
-  ];
+  // 2. Data Menu (Dibuat memoize agar tidak re-render user tidak perlu, opsional tapi good practice)
+  const navMainItems = React.useMemo(() => {
+    const items = [
+      {
+        title: "Dashboard",
+        url: "/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Buat Agenda Baru",
+        url: "/dashboard/create",
+        icon: PlusCircle,
+      },
+      {
+        title: "Arsip Notulen",
+        url: "/dashboard/archive",
+        icon: Archive,
+      },
+    ];
 
-  // 3. Tambahkan Menu Khusus Admin secara Kondisional
-  if (user.role === "admin") {
-    navMainItems.push({
-      title: "Manajemen User",
-      url: "/dashboard/users",
-      icon: UsersIcon, // Menggunakan icon Users yang lebih relevan
-    });
-  }
+    if (user.role === "admin") {
+      items.push({
+        title: "Manajemen User",
+        url: "/dashboard/users",
+        icon: UsersIcon,
+      });
+    }
+    return items;
+  }, [user.role]);
 
   return (
     <Sidebar
@@ -69,23 +71,27 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       {...props}
       className="border-r-slate-800 bg-slate-900 text-slate-300"
     >
-      {/* HEADER LOGO */}
-      <SidebarHeader className="bg-slate-900 border-b border-slate-800">
+      {/* 3. HEADER LOGO */}
+      <SidebarHeader className="bg-slate-900 border-b border-slate-800 pb-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-slate-800 hover:text-white"
+              className="hover:bg-slate-800 hover:text-white data-[state=open]:bg-slate-800 data-[state=open]:text-white"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-900/20">
                 <Layers className="size-4" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+
+              {/* PENTING UNTUK DESKTOP FIX:
+                  group-data-[collapsible=icon]:hidden 
+                  Ini akan menyembunyikan teks saat sidebar dalam mode 'icon' (collapsed)
+              */}
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-bold tracking-wide text-white">
                   E-NOTULEN
                 </span>
                 <span className="truncate text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
-                  {/* Menampilkan Role secara Dinamis */}
                   {user.role === "admin" ? "Administrator" : "Staff Pegawai"}
                 </span>
               </div>
@@ -94,17 +100,18 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* KONTEN MENU UTAMA */}
-      <SidebarContent className="bg-slate-900">
-        {/* Mengirim items yang sudah difilter */}
+      {/* 4. KONTEN MENU UTAMA */}
+      <SidebarContent className="bg-slate-900 pt-2">
         <NavMain items={navMainItems} />
       </SidebarContent>
 
-      {/* FOOTER USER */}
-      <SidebarFooter className="bg-slate-900 border-t border-slate-800">
+      {/* 5. FOOTER USER */}
+      <SidebarFooter className="bg-slate-900 border-t border-slate-800 p-2">
+        {/* NavUser biasanya sudah handle tampilan collapsed secara internal jika pakai komponen Shadcn standar */}
         <NavUser user={user} />
       </SidebarFooter>
 
+      {/* Rail untuk drag resize (opsional di mobile, berguna di desktop) */}
       <SidebarRail />
     </Sidebar>
   );
