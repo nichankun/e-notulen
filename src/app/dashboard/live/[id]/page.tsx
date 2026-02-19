@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import { toast } from "sonner";
 
-// Import Components
 import { MeetingHeader } from "@/components/dashboard/live/meeting-header";
 import { MeetingQRCode } from "@/components/dashboard/live/meeting-qr";
 import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees";
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
 
-// Import UI Shadcn
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +21,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-// PERUBAHAN: Import komponen Progress
 import { Progress } from "@/components/ui/progress";
 
 interface PageProps {
@@ -33,6 +30,7 @@ interface PageProps {
 export default function LiveMeetingPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   // Data State
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
@@ -44,11 +42,12 @@ export default function LiveMeetingPage({ params }: PageProps) {
   // UI State
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false); // State untuk Modal
-  // PERUBAHAN: State untuk nilai loading bar
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [progress, setProgress] = useState(13);
 
-  // PERUBAHAN: Efek animasi untuk progress bar saat memuat ruang rapat
+  // Kombinasi state untuk transisi halaman
+  const isRouting = isSaving || isPending;
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (loading) {
@@ -57,7 +56,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // 1. Initial Data Fetching
   useEffect(() => {
     setOrigin(window.location.origin);
 
@@ -85,10 +83,10 @@ export default function LiveMeetingPage({ params }: PageProps) {
           toast.error("Rapat tidak ditemukan");
           router.push("/dashboard");
         }
-      } catch (e) {
+      } catch (e: unknown) {
+        // PERBAIKAN: Gunakan unknown untuk error fetch awal
         console.error(e);
       } finally {
-        // PERUBAHAN: Penuhi progress bar sebelum menyembunyikan loading
         setProgress(100);
         setTimeout(() => setLoading(false), 300);
       }
@@ -96,24 +94,35 @@ export default function LiveMeetingPage({ params }: PageProps) {
     initData();
   }, [id, router]);
 
-  // 2. Real-time Attendance Polling
+  // OPTIMASI: Polling dengan AbortController agar tidak memory leak
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchAttendees = async () => {
       try {
-        const res = await fetch(`/api/meetings/${id}/attendees`);
+        const res = await fetch(`/api/meetings/${id}/attendees`, {
+          signal: controller.signal,
+        });
         const json = await res.json();
         if (json.success) setAttendees(json.data);
-      } catch (e) {
-        console.error("Polling error", e);
+      } catch (e: unknown) {
+        // PERBAIKAN: Ganti any menjadi unknown
+        // Validasi tipe error sebelum membaca property .name
+        if (e instanceof Error && e.name !== "AbortError") {
+          console.error("Polling error", e);
+        }
       }
     };
 
     fetchAttendees();
     const interval = setInterval(fetchAttendees, 3000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      controller.abort(); // Batalkan antrean fetch jika user pindah halaman
+    };
   }, [id]);
 
-  // 3. Handlers
   const handleFinish = async () => {
     setIsSaving(true);
     try {
@@ -132,15 +141,20 @@ export default function LiveMeetingPage({ params }: PageProps) {
           description: "Notulen dan data absensi telah diarsipkan.",
         });
         setIsDialogOpen(false);
-        router.push("/dashboard/archive");
-        router.refresh();
+
+        // OPTIMASI: Navigasi menggunakan useTransition agar smooth
+        startTransition(() => {
+          router.push("/dashboard/archive");
+          router.refresh();
+        });
       } else {
         toast.error("Gagal Menyimpan");
+        setIsSaving(false);
       }
-    } catch (e) {
+    } catch (e: unknown) {
+      // PERBAIKAN: Ganti any menjadi unknown
       console.error(e);
       toast.error("Error Jaringan");
-    } finally {
       setIsSaving(false);
     }
   };
@@ -163,7 +177,8 @@ export default function LiveMeetingPage({ params }: PageProps) {
           duration: 2000,
         });
       }
-    } catch (e) {
+    } catch (e: unknown) {
+      // PERBAIKAN: Ganti any menjadi unknown
       console.error(e);
       toast.error("Gagal Simpan Draft");
     } finally {
@@ -172,7 +187,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
   };
 
   if (loading) {
-    // PERUBAHAN: Tampilan loading diganti menggunakan Progress bar dari Shadcn
     return (
       <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4">
         <div className="flex flex-col items-center text-slate-500 mb-4">
@@ -189,17 +203,14 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-0">
-      {/* 1. Header Component */}
       <MeetingHeader date={meetingData?.date} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* KIRI: QR & Attendees */}
         <div className="lg:col-span-1 space-y-6">
           <MeetingQRCode meetingId={id} origin={origin} />
           <MeetingAttendees attendees={attendees} />
         </div>
 
-        {/* KANAN: Editor */}
         <div className="lg:col-span-2 h-full">
           <MeetingEditor
             title={meetingData?.title || ""}
@@ -210,12 +221,11 @@ export default function LiveMeetingPage({ params }: PageProps) {
             setPhotos={setPhotos}
             onSaveDraft={handleSaveDraft}
             onFinish={() => setIsDialogOpen(true)}
-            isSaving={isSaving}
+            isSaving={isRouting}
           />
         </div>
       </div>
 
-      {/* MODAL KONFIRMASI FINALISASI */}
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
@@ -227,16 +237,16 @@ export default function LiveMeetingPage({ params }: PageProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSaving}>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={isRouting}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 handleFinish();
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={isSaving}
+              disabled={isRouting}
             >
-              {isSaving ? (
+              {isRouting ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Menyimpan...

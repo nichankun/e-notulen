@@ -1,5 +1,7 @@
 "use client";
 
+// OPTIMASI: Tambahkan useTransition dari react
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,6 +40,8 @@ const formSchema = z.object({
 
 export default function CreateMeetingPage() {
   const router = useRouter();
+  // OPTIMASI: State untuk transisi halaman yang mulus
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -50,6 +54,9 @@ export default function CreateMeetingPage() {
   });
 
   const { isSubmitting } = form.formState;
+
+  // OPTIMASI: Kombinasi status loading agar UI terkunci sampai halaman baru benar-benar dimuat
+  const isLoading = isSubmitting || isPending;
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
@@ -67,7 +74,10 @@ export default function CreateMeetingPage() {
           duration: 3000,
         });
 
-        router.push(`/dashboard/live/${json.data.id}`);
+        // OPTIMASI: Bungkus perpindahan rute agar UI tidak freeze
+        startTransition(() => {
+          router.push(`/dashboard/live/${json.data.id}`);
+        });
       } else {
         toast.error("Gagal Membuat Rapat", {
           description: json.message || "Silakan coba lagi.",
@@ -131,7 +141,7 @@ export default function CreateMeetingPage() {
                     <FormControl>
                       <Input
                         placeholder="Misal: Evaluasi Pendapatan Daerah Bulanan"
-                        disabled={isSubmitting}
+                        disabled={isLoading} // OPTIMASI
                         className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
                         {...field}
                       />
@@ -155,7 +165,7 @@ export default function CreateMeetingPage() {
                       <FormControl>
                         <Input
                           type="datetime-local"
-                          disabled={isSubmitting}
+                          disabled={isLoading} // OPTIMASI
                           className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
                           {...field}
                         />
@@ -178,7 +188,7 @@ export default function CreateMeetingPage() {
                       <FormControl>
                         <Input
                           placeholder="Ruang Rapat Kepala Badan"
-                          disabled={isSubmitting}
+                          disabled={isLoading} // OPTIMASI
                           className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
                           {...field}
                         />
@@ -202,7 +212,7 @@ export default function CreateMeetingPage() {
                     <FormControl>
                       <Input
                         placeholder="Masukkan nama pimpinan..."
-                        disabled={isSubmitting}
+                        disabled={isLoading} // OPTIMASI
                         className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
                         {...field}
                       />
@@ -216,23 +226,24 @@ export default function CreateMeetingPage() {
 
           {/* ACTION BUTTONS */}
           <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4">
-            <Link href="/dashboard" className="w-full md:w-auto">
-              <Button
-                variant="ghost"
-                type="button"
-                disabled={isSubmitting}
-                className="w-full md:w-auto text-slate-500 hover:text-slate-800 h-12 px-6"
-              >
+            {/* OPTIMASI: Gunakan asChild pada Button yang berisi Link */}
+            <Button
+              variant="ghost"
+              type="button"
+              asChild
+              className={`w-full md:w-auto text-slate-500 hover:text-slate-800 h-12 px-6 ${isLoading ? "pointer-events-none opacity-50" : ""}`}
+            >
+              <Link href="/dashboard">
                 <ArrowLeft className="mr-2 size-4" /> Kembali ke Dashboard
-              </Button>
-            </Link>
+              </Link>
+            </Button>
 
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isLoading} // OPTIMASI
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-[0.98]"
             >
-              {isSubmitting ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 size-5 animate-spin" />
                   Sedang Menyiapkan Sesi...

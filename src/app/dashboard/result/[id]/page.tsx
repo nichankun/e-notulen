@@ -7,7 +7,7 @@ import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import { PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
-import { Progress } from "@/components/ui/progress"; // PERUBAHAN: Import komponen Progress shadcn
+import { Progress } from "@/components/ui/progress";
 
 import NotulensiPDF from "@/components/dashboard/result/notulensipdf";
 
@@ -21,9 +21,8 @@ export default function ResultPage({ params }: PageProps) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(13); // PERUBAHAN: State untuk nilai loading bar
+  const [progress, setProgress] = useState(13);
 
-  // PERUBAHAN: Efek animasi untuk progress bar saat loading
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (loading) {
@@ -47,24 +46,23 @@ export default function ResultPage({ params }: PageProps) {
             try {
               const parsed = JSON.parse(jsonMeeting.data.photos);
               if (Array.isArray(parsed)) setPhotos(parsed);
-            } catch (e) {
+            } catch (e: unknown) {
               console.error("Gagal parse foto:", e);
             }
           }
           setAttendees(jsonAttendees.data || []);
         }
-      } catch (e) {
+      } catch (e: unknown) {
         console.error(e);
       } finally {
-        setProgress(100); // PERUBAHAN: Set progress penuh sebelum loading selesai
-        setTimeout(() => setLoading(false), 300); // Jeda sedikit agar user melihat bar penuh 100%
+        setProgress(100);
+        setTimeout(() => setLoading(false), 300);
       }
     };
     fetchData();
   }, [id]);
 
   if (loading) {
-    // PERUBAHAN: Mengganti UI Loading standar dengan Shadcn Progress Card
     return (
       <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4">
         <div className="flex flex-col items-center text-slate-500 mb-4">
@@ -82,16 +80,19 @@ export default function ResultPage({ params }: PageProps) {
   if (!meetingData) return null;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-0">
+    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-0 selection:bg-blue-100">
       {/* TOMBOL KONTROL */}
-      <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-3">
-        <Link href="/dashboard/archive" className="w-full md:w-auto">
-          <Button variant="ghost" className="text-slate-500 w-full md:w-auto">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali
-          </Button>
-        </Link>
+      <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-3 animate-in fade-in duration-700">
+        <Button
+          variant="ghost"
+          asChild
+          className="text-slate-500 w-full md:w-auto"
+        >
+          <Link href="/dashboard/archive">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Arsip
+          </Link>
+        </Button>
 
-        {/* PDF Download dari @react-pdf/renderer */}
         <PDFDownloadLink
           document={
             <NotulensiPDF
@@ -106,22 +107,25 @@ export default function ResultPage({ params }: PageProps) {
           {({ loading: pdfLoading }) => (
             <Button
               disabled={pdfLoading}
-              className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg w-full md:w-auto"
+              className="bg-blue-700 hover:bg-blue-800 text-white shadow-xl shadow-blue-200/50 w-full md:w-auto font-bold rounded-xl h-11 transition-all active:scale-95"
             >
               {pdfLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Printer className="mr-2 h-4 w-4" />
               )}
-              {pdfLoading ? "Menyiapkan Dokumen..." : "Unduh PDF"}
+              {pdfLoading ? "Menyiapkan Dokumen..." : "Unduh Laporan PDF"}
             </Button>
           )}
         </PDFDownloadLink>
       </div>
 
       {/* KARTU LAPORAN (PDF Viewer) */}
-      <Card className="border-slate-200 shadow-sm bg-slate-50 overflow-hidden">
-        <PDFViewer className="w-full h-screen min-h-200 border-none rounded-xl">
+      <Card className="border-slate-200 shadow-2xl shadow-slate-200/50 bg-slate-100 overflow-hidden rounded-2xl animate-in slide-in-from-bottom-4 duration-1000">
+        <div className="bg-slate-800 p-2 flex items-center justify-center text-white/50 text-[10px] font-bold uppercase tracking-widest">
+          Pratinjau Dokumen Legal
+        </div>
+        <PDFViewer className="w-full h-[80vh] min-h-125 border-none">
           <NotulensiPDF
             meetingData={meetingData}
             attendees={attendees}

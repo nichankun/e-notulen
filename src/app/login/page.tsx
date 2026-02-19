@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,12 +31,14 @@ const loginSchema = z.object({
   nip: z
     .string()
     .min(5, "NIP terlalu pendek (minimal 5 karakter)")
-    .regex(/^\d+$/, "NIP harus berupa angka"),
+    .regex(/^\d+$/, "NIP harus berupa angka"), // Catatan: ini akan memblokir "199XXXXX" di sisi client
   password: z.string().min(1, "Password wajib diisi"),
 });
 
 export default function LoginPage() {
   const router = useRouter();
+  // OPTIMASI: Gunakan useTransition agar UI tidak freeze saat pindah route
+  const [isPending, startTransition] = useTransition();
   const [globalError, setGlobalError] = useState("");
   const [progress, setProgress] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,20 +53,28 @@ export default function LoginPage() {
 
   const { isSubmitting } = form.formState;
 
+  // Kombinasi isSubmitting form dan isPending routing
+  const isLoading = isSubmitting || isPending;
+
+  // OPTIMASI: Prefetch dashboard saat komponen di-mount agar perpindahan instan
+  useEffect(() => {
+    router.prefetch("/dashboard");
+  }, [router]);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     let timeoutId: NodeJS.Timeout;
 
-    if (isSubmitting) {
+    if (isLoading) {
+      // Dibungkus setTimeout agar asynchronous dan menghindari cascading renders
       timeoutId = setTimeout(() => {
         setProgress(15);
       }, 0);
 
       timer = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 92) return prev;
-          return prev + Math.floor(Math.random() * 8) + 2;
-        });
+        setProgress((prev) =>
+          prev >= 92 ? prev : prev + Math.floor(Math.random() * 8) + 2,
+        );
       }, 250);
     } else {
       timeoutId = setTimeout(() => {
@@ -76,7 +86,7 @@ export default function LoginPage() {
       if (timer) clearInterval(timer);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [isSubmitting]);
+  }, [isLoading]);
 
   const onSubmit = async (data: z.infer<typeof loginSchema>) => {
     setGlobalError("");
@@ -94,8 +104,11 @@ export default function LoginPage() {
         toast.success("Login Berhasil", {
           description: "Selamat datang di E-NOTULEN.",
         });
-        router.push("/dashboard");
-        router.refresh();
+
+        startTransition(() => {
+          router.push("/dashboard");
+          router.refresh();
+        });
       } else {
         setGlobalError(
           json.message || "Login gagal, periksa NIP dan Password.",
@@ -110,8 +123,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-900 via-indigo-950 to-blue-900 p-4 font-sans">
       <div className="bg-white rounded-3xl shadow-2xl flex max-w-5xl w-full overflow-hidden transition-all hover:shadow-blue-500/10 animate-in fade-in zoom-in-95 duration-500 relative">
-        {/* PROGRESS BAR */}
-        {isSubmitting && (
+        {isLoading && (
           <div className="absolute top-0 left-0 w-full z-50">
             <Progress
               value={progress}
@@ -120,7 +132,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* KOLOM KIRI (BRANDING) */}
         <div className="hidden md:flex w-5/12 bg-blue-600 items-center justify-center p-12 text-white flex-col relative overflow-hidden">
           <div
             className="absolute inset-0 bg-blue-700 opacity-20"
@@ -149,7 +160,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* KOLOM KANAN (FORM) */}
         <div className="w-full md:w-7/12 p-8 sm:p-12 md:p-16 flex flex-col justify-center bg-white relative">
           <div className="mb-10 text-center md:text-left">
             <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">
@@ -183,7 +193,7 @@ export default function LoginPage() {
                         <Input
                           placeholder="19970209xxxxxx"
                           className="pl-12 py-6 rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold shadow-sm"
-                          disabled={isSubmitting}
+                          disabled={isLoading}
                           {...field}
                         />
                       </FormControl>
@@ -208,7 +218,7 @@ export default function LoginPage() {
                           type={showPassword ? "text" : "password"}
                           placeholder="••••••••"
                           className="pl-12 pr-12 py-6 rounded-2xl border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold shadow-sm"
-                          disabled={isSubmitting}
+                          disabled={isLoading}
                           {...field}
                         />
                       </FormControl>
@@ -217,6 +227,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                        tabIndex={-1}
                       >
                         {showPassword ? (
                           <EyeOff className="h-5 w-5" />
@@ -232,10 +243,10 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isLoading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-7 rounded-2xl transition-all shadow-xl shadow-blue-200 active:scale-[0.98] text-base mt-4"
               >
-                {isSubmitting ? (
+                {isLoading ? (
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     MEMVERIFIKASI AKSES...

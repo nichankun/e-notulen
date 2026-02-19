@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -35,7 +35,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// 1. Schema Validasi
 const formSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   nip: z.string().min(5, "NIP wajib diisi (min 5)"),
@@ -46,10 +45,9 @@ const formSchema = z.object({
 
 export function CreateUserDialog() {
   const [open, setOpen] = useState(false);
-  const [isPending, setIsPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  // 2. Setup Form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -61,16 +59,14 @@ export function CreateUserDialog() {
     },
   });
 
-  // 3. Handle Submit
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsPending(true);
+  const { isSubmitting } = form.formState;
+  const isLoading = isSubmitting || isPending;
 
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
 
@@ -78,35 +74,31 @@ export function CreateUserDialog() {
 
       if (result.success) {
         toast.success(result.message || "User berhasil ditambahkan");
-        setOpen(false);
         form.reset();
-        router.refresh();
+        setOpen(false);
+        startTransition(() => {
+          router.refresh();
+        });
       } else {
         toast.error(result.message || "Gagal menambah user");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       toast.error("Terjadi kesalahan jaringan");
-    } finally {
-      setIsPending(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        {/* Tambahkan suppressHydrationWarning untuk fix error hydration mismatch */}
-        <Button
-          suppressHydrationWarning
-          className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 transition-all"
-        >
+        <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 transition-all font-bold rounded-xl">
           <Plus className="mr-2 h-4 w-4" /> Tambah User Baru
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md w-[95vw] rounded-xl overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Tambah Pegawai Baru</DialogTitle>
+          <DialogTitle className="font-bold">Tambah Pegawai Baru</DialogTitle>
           <DialogDescription>
             Masukkan data pegawai baru beserta instansinya.
           </DialogDescription>
@@ -114,18 +106,20 @@ export function CreateUserDialog() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Field Nama */}
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama Lengkap</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    Nama Lengkap
+                  </FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Nama Lengkap"
+                      placeholder="Input nama lengkap..."
                       {...field}
-                      className="bg-slate-50"
+                      disabled={isLoading}
+                      className="bg-slate-50 rounded-xl h-11 border-slate-200"
                     />
                   </FormControl>
                   <FormMessage />
@@ -133,57 +127,64 @@ export function CreateUserDialog() {
               )}
             />
 
-            {/* Field NIP */}
-            <FormField
-              control={form.control}
-              name="nip"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>NIP / Username</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="199XXXXX"
-                      {...field}
-                      className="bg-slate-50"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="nip"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      NIP / Username
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="199XXXXX"
+                        {...field}
+                        disabled={isLoading}
+                        className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="agency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      Instansi
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Bapenda"
+                        {...field}
+                        disabled={isLoading}
+                        className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            {/* Field Instansi */}
-            <FormField
-              control={form.control}
-              name="agency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Instansi / Dinas</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Contoh: Bapenda / Dinas Kesehatan"
-                      {...field}
-                      className="bg-slate-50"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Field Password */}
             <FormField
               control={form.control}
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    Password
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="password"
                       placeholder="••••••"
                       {...field}
-                      className="bg-slate-50"
+                      disabled={isLoading}
+                      className="bg-slate-50 rounded-xl h-11 border-slate-200"
                     />
                   </FormControl>
                   <FormMessage />
@@ -191,25 +192,27 @@ export function CreateUserDialog() {
               )}
             />
 
-            {/* Field Role */}
             <FormField
               control={form.control}
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role (Jabatan)</FormLabel>
+                  <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                    Hak Akses (Role)
+                  </FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
+                    disabled={isLoading}
                   >
                     <FormControl>
-                      <SelectTrigger className="bg-slate-50">
+                      <SelectTrigger className="bg-slate-50 rounded-xl h-11 border-slate-200 font-medium">
                         <SelectValue placeholder="Pilih Role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="pegawai">Pegawai / Staff</SelectItem>
-                      <SelectItem value="admin">Administrator</SelectItem>
+                      <SelectItem value="admin">Administrator IT</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -217,20 +220,20 @@ export function CreateUserDialog() {
               )}
             />
 
-            <DialogFooter className="pt-4 gap-2 sm:gap-0">
+            <DialogFooter className="pt-4">
               <Button
                 type="submit"
-                disabled={isPending}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100"
+                disabled={isLoading}
+                className="w-full bg-blue-600 hover:bg-blue-700 font-bold h-12 rounded-xl shadow-lg shadow-blue-100 transition-all"
               >
-                {isPending ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                     Menyimpan...
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" /> Simpan Data
+                    <Save className="mr-2 h-4 w-4" /> Simpan Data Pegawai
                   </>
                 )}
               </Button>

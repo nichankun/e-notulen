@@ -2,23 +2,20 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
-import { supabase } from "@/lib/supabaseClient"; // PENTING: Jangan lupa import ini
+import { supabase } from "@/lib/supabaseClient";
 
-// 1. Definisikan Tipe Data Body dari Frontend (JSON)
-interface RequestBody {
+interface UpdateMeetingRequest {
   content: string;
-  status?: string;
-  photos?: string[]; // Frontend mengirim Array string
+  status?: "live" | "completed";
+  photos?: string[];
 }
 
-// 2. Definisikan Tipe Data yang akan masuk ke Database
 interface UpdatePayload {
-  content?: string;
-  status?: string;
-  photos?: string; // Database menyimpan sebagai String JSON
+  content: string;
+  status?: "live" | "completed";
+  photos?: string;
 }
 
-// GET: Ambil Detail Rapat
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -28,7 +25,8 @@ export async function GET(
     const [data] = await db
       .select()
       .from(meetings)
-      .where(eq(meetings.id, parseInt(id)));
+      .where(eq(meetings.id, parseInt(id)))
+      .limit(1);
 
     if (!data) {
       return NextResponse.json(
@@ -38,7 +36,7 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("API GET Error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data" },
@@ -47,38 +45,28 @@ export async function GET(
   }
 }
 
-// PATCH: Update Rapat
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
-    // Gunakan 'as RequestBody' untuk memberi tahu TS bentuk datanya
-    const body = (await request.json()) as RequestBody;
+    const body = (await request.json()) as UpdateMeetingRequest;
 
-    // Inisialisasi object dengan tipe UpdatePayload
-    const updateData: UpdatePayload = {
+    // TYPE SAFE: Menggunakan interface UpdatePayload tanpa 'any'
+    const updateData: Partial<UpdatePayload> = {
       content: body.content,
     };
 
-    // Update status jika ada
-    if (body.status) {
-      updateData.status = body.status;
-    }
-
-    // Update photos jika ada (Ubah Array jadi String JSON)
-    if (body.photos && Array.isArray(body.photos)) {
-      updateData.photos = JSON.stringify(body.photos);
-    }
+    if (body.status) updateData.status = body.status;
+    if (body.photos) updateData.photos = JSON.stringify(body.photos);
 
     await db
       .update(meetings)
       .set(updateData)
       .where(eq(meetings.id, parseInt(id)));
-
     return NextResponse.json({ success: true, message: "Rapat diperbarui" });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("API PATCH Error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal update data" },
@@ -87,7 +75,6 @@ export async function PATCH(
   }
 }
 
-// DELETE: Hapus Rapat & Foto Fisik di Supabase
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -95,55 +82,40 @@ export async function DELETE(
   const { id } = await params;
   try {
     const meetingId = parseInt(id);
-
-    // LANGKAH 1: Ambil data rapat dulu sebelum dihapus (untuk cek foto)
-    const [existingMeeting] = await db
+    const [existing] = await db
       .select()
       .from(meetings)
-      .where(eq(meetings.id, meetingId));
+      .where(eq(meetings.id, meetingId))
+      .limit(1);
 
-    if (!existingMeeting) {
+    if (!existing) {
       return NextResponse.json(
         { success: false, message: "Data tidak ditemukan" },
         { status: 404 },
       );
     }
 
-    // LANGKAH 2: Cek apakah ada foto, lalu hapus di Supabase
-    if (existingMeeting.photos) {
+    if (existing.photos) {
       try {
-        const photoUrls = JSON.parse(existingMeeting.photos);
+        const photoUrls = JSON.parse(existing.photos) as string[];
+        if (photoUrls.length > 0) {
+          const fileNames = photoUrls
+            .map((url) => url.split("/").pop())
+            .filter((name): name is string => typeof name === "string");
 
-        if (Array.isArray(photoUrls) && photoUrls.length > 0) {
-          // Kita butuh nama filenya saja, bukan URL lengkap
-          // Contoh URL: https://xyz.../notulen/1749283-foto.jpg -> Ambil: 1749283-foto.jpg
-          const fileNames = photoUrls.map((url: string) => {
-            return url.substring(url.lastIndexOf("/") + 1);
-          });
-
-          // Hapus file fisik di bucket 'notulen'
-          const { error: storageError } = await supabase.storage
-            .from("notulen")
-            .remove(fileNames);
-
-          if (storageError) {
-            console.error("Gagal hapus file di storage:", storageError);
-            // Kita lanjut saja hapus DB agar data tidak nyangkut
-          }
+          await supabase.storage.from("notulen").remove(fileNames);
         }
-      } catch (parseError) {
-        console.error("Gagal parsing JSON photos:", parseError);
+      } catch (e: unknown) {
+        console.error("Storage Cleanup Error:", e);
       }
     }
 
-    // LANGKAH 3: Hapus data di Database
     await db.delete(meetings).where(eq(meetings.id, meetingId));
-
     return NextResponse.json({
       success: true,
-      message: "Data dan foto berhasil dihapus",
+      message: "Data berhasil dihapus",
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("API DELETE Error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal menghapus data" },

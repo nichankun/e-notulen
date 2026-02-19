@@ -23,25 +23,23 @@ export type User = {
 export const columns: ColumnDef<User>[] = [
   {
     accessorKey: "name",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="-ml-4 hover:bg-transparent font-bold"
-        >
-          Identitas Pegawai
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        className="-ml-4 hover:bg-transparent font-bold"
+      >
+        Identitas Pegawai
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => (
       <div className="flex flex-col min-w-50 md:min-w-62.5">
-        <span className="font-bold text-slate-900 capitalize text-sm md:text-base">
+        <span className="font-bold text-slate-900 capitalize text-sm md:text-base truncate">
           {row.getValue("name")}
         </span>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <Fingerprint className="h-3 w-3 text-slate-400" />
+          <Fingerprint className="h-3 w-3 text-slate-400 shrink-0" />
           <span className="text-[11px] font-mono text-slate-500 tracking-tighter">
             NIP. {row.original.nip}
           </span>
@@ -59,7 +57,7 @@ export const columns: ColumnDef<User>[] = [
           <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
             <Building2 className="h-3.5 w-3.5 text-slate-500" />
           </div>
-          <span className="uppercase text-[11px] font-bold tracking-tight leading-tight">
+          <span className="uppercase text-[10px] font-bold tracking-tight leading-tight truncate">
             {agency || "Badan Pendapatan Daerah"}
           </span>
         </div>
@@ -102,12 +100,10 @@ export const columns: ColumnDef<User>[] = [
   {
     id: "actions",
     header: () => <div className="text-right pr-4">Opsi</div>,
-    cell: ({ row }) => {
-      return (
-        <div className="flex items-center justify-end pr-2">
-          <UserActions user={row.original} />
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <div className="flex items-center justify-end pr-2">
+        <UserActions user={row.original} />
+      </div>
+    ),
   },
 ];

@@ -8,19 +8,20 @@ import Link from "next/link";
 import { DeleteMeetingButton } from "@/components/delete-meeting-button";
 import { Meeting } from "@/db/database/schema";
 
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
 export const columns: ColumnDef<Meeting>[] = [
   {
     accessorKey: "date",
     header: "Tanggal",
     cell: ({ row }) => {
-      // 1. whitespace-nowrap: Agar tanggal selalu satu baris
       return (
         <div className="whitespace-nowrap text-sm text-slate-500 font-medium">
-          {new Date(row.getValue("date")).toLocaleDateString("id-ID", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })}
+          {dateFormatter.format(new Date(row.getValue("date")))}
         </div>
       );
     },
@@ -29,10 +30,6 @@ export const columns: ColumnDef<Meeting>[] = [
     accessorKey: "title",
     header: "Nama Kegiatan",
     cell: ({ row }) => (
-      // 2. min-w-[200px]: PENTING UNTUK MOBILE
-      // Ini memaksa kolom ini melebar minimal 200px.
-      // Karena data-table.tsx pakai 'overflow-x-auto', tabel akan bisa digeser ke samping
-      // daripada teksnya menjadi gepeng/turun ke bawah.
       <div
         className="font-bold text-slate-800 min-w-50 md:min-w-0 truncate max-w-75"
         title={row.getValue("title")}
@@ -80,23 +77,23 @@ export const columns: ColumnDef<Meeting>[] = [
       const item = row.original;
       return (
         <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-          <Link
-            href={
-              item.status === "live"
-                ? `/dashboard/live/${item.id}`
-                : `/dashboard/result/${item.id}`
-            }
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+            asChild
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+            <Link
+              href={
+                item.status === "live"
+                  ? `/dashboard/live/${item.id}`
+                  : `/dashboard/result/${item.id}`
+              }
             >
               <Eye className="h-4 w-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
-          {/* Tombol Delete */}
           <DeleteMeetingButton id={item.id} />
         </div>
       );

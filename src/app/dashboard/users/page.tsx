@@ -1,4 +1,4 @@
-import { columns } from "./columns";
+import { columns, type User } from "./columns";
 import { DataTable } from "./data-table";
 import { CreateUserDialog } from "./create-user-dialog";
 
@@ -7,30 +7,28 @@ import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
 
-// 1. UPDATE TIPE DATA (Sesuaikan dengan columns.tsx yang baru)
-type UIUser = {
-  id: number;
-  name: string;
-  nip: string;
-  role: string;
-  agency: string | null;
-};
+// OPTIMASI: getUsers sekarang lebih ringan karena hanya menarik kolom yang diperlukan (Data Projection)
+// Ini mencegah field 'password' yang berat ikut tertarik dari database ke server component.
+async function getUsers(): Promise<User[]> {
+  const dbData = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      nip: users.nip,
+      role: users.role,
+      agency: users.agency,
+    })
+    .from(users)
+    .orderBy(desc(users.createdAt));
 
-async function getUsers(): Promise<UIUser[]> {
-  const dbData = await db.select().from(users).orderBy(desc(users.createdAt));
-
-  return dbData.map((user) => {
-    return {
-      id: user.id,
-      name: user.name,
-      nip: user.nip,
-      role: user.role || "pegawai",
-
-      // 2. MAPPING FIELD AGENCY
-
-      agency: user.agency,
-    };
-  });
+  // Mapping dengan type-safety tanpa 'any'
+  return dbData.map((user) => ({
+    id: user.id,
+    name: user.name,
+    nip: user.nip,
+    role: user.role ?? "pegawai", // Fallback jika role null
+    agency: user.agency,
+  }));
 }
 
 export default async function UsersPage() {
@@ -38,25 +36,34 @@ export default async function UsersPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
-      {/* HEADER */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
+        <div className="space-y-1">
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
             Manajemen Pengguna
           </h2>
-          <p className="text-sm md:text-base text-slate-500 mt-1">
-            Kelola data admin dan pegawai instansi di sini.
+          <p className="text-sm md:text-base text-slate-500 font-medium">
+            Kelola data hak akses administrator dan pegawai instansi.
           </p>
         </div>
 
-        {/* Tombol Dialog */}
-        <div className="w-full md:w-auto">
+        {/* Action Section */}
+        <div className="w-full md:w-auto shrink-0">
           <CreateUserDialog />
         </div>
       </div>
 
-      {/* DATATABLE */}
-      <DataTable columns={columns} data={data} />
+      {/* TABLE SECTION */}
+      {/* Kita tidak perlu lagi membungkus dengan Card di sini karena 
+          DataTable yang kita buat sebelumnya sudah memiliki styling 
+          rounded-xl dan shadow-sm yang serasi.
+      */}
+      <DataTable
+        columns={columns}
+        data={data}
+        filterKey="name"
+        placeholder="Cari nama pegawai..."
+      />
     </div>
   );
 }

@@ -8,13 +8,6 @@ import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
 import { Toaster } from "@/components/ui/sonner";
 
-interface AuthenticatedUser {
-  name: string;
-  nip: string;
-  role: string;
-  agency: string;
-}
-
 export default async function DashboardLayout({
   children,
 }: {
@@ -23,11 +16,9 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const authToken = cookieStore.get("auth_token")?.value;
 
-  if (!authToken) {
-    redirect("/");
-  }
+  if (!authToken) redirect("/");
 
-  const userResult = await db
+  const [currentUser] = await db
     .select({
       name: users.name,
       nip: users.nip,
@@ -38,17 +29,13 @@ export default async function DashboardLayout({
     .where(eq(users.id, Number(authToken)))
     .limit(1);
 
-  const currentUser = userResult[0];
+  if (!currentUser) redirect("/");
 
-  if (!currentUser) {
-    redirect("/");
-  }
-
-  const userData: AuthenticatedUser = {
+  const userData = {
     name: currentUser.name,
     nip: currentUser.nip,
     role: currentUser.role ?? "pegawai",
-    agency: currentUser.agency ?? "BAPENDA",
+    agency: currentUser.agency ?? "BAPENDA PROV. SULTRA",
   };
 
   return (
@@ -58,11 +45,11 @@ export default async function DashboardLayout({
       <SidebarInset className="bg-slate-50 h-svh overflow-hidden flex flex-col">
         <Header userAgency={userData.agency} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pt-0 w-full max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pt-6 w-full max-w-7xl mx-auto animate-in fade-in duration-700">
           {children}
         </main>
 
-        <Toaster />
+        <Toaster position="top-center" richColors />
       </SidebarInset>
     </SidebarProvider>
   );

@@ -3,40 +3,36 @@ import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import bcrypt from "bcryptjs"; // 1. Import bcrypt
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as Record<string, string>;
-    const { nip, password } = body;
+    const { nip, password } = (await request.json()) as Record<string, string>;
 
-    // 2. Cari User berdasarkan NIP
-    let userResult = await db.select().from(users).where(eq(users.nip, nip));
+    // OPTIMASI: Tambahkan limit(1) agar query lebih ringan dan cepat diproses DB
+    let [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.nip, nip))
+      .limit(1);
 
-    // --- FITUR AUTO-SEED (Diperbarui dengan Hashing) ---
-    if (
-      userResult.length === 0 &&
-      nip === "199XXXXX" &&
-      password === "admin123"
-    ) {
-      // Kita hash dulu password admin demo sebelum masuk ke DB
+    // --- FITUR AUTO-SEED ---
+    if (!user && nip === "199XXXXX" && password === "admin123") {
       const hashedAdminPassword = await bcrypt.hash("admin123", 10);
 
       const [newUser] = await db
         .insert(users)
         .values({
           nip: "199XXXXX",
-          password: hashedAdminPassword, // Gunakan hash
+          password: hashedAdminPassword,
           name: "Administrator IT",
           role: "admin",
         })
         .returning();
-      userResult = [newUser];
+
+      user = newUser;
     }
 
-    const user = userResult[0];
-
-    // 3. Validasi User & Password
     if (!user) {
       return NextResponse.json(
         { success: false, message: "NIP tidak terdaftar" },
@@ -44,7 +40,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Bandingkan password input (plain) dengan password di DB (hash)
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -54,21 +49,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Set Cookie (Session)
     const cookieStore = await cookies();
+    const isProd = process.env.NODE_ENV === "production";
 
+    // OPTIMASI: Tambahkan sameSite: "lax" untuk mencegah CSRF attack
     cookieStore.set("auth_token", user.id.toString(), {
       httpOnly: true,
       path: "/",
-      maxAge: 60 * 60 * 24,
-      secure: process.env.NODE_ENV === "production",
+      maxAge: 86400, // 60 * 60 * 24
+      secure: isProd,
+      sameSite: "lax",
     });
 
     cookieStore.set("user_role", user.role || "pegawai", {
       httpOnly: true,
       path: "/",
-      maxAge: 60 * 60 * 24,
-      secure: process.env.NODE_ENV === "production",
+      maxAge: 86400,
+      secure: isProd,
+      sameSite: "lax",
     });
 
     return NextResponse.json({ success: true, message: "Login berhasil" });

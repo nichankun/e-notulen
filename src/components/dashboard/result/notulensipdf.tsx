@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Document,
   Page,
@@ -103,46 +104,41 @@ const styles = StyleSheet.create({
   },
 });
 
-// 2. PARSER KHUSUS UNTUK TIPTAP HTML KE REACT-PDF
-const parseHtmlContent = (html: string) => {
+// OPTIMASI: Parser HTML yang Type-Safe
+const parseHtmlContent = (html: string): React.ReactNode[] | string => {
   if (!html) return "Tidak ada catatan pembahasan.";
 
   let text = html;
 
-  // Tangani List item (Hapus <p> di dalam <li> agar rapi)
-  text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, content) => {
+  text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_match, content) => {
     return `<li>${content.replace(/<\/?p[^>]*>/gi, "")}</li>`;
   });
 
-  // Ordered List (<ol>) -> Menjadi penomoran otomatis
-  text = text.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (match, inner) => {
+  text = text.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner) => {
     let i = 1;
     return inner.replace(
       /<li>([\s\S]*?)<\/li>/gi,
-      (m: string, content: string) => `\n${i++}. ${content}`,
+      (_m: string, content: string) => `\n${i++}. ${content}`,
     );
   });
 
-  // Unordered List (<ul>) -> Menjadi Bullet
-  text = text.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (match, inner) => {
+  text = text.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner) => {
     return inner.replace(
       /<li>([\s\S]*?)<\/li>/gi,
-      (m: string, content: string) => `\n• ${content}`,
+      (_m: string, content: string) => `\n• ${content}`,
     );
   });
 
-  // Paragraf & line-break -> Spasi Enter
   text = text.replace(/<\/p>/gi, "\n\n");
   text = text.replace(/<br\s*\/?>/gi, "\n");
 
-  // Bersihkan SEMUA tag HTML KECUALI tag gaya teks (strong, b, i, em, u)
-  text = text.replace(/<(\/?)([a-z0-9]+)[^>]*>/gi, (match, slash, tagName) => {
-    const tag = tagName.toLowerCase();
-    if (["strong", "b", "i", "em", "u"].includes(tag)) {
-      return match;
-    }
-    return "";
-  });
+  text = text.replace(
+    /<(\/?)([a-z0-9]+)[^>]*>/gi,
+    (match, _slash, tagName: string) => {
+      const tag = tagName.toLowerCase();
+      return ["strong", "b", "i", "em", "u"].includes(tag) ? match : "";
+    },
+  );
 
   text = text
     .replace(/&nbsp;/g, " ")
@@ -171,7 +167,11 @@ const parseHtmlContent = (html: string) => {
       else if (/^<u\b[^>]*>$/.test(lower)) isUnderline = true;
       else if (/^<\/u[^>]*>$/.test(lower)) isUnderline = false;
     } else {
-      let fontFamily = "Helvetica";
+      let fontFamily:
+        | "Helvetica"
+        | "Helvetica-Bold"
+        | "Helvetica-Oblique"
+        | "Helvetica-BoldOblique" = "Helvetica";
       if (isBold && isItalic) fontFamily = "Helvetica-BoldOblique";
       else if (isBold) fontFamily = "Helvetica-Bold";
       else if (isItalic) fontFamily = "Helvetica-Oblique";
@@ -193,7 +193,6 @@ const parseHtmlContent = (html: string) => {
   return result;
 };
 
-// 3. KOMPONEN UTAMA PDF
 export default function NotulensiPDF({
   meetingData,
   attendees,
@@ -206,7 +205,6 @@ export default function NotulensiPDF({
   return (
     <Document>
       <Page size="LEGAL" style={styles.page}>
-        {/* KOP SURAT */}
         <View style={styles.header}>
           <Text style={styles.kop1}>Pemerintah Provinsi Sulawesi Tenggara</Text>
           <Text style={styles.kop2}>Badan Pendapatan Daerah</Text>
@@ -216,10 +214,8 @@ export default function NotulensiPDF({
           </Text>
         </View>
 
-        {/* JUDUL */}
         <Text style={styles.title}>NOTULENSI KEGIATAN</Text>
 
-        {/* INFO KEGIATAN */}
         <View style={styles.row}>
           <Text style={styles.colLabel}>Kegiatan</Text>
           <Text style={styles.colColon}>:</Text>
@@ -250,13 +246,11 @@ export default function NotulensiPDF({
 
         <View style={styles.divider} />
 
-        {/* ISI NOTULEN */}
         <Text style={styles.sectionTitle}>I. RISALAH PEMBAHASAN</Text>
         <Text style={styles.content}>
           {parseHtmlContent(meetingData.content || "")}
         </Text>
 
-        {/* DAFTAR HADIR */}
         <Text style={styles.sectionTitle}>II. DAFTAR HADIR PESERTA</Text>
         <View style={styles.table}>
           <View style={styles.tableRow}>
@@ -358,7 +352,6 @@ export default function NotulensiPDF({
           )}
         </View>
 
-        {/* FOTO KEGIATAN */}
         <Text style={styles.sectionTitle}>III. DOKUMENTASI FOTO</Text>
         {photos.length > 0 ? (
           <View style={styles.photoGrid}>

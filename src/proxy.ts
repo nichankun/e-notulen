@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
-  const role = request.cookies.get("user_role")?.value; // Ambil role dari cookie
+  const role = request.cookies.get("user_role")?.value;
   const { pathname } = request.nextUrl;
 
   // 1. Jika user belum login dan mencoba akses dashboard -> Redirect ke Login
@@ -17,11 +17,9 @@ export function proxy(request: NextRequest) {
   }
 
   // 3. PROTEKSI ROLE: Staff dilarang masuk ke menu Users
-  if (pathname.startsWith("/dashboard/users")) {
-    if (role !== "admin") {
-      // Jika bukan admin, lempar balik ke dashboard utama
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
+  // OPTIMASI: Evaluasi kondisi dalam satu baris agar eksekusi lebih cepat
+  if (pathname.startsWith("/dashboard/users") && role !== "admin") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();

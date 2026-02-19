@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { ChevronsUpDown, LogOut, User } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,17 +30,21 @@ interface NavUserProps {
 export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/auth/logout", { method: "POST" });
       const result = (await response.json()) as { success: boolean };
+
       if (result.success) {
-        router.push("/");
-        router.refresh();
+        startTransition(() => {
+          router.push("/");
+          router.refresh();
+        });
       }
-    } catch (error: unknown) {
-      console.error("Logout error:", error);
+    } catch (err: unknown) {
+      console.error("Logout error:", err);
     }
   };
 
@@ -48,63 +53,58 @@ export function NavUser({ user }: NavUserProps) {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            {/* FIX: Tambahkan suppressHydrationWarning di sini */}
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-slate-800 hover:text-white"
-              suppressHydrationWarning
+              className="data-[state=open]:bg-slate-900 data-[state=open]:text-white hover:bg-slate-900 hover:text-white rounded-xl transition-all"
+              disabled={isPending}
             >
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className="h-8 w-8 rounded-lg border border-slate-700">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg bg-slate-700 text-slate-200 border border-slate-600">
-                  <User className="size-4" />
+                <AvatarFallback className="rounded-lg bg-slate-800 text-blue-400 font-black">
+                  {user.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
-              {/* FIX: Ubah div menjadi span atau tetap div tapi layout grid aman */}
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold text-white">
+                <span className="truncate font-bold text-slate-200 tracking-tight">
                   {user.name}
                 </span>
-                <span className="truncate text-xs text-slate-400">
+                <span className="truncate text-[10px] text-slate-500 font-mono">
                   {user.nip}
                 </span>
               </div>
-
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+              <ChevronsUpDown className="ml-auto size-4 text-slate-500 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg bg-slate-900 border-slate-800 text-slate-300"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-2xl bg-slate-950 border-slate-800 text-slate-300 p-2 shadow-2xl"
             side={isMobile ? "bottom" : "right"}
             align="end"
-            sideOffset={4}
+            sideOffset={12}
           >
             <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg bg-slate-700 text-slate-200">
-                    {user.name.charAt(0)}
+              <div className="flex items-center gap-3 px-2 py-2 text-left text-sm">
+                <Avatar className="h-9 w-9 rounded-xl border border-slate-800">
+                  <AvatarFallback className="rounded-xl bg-slate-800 text-blue-400">
+                    <User className="size-5" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold text-white">
+                  <span className="truncate font-black text-white">
                     {user.name}
                   </span>
-                  <span className="truncate text-xs text-slate-400">
+                  <span className="truncate text-xs text-slate-500 font-mono">
                     {user.nip}
                   </span>
                 </div>
               </div>
             </DropdownMenuLabel>
-
-            <DropdownMenuSeparator className="bg-slate-800" />
-
+            <DropdownMenuSeparator className="bg-slate-800 my-2" />
             <DropdownMenuItem
               onClick={handleLogout}
-              className="text-red-400 cursor-pointer focus:bg-slate-800 focus:text-red-400"
+              disabled={isPending}
+              className="text-red-400 cursor-pointer focus:bg-red-500/10 focus:text-red-400 rounded-lg py-2.5 font-bold"
             >
               <LogOut className="mr-2 size-4" />
               Log out

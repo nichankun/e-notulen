@@ -23,11 +23,11 @@ import {
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavUser } from "@/components/dashboard/nav-user";
 
-// 1. Definisikan Interface
 interface UserData {
   name: string;
   nip: string;
   role: string;
+  avatar?: string;
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -35,7 +35,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
-  // 2. Data Menu (Dibuat memoize agar tidak re-render user tidak perlu, opsional tapi good practice)
+  // Memoize menu agar performa tetap ringan meski terjadi re-render di parent
   const navMainItems = React.useMemo(() => {
     const items = [
       {
@@ -69,30 +69,28 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     <Sidebar
       collapsible="icon"
       {...props}
-      className="border-r-slate-800 bg-slate-900 text-slate-300"
+      className="border-r-slate-800 bg-slate-900 text-slate-300 shadow-xl"
     >
-      {/* 3. HEADER LOGO */}
-      <SidebarHeader className="bg-slate-900 border-b border-slate-800 pb-2">
+      {/* 1. HEADER: LOGO INSTANSI */}
+      <SidebarHeader className="bg-slate-900 border-b border-slate-800/60 p-2 overflow-hidden">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              className="hover:bg-slate-800 hover:text-white data-[state=open]:bg-slate-800 data-[state=open]:text-white"
+              className="hover:bg-slate-800 hover:text-white transition-all duration-200"
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-900/20">
+              {/* FIXED: shrink-0 wajib agar ikon tidak gepeng saat sidebar menutup */}
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/20">
                 <Layers className="size-4" />
               </div>
 
-              {/* PENTING UNTUK DESKTOP FIX:
-                  group-data-[collapsible=icon]:hidden 
-                  Ini akan menyembunyikan teks saat sidebar dalam mode 'icon' (collapsed)
-              */}
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-bold tracking-wide text-white">
+              {/* Teks Branding: Otomatis hilang lewat data-attribute Shadcn */}
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden overflow-hidden ml-1">
+                <span className="truncate font-black tracking-wide text-white uppercase">
                   E-NOTULEN
                 </span>
-                <span className="truncate text-[10px] text-slate-400 uppercase tracking-widest font-semibold">
-                  {user.role === "admin" ? "Administrator" : "Staff Pegawai"}
+                <span className="truncate text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                  Bapenda Sultra
                 </span>
               </div>
             </SidebarMenuButton>
@@ -100,19 +98,18 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* 4. KONTEN MENU UTAMA */}
-      <SidebarContent className="bg-slate-900 pt-2">
+      {/* 2. CONTENT: MENU NAVIGASI */}
+      <SidebarContent className="bg-slate-900 scrollbar-none pt-2">
         <NavMain items={navMainItems} />
       </SidebarContent>
 
-      {/* 5. FOOTER USER */}
-      <SidebarFooter className="bg-slate-900 border-t border-slate-800 p-2">
-        {/* NavUser biasanya sudah handle tampilan collapsed secara internal jika pakai komponen Shadcn standar */}
+      {/* 3. FOOTER: INFORMASI USER */}
+      <SidebarFooter className="bg-slate-900 border-t border-slate-800/60 p-2">
         <NavUser user={user} />
       </SidebarFooter>
 
-      {/* Rail untuk drag resize (opsional di mobile, berguna di desktop) */}
-      <SidebarRail />
+      {/* Interactive Rail (Desktop Only) */}
+      <SidebarRail className="hover:after:bg-blue-600/50" />
     </Sidebar>
   );
 }

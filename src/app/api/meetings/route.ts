@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
-import { desc, eq } from "drizzle-orm"; // 1. Import eq untuk filter
-import { cookies } from "next/headers"; // 2. Import cookies
+import { desc, eq } from "drizzle-orm";
+import { cookies } from "next/headers";
 
-// 1. GET: Ambil Data Berdasarkan Role
+// Define strict interface for POST body
+interface CreateMeetingRequest {
+  title: string;
+  date: string;
+  location?: string;
+  leader?: string;
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies();
@@ -18,22 +25,27 @@ export async function GET() {
       );
     }
 
-    let data;
+    const query = db
+      .select({
+        id: meetings.id,
+        title: meetings.title,
+        date: meetings.date,
+        location: meetings.location,
+        leader: meetings.leader,
+        status: meetings.status,
+        attendanceCount: meetings.attendanceCount,
+      })
+      .from(meetings);
 
-    if (role === "admin") {
-      // Admin: Ambil semua data rapat
-      data = await db.select().from(meetings).orderBy(desc(meetings.date));
-    } else {
-      // Staff/Pegawai: Ambil hanya yang kolom user_id nya cocok dengan ID dia
-      data = await db
-        .select()
-        .from(meetings)
-        .where(eq(meetings.userId, Number(userId))) // Filter di DB
-        .orderBy(desc(meetings.date));
-    }
+    const data =
+      role === "admin"
+        ? await query.orderBy(desc(meetings.date))
+        : await query
+            .where(eq(meetings.userId, Number(userId)))
+            .orderBy(desc(meetings.date));
 
-    return NextResponse.json({ success: true, data }, { status: 200 });
-  } catch (error) {
+    return NextResponse.json({ success: true, data });
+  } catch (error: unknown) {
     console.error("API GET Error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data" },
@@ -42,7 +54,6 @@ export async function GET() {
   }
 }
 
-// 2. POST: Buat Rapat Baru & Simpan ID Pembuatnya
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
@@ -50,12 +61,12 @@ export async function POST(request: Request) {
 
     if (!userId) {
       return NextResponse.json(
-        { success: false, message: "Sesi habis, silakan login kembali" },
+        { success: false, message: "Sesi habis" },
         { status: 401 },
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as CreateMeetingRequest;
 
     if (!body.title || !body.date) {
       return NextResponse.json(
@@ -64,7 +75,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert ke DB dengan menyertakan userId pembuatnya
     const [inserted] = await db
       .insert(meetings)
       .values({
@@ -74,7 +84,7 @@ export async function POST(request: Request) {
         leader: body.leader || "",
         status: "live",
         attendanceCount: 0,
-        userId: Number(userId), // <--- POINT PENTING: Menghubungkan rapat dengan user pembuat
+        userId: Number(userId),
       })
       .returning({ id: meetings.id });
 
@@ -82,10 +92,10 @@ export async function POST(request: Request) {
       { success: true, message: "Rapat berhasil dibuat", data: inserted },
       { status: 201 },
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("API POST Error:", error);
     return NextResponse.json(
-      { success: false, message: "Gagal menyimpan data ke database" },
+      { success: false, message: "Gagal menyimpan data" },
       { status: 500 },
     );
   }
