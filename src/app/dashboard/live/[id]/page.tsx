@@ -23,6 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+// PERUBAHAN: Import komponen Progress
+import { Progress } from "@/components/ui/progress";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -43,6 +45,17 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State untuk Modal
+  // PERUBAHAN: State untuk nilai loading bar
+  const [progress, setProgress] = useState(13);
+
+  // PERUBAHAN: Efek animasi untuk progress bar saat memuat ruang rapat
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setTimeout(() => setProgress(66), 500);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // 1. Initial Data Fetching
   useEffect(() => {
@@ -75,7 +88,9 @@ export default function LiveMeetingPage({ params }: PageProps) {
       } catch (e) {
         console.error(e);
       } finally {
-        setLoading(false);
+        // PERUBAHAN: Penuhi progress bar sebelum menyembunyikan loading
+        setProgress(100);
+        setTimeout(() => setLoading(false), 300);
       }
     };
     initData();
@@ -156,12 +171,21 @@ export default function LiveMeetingPage({ params }: PageProps) {
     }
   };
 
-  if (loading)
+  if (loading) {
+    // PERUBAHAN: Tampilan loading diganti menggunakan Progress bar dari Shadcn
     return (
-      <div className="flex h-[50vh] w-full items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4">
+        <div className="flex flex-col items-center text-slate-500 mb-4">
+          <Loader2 className="animate-spin h-10 w-10 mb-4 text-blue-600" />
+          <p className="font-semibold text-sm">Menyiapkan Ruang Rapat...</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Mengambil data peserta dan notulen.
+          </p>
+        </div>
+        <Progress value={progress} className="w-full h-2" />
       </div>
     );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-0">
