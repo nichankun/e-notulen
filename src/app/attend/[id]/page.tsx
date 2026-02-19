@@ -54,7 +54,8 @@ export default function AttendancePage({
   const [error, setError] = useState("");
   const [meetingValid, setMeetingValid] = useState<boolean | null>(null);
 
-  const [canvasWidth, setCanvasWidth] = useState(0);
+  // PERBAIKAN 1: Inisialisasi dengan nilai > 0 (misal 500) agar canvas tidak mati kutu di laptop
+  const [canvasWidth, setCanvasWidth] = useState(500);
   const sigCanvas = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,12 +71,16 @@ export default function AttendancePage({
   });
 
   useEffect(() => {
+    // Fungsi resize tetap jalan untuk menyesuaikan ukuran asli container
     const handleResize = () => {
       if (containerRef.current) {
         setCanvasWidth(containerRef.current.offsetWidth);
       }
     };
+
+    // Panggil sekali saat mount agar ukuran menyesuaikan layar
     handleResize();
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -143,7 +148,7 @@ export default function AttendancePage({
 
   if (success)
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-50 p-4 text-slate-900">
+      <div className="h-screen flex items-center justify-center bg-slate-5 from-slate-50 to-blue-50 p-4 text-slate-900">
         <Card className="max-w-md w-full text-center p-10 shadow-2xl rounded-[2.5rem] bg-white">
           <CheckCircle2 className="mx-auto h-20 w-20 text-green-500 mb-4 scale-110" />
           <h2 className="text-2xl font-black uppercase">Berhasil Absen!</h2>
@@ -344,6 +349,8 @@ export default function AttendancePage({
                         ref={containerRef}
                         className="border-2 rounded-[1.5rem] bg-white border-slate-200 overflow-hidden shadow-inner relative"
                       >
+                        {/* PERBAIKAN 2: Render Conditional agar canvas hanya muncul saat width valid (opsional tapi aman) 
+                            ATAU biarkan render tapi dengan default 500 dan w-full */}
                         <SignatureCanvas
                           ref={sigCanvas}
                           penColor="#0f172a"
@@ -351,7 +358,8 @@ export default function AttendancePage({
                             id: "sig-canvas",
                             width: canvasWidth,
                             height: 200,
-                            className: "cursor-crosshair block",
+                            // Tambahkan 'w-full' dan 'h-full' agar visual CSS tetap mengisi area
+                            className: "cursor-crosshair block w-full h-full",
                             style: { touchAction: "none" },
                             tabIndex: -1,
                           }}
