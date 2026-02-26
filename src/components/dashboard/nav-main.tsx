@@ -21,7 +21,8 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-slate-600 text-[10px] uppercase tracking-[0.2em] font-black group-data-[collapsible=icon]:hidden mb-2 px-3">
+      {/* PERUBAHAN UI: Teks label diubah menjadi text-blue-200 agar terbaca elegan di atas background biru pekat */}
+      <SidebarGroupLabel className="text-blue-200 text-[10px] uppercase tracking-wider font-semibold group-data-[collapsible=icon]:hidden mb-2 px-3">
         Menu Utama
       </SidebarGroupLabel>
 
@@ -38,12 +39,13 @@ export function NavMain({
                 asChild
                 tooltip={item.title}
                 isActive={isActive}
-                className="h-11 px-3 text-slate-400 hover:bg-slate-900 hover:text-white data-[active=true]:bg-blue-600 data-[active=true]:text-white transition-all rounded-xl gap-3"
+                // PERUBAHAN UI: Styling transparan putih untuk hover dan active state
+                className="h-11 px-3 text-blue-100 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/20 data-[active=true]:text-white transition-colors rounded-xl gap-3 group"
               >
                 <Link href={item.url}>
                   {/* Icon shrink-0 agar tidak miring saat dikompres */}
                   <item.icon className="size-5 shrink-0" />
-                  <span className="font-bold tracking-tight group-data-[collapsible=icon]:hidden truncate">
+                  <span className="font-medium group-data-[active=true]:font-bold tracking-tight group-data-[collapsible=icon]:hidden truncate text-[15px]">
                     {item.title}
                   </span>
                 </Link>

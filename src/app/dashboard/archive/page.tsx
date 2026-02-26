@@ -49,23 +49,23 @@ export default async function ArchivePage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0 font-sans">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 md:gap-4">
-          <div className="shrink-0 p-3 bg-yellow-100 text-yellow-600 rounded-xl border border-yellow-200/50 shadow-inner">
+          <div className="shrink-0 p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
             <FileText className="h-6 w-6" />
           </div>
 
           <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2.5">
               Arsip Digital
               {role === "admin" && (
-                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 uppercase tracking-wider">
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
                   Admin
                 </span>
               )}
             </h2>
-            <p className="text-sm text-slate-500 mt-1 font-medium">
+            <p className="text-sm text-gray-500 mt-1 font-medium">
               {role === "admin"
                 ? "Kelola seluruh data notulen instansi"
                 : "Riwayat notulen yang Anda buat"}

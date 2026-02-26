@@ -35,14 +35,14 @@ export default async function UsersPage() {
   const data = await getUsers();
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
-      {/* HEADER SECTION */}
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0 font-sans">
+      {/* HEADER SECTION (Lebih Clean & Modern) */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
             Manajemen Pengguna
           </h2>
-          <p className="text-sm md:text-base text-slate-500 font-medium">
+          <p className="text-sm text-gray-500 mt-1 font-medium">
             Kelola data hak akses administrator dan pegawai instansi.
           </p>
         </div>

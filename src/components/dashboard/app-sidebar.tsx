@@ -69,27 +69,29 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     <Sidebar
       collapsible="icon"
       {...props}
-      className="border-r-slate-800 bg-slate-900 text-slate-300 shadow-xl"
+      // UI BIRU SOLID: Sama persis dengan warna tombol login (#0866ff)
+      className="border-r-0 bg-[#0866ff] text-white shadow-xl"
     >
       {/* 1. HEADER: LOGO INSTANSI */}
-      <SidebarHeader className="bg-slate-900 border-b border-slate-800/60 p-2 overflow-hidden">
+      <SidebarHeader className="bg-[#0866ff] border-b border-white/20 p-2 overflow-hidden">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              className="hover:bg-slate-800 hover:text-white transition-all duration-200"
+              // Hover memakai efek kaca (putih transparan) agar elegan di atas warna biru
+              className="hover:bg-white/10 hover:text-white transition-all duration-200"
             >
-              {/* FIXED: shrink-0 wajib agar ikon tidak gepeng saat sidebar menutup */}
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-lg shadow-blue-500/20">
+              {/* KOTAK LOGO: Warnanya dibalik (kotak putih, logo biru) agar terlihat */}
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#0866ff] shadow-sm">
                 <Layers className="size-4" />
               </div>
 
-              {/* Teks Branding: Otomatis hilang lewat data-attribute Shadcn */}
+              {/* TEKS BRANDING */}
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden overflow-hidden ml-1">
-                <span className="truncate font-black tracking-wide text-white uppercase">
-                  E-NOTULEN
+                <span className="truncate font-bold tracking-wide text-white">
+                  E-Notulen
                 </span>
-                <span className="truncate text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                <span className="truncate text-[10px] text-blue-200 uppercase tracking-widest font-semibold">
                   Bapenda Sultra
                 </span>
               </div>
@@ -99,17 +101,17 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       </SidebarHeader>
 
       {/* 2. CONTENT: MENU NAVIGASI */}
-      <SidebarContent className="bg-slate-900 scrollbar-none pt-2">
+      <SidebarContent className="bg-[#0866ff] scrollbar-none pt-2">
         <NavMain items={navMainItems} />
       </SidebarContent>
 
       {/* 3. FOOTER: INFORMASI USER */}
-      <SidebarFooter className="bg-slate-900 border-t border-slate-800/60 p-2">
+      <SidebarFooter className="bg-[#0866ff] border-t border-white/20 p-2">
         <NavUser user={user} />
       </SidebarFooter>
 
       {/* Interactive Rail (Desktop Only) */}
-      <SidebarRail className="hover:after:bg-blue-600/50" />
+      <SidebarRail className="hover:after:bg-white/40" />
     </Sidebar>
   );
 }

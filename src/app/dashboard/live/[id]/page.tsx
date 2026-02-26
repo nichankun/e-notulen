@@ -191,31 +191,36 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4 text-center">
-        <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
-        <p className="font-bold text-slate-700">Menyiapkan Ruang Rapat...</p>
-        <Progress value={progress} className="w-full h-1.5" />
+      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4 text-center font-sans">
+        <Loader2 className="animate-spin h-10 w-10 text-[#0866ff]" />
+        <p className="font-semibold text-gray-700">Menyiapkan Ruang Rapat...</p>
+        {/* Mengubah warna progress bar menjadi biru khas */}
+        <Progress
+          value={progress}
+          className="w-full h-1.5 [&>div]:bg-[#0866ff]"
+        />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-0">
+    <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-6 font-sans">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <MeetingHeader date={meetingData?.date} />
 
         {/* Indikator Status Auto-Save (Hanya muncul di Mobile/Header) */}
-        <div className="flex lg:hidden items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
+        {/* Diselaraskan warnanya dengan palet abu-abu terang */}
+        <div className="flex lg:hidden items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           {saveStatus === "saving" && (
-            <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0866ff]" />
           )}
           {saveStatus === "saved" && (
-            <CheckCheck className="h-3 w-3 text-green-600" />
+            <CheckCheck className="h-3.5 w-3.5 text-[#25D366]" />
           )}
           {saveStatus === "error" && (
-            <CloudOff className="h-3 w-3 text-red-500" />
+            <CloudOff className="h-3.5 w-3.5 text-red-500" />
           )}
-          <span className="text-[10px] font-black uppercase text-slate-500">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
             {saveStatus === "saving"
               ? "Menyimpan..."
               : saveStatus === "saved"
@@ -225,7 +230,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         <div className="lg:col-span-1 space-y-6">
           <MeetingQRCode meetingId={id} origin={origin} />
           <MeetingAttendees attendees={attendees} />
@@ -248,17 +253,22 @@ export default function LiveMeetingPage({ params }: PageProps) {
       </div>
 
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <AlertDialogContent className="bg-white rounded-3xl">
+        {/* Sudut dialog dilunakkan menjadi rounded-2xl dan warna background dipastikan putih solid */}
+        <AlertDialogContent className="bg-white rounded-2xl border-gray-100 p-6 md:p-8">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black uppercase tracking-tight">
+            <AlertDialogTitle className="font-bold text-gray-900 text-xl tracking-tight">
               Selesaikan Rapat?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-500">
-              Data absensi dan notulensi akan diarsipkan secara permanen.
+            <AlertDialogDescription className="text-gray-500 text-[15px] mt-2">
+              Data absensi dan notulensi akan diarsipkan secara permanen. Anda
+              tidak dapat mengubahnya lagi setelah ini.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={isRouting} className="rounded-xl">
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel
+              disabled={isRouting}
+              className="rounded-full h-11 px-6 border-gray-200 text-gray-600 hover:bg-gray-50 font-medium"
+            >
               Batal
             </AlertDialogCancel>
             <AlertDialogAction
@@ -266,7 +276,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
                 e.preventDefault();
                 handleFinish();
               }}
-              className="bg-slate-900 hover:bg-blue-700 text-white rounded-xl font-bold transition-all"
+              className="bg-[#0866ff] hover:bg-[#1877f2] text-white rounded-full h-11 px-6 font-bold transition-colors"
               disabled={isRouting}
             >
               {isRouting ? (

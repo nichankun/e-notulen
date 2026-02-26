@@ -92,85 +92,91 @@ export default function CreateMeetingPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6">
-      {/* HEADER SECTION */}
+    <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-6 font-sans">
+      {/* HEADER SECTION (Lebih Bersih) */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-2 bg-blue-600 rounded-lg text-white">
-              <Sparkles className="size-5" />
+            {/* Mengganti warna ke brand utama #0866ff dan menggunakan pill-shape */}
+            <div className="px-2.5 py-1 bg-[#0866ff]/10 rounded-full text-[#0866ff] flex items-center gap-1.5">
+              <Sparkles className="size-3.5" />
+              <span className="font-bold text-[10px] uppercase tracking-wider">
+                Sistem E-Notulen
+              </span>
             </div>
-            <span className="text-blue-600 font-bold text-xs uppercase tracking-widest">
-              Sistem E-Notulen
-            </span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+          {/* Typograpy disesuaikan */}
+          <h2 className="text-2xl md:text-[2rem] font-bold text-gray-900 tracking-tight leading-none mt-3">
             Buat Agenda Baru
           </h2>
-          <p className="text-slate-500 mt-1">
+          <p className="text-gray-500 mt-2 text-sm md:text-[15px]">
             Silakan lengkapi informasi agenda rapat di bawah ini.
           </p>
         </div>
 
-        {/* Custom Progress Indicator */}
-        <div className="flex flex-col items-end gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter">
+        {/* Custom Progress Indicator (Diselaraskan Warnanya) */}
+        <div className="flex flex-col items-start md:items-end gap-1.5 mt-2 md:mt-0">
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
             Progress Pengisian
           </span>
-          <div className="flex gap-1">
-            <div className="h-1.5 w-12 rounded-full bg-blue-600" />
-            <div className="h-1.5 w-12 rounded-full bg-slate-200" />
+          <div className="flex gap-1.5">
+            <div className="h-1.5 w-10 rounded-full bg-[#0866ff]" />
+            <div className="h-1.5 w-10 rounded-full bg-gray-200" />
           </div>
         </div>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card className="border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden rounded-2xl">
-            <CardContent className="p-6 md:p-10 space-y-6 bg-white">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6 md:space-y-8"
+        >
+          {/* FORM CARD (Menghilangkan shadow tebal dan mengganti slate ke gray) */}
+          <Card className="border-gray-100 shadow-sm md:shadow-[0_4px_12px_rgba(0,0,0,0.03)] overflow-hidden rounded-xl bg-white">
+            <CardContent className="p-5 md:p-8 space-y-6 md:space-y-7">
               {/* Field Judul */}
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-slate-700 font-bold mb-2">
-                      <FileText className="size-4 text-blue-500" />
+                    <FormLabel className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
+                      <FileText className="size-4 text-[#0866ff]" />
                       Judul Rapat / Kegiatan
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Misal: Evaluasi Pendapatan Daerah Bulanan"
-                        disabled={isLoading} // OPTIMASI
-                        className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
+                        disabled={isLoading}
+                        className="h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base rounded-md"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 {/* Field Tanggal */}
                 <FormField
                   control={form.control}
                   name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-slate-700 font-bold mb-2">
-                        <CalendarClock className="size-4 text-blue-500" />
+                      <FormLabel className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
+                        <CalendarClock className="size-4 text-[#0866ff]" />
                         Tanggal & Waktu
                       </FormLabel>
                       <FormControl>
                         <Input
                           type="datetime-local"
-                          disabled={isLoading} // OPTIMASI
-                          className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
+                          disabled={isLoading}
+                          className="h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base rounded-md"
                           {...field}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
@@ -181,19 +187,19 @@ export default function CreateMeetingPage() {
                   name="location"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2 text-slate-700 font-bold mb-2">
-                        <MapPin className="size-4 text-blue-500" />
+                      <FormLabel className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
+                        <MapPin className="size-4 text-[#0866ff]" />
                         Lokasi / Ruangan
                       </FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Ruang Rapat Kepala Badan"
-                          disabled={isLoading} // OPTIMASI
-                          className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
+                          disabled={isLoading}
+                          className="h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base rounded-md"
                           {...field}
                         />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-xs" />
                     </FormItem>
                   )}
                 />
@@ -205,19 +211,19 @@ export default function CreateMeetingPage() {
                 name="leader"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-slate-700 font-bold mb-2">
-                      <User className="size-4 text-blue-500" />
+                    <FormLabel className="flex items-center gap-2 text-gray-700 font-semibold mb-2">
+                      <User className="size-4 text-[#0866ff]" />
                       Pimpinan Rapat
                     </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Masukkan nama pimpinan..."
-                        disabled={isLoading} // OPTIMASI
-                        className="h-12 bg-slate-50/50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-base rounded-xl"
+                        disabled={isLoading}
+                        className="h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base rounded-md"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
@@ -225,13 +231,12 @@ export default function CreateMeetingPage() {
           </Card>
 
           {/* ACTION BUTTONS */}
-          <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4">
-            {/* OPTIMASI: Gunakan asChild pada Button yang berisi Link */}
+          <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-4 pt-2">
             <Button
               variant="ghost"
               type="button"
               asChild
-              className={`w-full md:w-auto text-slate-500 hover:text-slate-800 h-12 px-6 ${isLoading ? "pointer-events-none opacity-50" : ""}`}
+              className={`w-full md:w-auto text-gray-500 hover:text-gray-900 hover:bg-gray-100 h-12 px-6 rounded-full font-medium ${isLoading ? "pointer-events-none opacity-50" : ""}`}
             >
               <Link href="/dashboard">
                 <ArrowLeft className="mr-2 size-4" /> Kembali ke Dashboard
@@ -240,8 +245,8 @@ export default function CreateMeetingPage() {
 
             <Button
               type="submit"
-              disabled={isLoading} // OPTIMASI
-              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 h-14 rounded-2xl font-bold shadow-xl shadow-blue-200 transition-all active:scale-[0.98]"
+              disabled={isLoading}
+              className="w-full md:w-auto bg-[#0866ff] hover:bg-[#1877f2] text-white px-8 h-12 md:h-14 rounded-full font-bold transition-colors flex items-center justify-center text-[15px] md:text-base"
             >
               {isLoading ? (
                 <>
