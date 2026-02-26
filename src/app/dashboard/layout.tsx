@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
 import { Toaster } from "@/components/ui/sonner";
+import { verifyAuthToken } from "@/lib/auth"; // Import dari file utility
 
 export default async function DashboardLayout({
   children,
@@ -16,8 +17,16 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const authToken = cookieStore.get("auth_token")?.value;
 
+  // Jika tidak ada token, tendang ke login
   if (!authToken) redirect("/");
 
+  // Verifikasi dan ambil payload menggunakan fungsi utility
+  const payload = await verifyAuthToken(authToken);
+  if (!payload || !payload.id) redirect("/");
+
+  const userId = Number(payload.id);
+
+  // Ambil data user dari DB
   const [currentUser] = await db
     .select({
       name: users.name,
@@ -26,7 +35,7 @@ export default async function DashboardLayout({
       agency: users.agency,
     })
     .from(users)
-    .where(eq(users.id, Number(authToken)))
+    .where(eq(users.id, userId))
     .limit(1);
 
   if (!currentUser) redirect("/");

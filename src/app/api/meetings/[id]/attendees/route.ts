@@ -1,25 +1,35 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings, attendees } from "@/db/database/schema";
-import { eq, sql, asc, and, ne } from "drizzle-orm";
+import { eq, sql, asc, and, ne, count } from "drizzle-orm"; // Tambahkan 'count'
+import { z } from "zod";
 
-interface AttendancePostRequest {
-  name: string;
-  nip: string;
-  department?: string;
-  role: "pimpinan" | "pejabat" | "peserta";
-  signature: string;
-  deviceId: string;
-}
+// 1. ZOD SCHEMA: Menggantikan interface manual agar validasi terjamin di level runtime
+const attendanceSchema = z.object({
+  name: z.string().min(1, "Nama lengkap wajib diisi"),
+  nip: z.string().min(1, "NIP wajib diisi"),
+  department: z.string().optional(),
+  role: z.enum(["pimpinan", "pejabat", "peserta"]),
+  signature: z.string().min(1, "Tanda tangan digital wajib diisi"),
+  deviceId: z.string().min(1, "Gagal mengidentifikasi perangkat"),
+});
 
+// ==========================================
+// GET: MENGAMBIL DAFTAR HADIR (Bisa ditampilkan realtime di layar proyektor)
+// ==========================================
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const meetingId = parseInt(id);
-
   try {
+    const meetingId = parseInt((await params).id, 10);
+    if (isNaN(meetingId)) {
+      return NextResponse.json(
+        { success: false, message: "ID Rapat tidak valid" },
+        { status: 400 },
+      );
+    }
+
     const meeting = await db.query.meetings.findFirst({
       where: eq(meetings.id, meetingId),
       columns: { status: true },
@@ -30,7 +40,7 @@ export async function GET(
       (meeting.status !== "live" && meeting.status !== "completed")
     ) {
       return NextResponse.json(
-        { success: false, message: "Akses ditutup" },
+        { success: false, message: "Akses rapat ditutup" },
         { status: 403 },
       );
     }
@@ -40,6 +50,7 @@ export async function GET(
       .from(attendees)
       .where(eq(attendees.meetingId, meetingId))
       .orderBy(
+        // Pengurutan hierarki untuk layar monitor rapat
         sql`CASE 
           WHEN ${attendees.role} = 'pimpinan' THEN 1 
           WHEN ${attendees.role} = 'pejabat' THEN 2 
@@ -55,22 +66,39 @@ export async function GET(
   }
 }
 
+// ==========================================
+// POST: MENGIRIM DATA ABSENSI DARI HP PESERTA
+// ==========================================
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const meetingId = parseInt(id);
-
   try {
-    const body = (await request.json()) as AttendancePostRequest;
-
-    if (!body.name || !body.signature || !body.nip || !body.deviceId) {
+    const meetingId = parseInt((await params).id, 10);
+    if (isNaN(meetingId)) {
       return NextResponse.json(
-        { success: false, message: "Data tidak lengkap" },
+        { success: false, message: "ID Rapat tidak valid" },
         { status: 400 },
       );
     }
+
+    // VALIDASI ZOD PENGGANTI MANUAL IF-ELSE
+    const body: unknown = await request.json();
+    const parse = attendanceSchema.safeParse(body);
+
+    if (!parse.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Data tidak lengkap",
+          errors: parse.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    // Tipe data sudah otomatis infer (tanpa any, tanpa as)
+    const { name, nip, department, role, signature, deviceId } = parse.data;
 
     const meeting = await db.query.meetings.findFirst({
       where: eq(meetings.id, meetingId),
@@ -78,16 +106,20 @@ export async function POST(
 
     if (!meeting || meeting.status !== "live") {
       return NextResponse.json(
-        { success: false, message: "Absensi ditutup" },
+        {
+          success: false,
+          message: "Sesi absensi untuk rapat ini telah ditutup",
+        },
         { status: 403 },
       );
     }
 
+    // FITUR ANTI-FRAUD: Cek jika Device ID dipakai absen NIP lain
     const deviceUsedByOthers = await db.query.attendees.findFirst({
       where: and(
         eq(attendees.meetingId, meetingId),
-        eq(attendees.deviceId, body.deviceId),
-        ne(attendees.nip, body.nip),
+        eq(attendees.deviceId, deviceId),
+        ne(attendees.nip, nip),
       ),
     });
 
@@ -95,47 +127,45 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          message: "Perangkat sudah digunakan oleh NIP lain.",
+          message:
+            "Perangkat ini sudah digunakan untuk absen pegawai lain. Gunakan perangkat Anda sendiri.",
         },
         { status: 403 },
       );
     }
 
     const existing = await db.query.attendees.findFirst({
-      where: and(
-        eq(attendees.meetingId, meetingId),
-        eq(attendees.nip, body.nip),
-      ),
+      where: and(eq(attendees.meetingId, meetingId), eq(attendees.nip, nip)),
     });
 
+    // UPSERT LOGIC
     if (existing) {
       await db
         .update(attendees)
         .set({
-          name: body.name,
-          department: body.department || "-",
-          role: body.role,
-          signature: body.signature,
+          name,
+          department: department || "-",
+          role,
+          signature,
           scannedAt: new Date(),
         })
         .where(eq(attendees.id, existing.id));
     } else {
       await db.insert(attendees).values({
         meetingId,
-        name: body.name,
-        nip: body.nip,
-        department: body.department || "-",
-        role: body.role,
-        signature: body.signature,
-        deviceId: body.deviceId,
+        name,
+        nip,
+        department: department || "-",
+        role,
+        signature,
+        deviceId,
         scannedAt: new Date(),
       });
     }
 
+    // OPTIMASI: Menghitung total kehadiran dengan fungsi bawaan Drizzle
     const [stats] = await db
-      .select({
-        count: sql<number>`cast(count(*) as int)`,
-      })
+      .select({ count: count() })
       .from(attendees)
       .where(eq(attendees.meetingId, meetingId));
 
@@ -151,7 +181,10 @@ export async function POST(
   } catch (error: unknown) {
     console.error("API POST Attendee Error:", error);
     return NextResponse.json(
-      { success: false, message: "Terjadi kesalahan server" },
+      {
+        success: false,
+        message: "Terjadi kesalahan sistem saat menyimpan absen",
+      },
       { status: 500 },
     );
   }

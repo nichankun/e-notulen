@@ -4,38 +4,37 @@ import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { SignJWT } from "jose";
+
+// Gunakan environment variable untuk secret key di production
+const SECRET_KEY = new TextEncoder().encode(
+  process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026",
+);
 
 export async function POST(request: Request) {
   try {
-    const { nip, password } = (await request.json()) as Record<string, string>;
+    const body = await request.json();
+    const { nip, password } = body as Record<string, string>;
 
-    // OPTIMASI: Tambahkan limit(1) agar query lebih ringan dan cepat diproses DB
-    let [user] = await db
+    // 1. Validasi Input Dasar
+    if (!nip || !password) {
+      return NextResponse.json(
+        { success: false, message: "NIP dan Kata Sandi wajib diisi" },
+        { status: 400 },
+      );
+    }
+
+    // 2. Ambil user dari database
+    const [user] = await db
       .select()
       .from(users)
       .where(eq(users.nip, nip))
       .limit(1);
 
-    // --- FITUR AUTO-SEED ---
-    if (!user && nip === "199XXXXX" && password === "admin123") {
-      const hashedAdminPassword = await bcrypt.hash("admin123", 10);
-
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          nip: "199XXXXX",
-          password: hashedAdminPassword,
-          name: "Administrator IT",
-          role: "admin",
-        })
-        .returning();
-
-      user = newUser;
-    }
-
+    // 3. Validasi User & Password (Pesan error disamakan demi keamanan)
     if (!user) {
       return NextResponse.json(
-        { success: false, message: "NIP tidak terdaftar" },
+        { success: false, message: "NIP atau Kata Sandi salah" },
         { status: 401 },
       );
     }
@@ -49,31 +48,43 @@ export async function POST(request: Request) {
       );
     }
 
+    // 4. Generate JWT
+    const token = await new SignJWT({
+      id: user.id,
+      role: user.role,
+      nip: user.nip,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("24h") // Token aktif 24 jam
+      .sign(SECRET_KEY);
+
+    // 5. Set Cookie
     const cookieStore = await cookies();
     const isProd = process.env.NODE_ENV === "production";
 
-    // OPTIMASI: Tambahkan sameSite: "lax" untuk mencegah CSRF attack
-    cookieStore.set("auth_token", user.id.toString(), {
+    cookieStore.set("auth_token", token, {
       httpOnly: true,
       path: "/",
-      maxAge: 86400, // 60 * 60 * 24
+      maxAge: 86400, // 24 jam
       secure: isProd,
       sameSite: "lax",
     });
 
-    cookieStore.set("user_role", user.role || "pegawai", {
-      httpOnly: true,
-      path: "/",
-      maxAge: 86400,
-      secure: isProd,
-      sameSite: "lax",
+    // 6. Return Response (Kirim data user ke client untuk disimpan di state/Zustand)
+    return NextResponse.json({
+      success: true,
+      message: "Login berhasil",
+      user: {
+        nip: user.nip,
+        name: user.name,
+        role: user.role,
+      },
     });
-
-    return NextResponse.json({ success: true, message: "Login berhasil" });
   } catch (error: unknown) {
     console.error("Login Error:", error);
     return NextResponse.json(
-      { success: false, message: "Terjadi kesalahan server" },
+      { success: false, message: "Terjadi kesalahan internal server" },
       { status: 500 },
     );
   }

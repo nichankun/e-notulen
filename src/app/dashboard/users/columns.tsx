@@ -19,7 +19,9 @@ export type User = {
   role: string;
   agency: string | null;
 };
-
+const formatNIP = (nip: string) => {
+  return nip.replace(/(\d{8})(\d{6})(\d{1})(\d{3})/, "$1 $2 $3 $4");
+};
 export const columns: ColumnDef<User>[] = [
   {
     accessorKey: "name",
@@ -33,15 +35,19 @@ export const columns: ColumnDef<User>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
+
     cell: ({ row }) => (
-      <div className="flex flex-col min-w-50 md:min-w-62.5">
-        <span className="font-bold text-slate-900 capitalize text-sm md:text-base truncate">
+      <div className="flex flex-col min-w-0 max-w-64">
+        <span
+          className="font-bold text-slate-900 capitalize text-sm md:text-base truncate"
+          title={row.getValue("name")}
+        >
           {row.getValue("name")}
         </span>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <Fingerprint className="h-3 w-3 text-slate-400 shrink-0" />
-          <span className="text-[11px] font-mono text-slate-500 tracking-tighter">
-            NIP. {row.original.nip}
+          <Fingerprint className="h-3 w-3 text-blue-400 shrink-0" />
+          <span className="text-[10px] font-mono text-slate-500 tracking-tighter">
+            NIP. {formatNIP(row.original.nip)}
           </span>
         </div>
       </div>

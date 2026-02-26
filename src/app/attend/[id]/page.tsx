@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import SignatureCanvas from "react-signature-canvas";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -23,16 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  CheckCircle2,
-  Loader2,
-  User,
-  ShieldCheck,
-  Users,
-  Eraser,
-  Hash,
-  Building2,
-} from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck, Eraser } from "lucide-react";
 
 const ROLE_OPTIONS = ["pimpinan", "pejabat", "peserta"] as const;
 
@@ -44,6 +35,8 @@ const formSchema = z.object({
   signature: z.string().min(1, "Tanda tangan wajib diisi"),
 });
 
+type AttendanceFormValues = z.infer<typeof formSchema>;
+
 export default function AttendancePage({
   params,
 }: {
@@ -51,15 +44,13 @@ export default function AttendancePage({
 }) {
   const { id } = use(params);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
   const [meetingValid, setMeetingValid] = useState<boolean | null>(null);
 
-  // Default width untuk server-side rendering / first load
   const [canvasWidth, setCanvasWidth] = useState(500);
   const sigCanvas = useRef<SignatureCanvas>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<AttendanceFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -68,9 +59,9 @@ export default function AttendancePage({
       role: "peserta",
       signature: "",
     },
+    mode: "onChange",
   });
 
-  // OPTIMASI: Debounce resize untuk performa Mobile (saat HP rotasi layar)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -80,10 +71,10 @@ export default function AttendancePage({
         if (containerRef.current) {
           setCanvasWidth(containerRef.current.offsetWidth);
         }
-      }, 100); // Tunggu 100ms setelah resize berhenti
+      }, 100);
     };
 
-    handleResize(); // Panggil sekali saat mount
+    handleResize();
 
     window.addEventListener("resize", handleResize);
     return () => {
@@ -92,7 +83,6 @@ export default function AttendancePage({
     };
   }, []);
 
-  // OPTIMASI: Fetch aman dengan AbortController & penanganan Error Type-Safe
   useEffect(() => {
     const controller = new AbortController();
 
@@ -111,27 +101,23 @@ export default function AttendancePage({
     return () => controller.abort();
   }, [id]);
 
-  // OPTIMASI: Pastikan kanvas tidak kosong sebelum mengambil datanya
   const onSigEnd = () => {
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
       form.setValue(
         "signature",
         sigCanvas.current.getTrimmedCanvas().toDataURL("image/png"),
-        { shouldValidate: true }, // Langsung validasi agar error merah hilang
+        { shouldValidate: true },
       );
     }
   };
 
-  // OPTIMASI: Fungsi hapus yang benar-benar mereset nilai form
   const handleClearSignature = () => {
     sigCanvas.current?.clear();
-    form.setValue("signature", "");
+    form.setValue("signature", "", { shouldValidate: true });
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setError("");
+  const onSubmit = async (values: AttendanceFormValues) => {
     try {
-      // Fingerprint sederhana (Aman di dalam Try-Catch)
       const fingerprint = `${navigator.userAgent}-${window.screen.width}x${window.screen.height}`;
       const generatedDeviceId = btoa(fingerprint);
 
@@ -145,295 +131,260 @@ export default function AttendancePage({
       if (json.success) {
         setSuccess(true);
       } else {
-        setError(json.message || "Gagal melakukan absensi");
+        toast.error("Absensi Gagal", { description: json.message });
       }
     } catch (err: unknown) {
-      // Bebas dari any
       console.error("Submit Error:", err);
-      setError("Terjadi kesalahan jaringan. Silakan coba lagi.");
+      toast.error("Terjadi kesalahan jaringan", {
+        description: "Pastikan koneksi internet Anda stabil dan coba lagi.",
+      });
     }
   };
 
-  // --- RENDERING TAMPILAN ---
-
+  // --- STATE 1: LOADING ---
   if (meetingValid === null) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-900 text-white font-bold animate-pulse uppercase">
-        Memverifikasi Agenda...
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f0f2f5] font-sans">
+        <Loader2 className="h-10 w-10 animate-spin text-[#0866ff] mb-4" />
+        <p className="text-gray-500 font-medium">Memverifikasi Agenda...</p>
       </div>
     );
   }
 
+  // --- STATE 2: INVALID/CLOSED ---
   if (meetingValid === false) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-900 p-4">
-        <Card className="max-w-md w-full p-10 text-center rounded-[2.5rem] shadow-2xl bg-white border-0">
-          <ShieldCheck className="mx-auto h-20 w-20 text-red-500 mb-4" />
-          <h2 className="text-2xl font-black uppercase text-slate-800">
-            Akses Ditutup
-          </h2>
-          <p className="text-slate-500 text-sm mt-3 leading-relaxed">
-            Agenda rapat Bapenda belum dimulai atau sudah selesai.
+      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
+        <div className="max-w-md w-full p-8 text-center rounded-xl shadow-md bg-white border border-gray-100">
+          <ShieldCheck className="mx-auto h-16 w-16 text-red-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900">Akses Ditutup</h2>
+          <p className="text-gray-500 text-[15px] mt-2">
+            Agenda rapat belum dimulai atau sudah selesai.
           </p>
-        </Card>
+        </div>
       </div>
     );
   }
 
+  // --- STATE 3: SUCCESS ---
   if (success) {
     return (
-      <div className="h-screen flex items-center justify-center bg-linear-to-br from-slate-50 to-blue-50 p-4 text-slate-900">
-        <Card className="max-w-md w-full text-center p-10 shadow-2xl rounded-[2.5rem] bg-white border-0 animate-in zoom-in-95 duration-500">
-          <CheckCircle2 className="mx-auto h-20 w-20 text-green-500 mb-4 scale-110" />
-          <h2 className="text-2xl font-black uppercase text-slate-800">
-            Berhasil Absen!
-          </h2>
-          <p className="text-slate-500 mt-2 italic text-sm">
-            Terima kasih <strong>{form.getValues("name")}</strong>, kehadiran
-            Anda telah tercatat dalam sistem.
+      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4 font-sans">
+        <div className="max-w-md w-full text-center p-8 shadow-md rounded-xl bg-white border border-gray-100 animate-in zoom-in-95 duration-500">
+          <CheckCircle2 className="mx-auto h-20 w-20 text-[#25D366] mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900">Berhasil Absen!</h2>
+          <p className="text-gray-500 mt-2 text-[15px]">
+            Terima kasih{" "}
+            <strong className="text-gray-900">{form.getValues("name")}</strong>,
+            kehadiran Anda telah tercatat dalam sistem.
           </p>
           <Button
             onClick={() => window.location.reload()}
-            className="mt-8 w-full h-14 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 uppercase tracking-widest transition-all active:scale-95"
+            className="mt-8 w-full h-12 rounded-full font-bold bg-[#0866ff] text-white hover:bg-[#1877f2] transition-colors text-lg"
           >
             Selesai
           </Button>
-        </Card>
+        </div>
       </div>
     );
   }
 
+  // --- STATE 4: MAIN FORM ---
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 via-blue-950 to-indigo-900 flex items-center justify-center p-4 selection:bg-blue-500 selection:text-white">
-      <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 rounded-[2.5rem] overflow-hidden text-slate-900 animate-in slide-in-from-bottom-8 duration-700">
-        <CardHeader className="text-center pt-10 pb-4">
-          <div className="mx-auto bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-4 text-white shadow-lg shadow-blue-300">
-            <Users className="h-8 w-8" />
-          </div>
-          <CardTitle className="text-2xl font-black uppercase tracking-tighter">
-            Daftar Hadir Digital
-          </CardTitle>
-          <p className="text-[10px] font-black text-blue-600 tracking-[0.2em] uppercase mt-1">
-            Bapenda Prov. Sultra
-          </p>
-        </CardHeader>
+    <div className="min-h-screen bg-[#f0f2f5] flex flex-col items-center justify-center p-4 sm:p-8 font-sans">
+      {/* HEADER SECTION (Gaya FB Centered) */}
+      <div className="w-full max-w-125 text-center mb-6 mt-4 md:mt-0">
+        <h1 className="text-4xl md:text-[2.5rem] font-bold text-[#0866ff] tracking-tight mb-2">
+          e-Notulen
+        </h1>
+        <h2 className="text-lg md:text-xl font-medium text-gray-800">
+          Daftar Hadir Digital
+        </h2>
+      </div>
 
-        <CardContent className="px-6 md:px-10 pb-10">
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 text-red-600 text-xs rounded-2xl font-black border border-red-100 uppercase animate-in slide-in-from-top-2 flex items-center gap-2">
-              <span>⚠️</span> {error}
-            </div>
-          )}
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              {/* NAMA LENGKAP */}
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel
-                      htmlFor="name-input"
-                      className="font-black text-[10px] uppercase ml-1 tracking-widest text-slate-700"
-                    >
-                      Nama Lengkap & Gelar
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative group">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                        <Input
-                          id="name-input"
-                          placeholder="Dr. H. Nama Lengkap, M.Si"
-                          className="pl-11 h-12 rounded-2xl border-slate-200 font-bold bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all shadow-sm"
-                          disabled={form.formState.isSubmitting}
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage className="text-[10px] font-bold" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* NIP */}
-                <FormField
-                  control={form.control}
-                  name="nip"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        htmlFor="nip-input"
-                        className="font-black text-[10px] uppercase ml-1 tracking-widest text-slate-700"
-                      >
-                        NIP / NIK
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <Hash className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors md:hidden" />
-                          <Input
-                            id="nip-input"
-                            placeholder="19xxxx..."
-                            className="h-12 rounded-2xl font-bold border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all shadow-sm md:pl-4 pl-11"
-                            disabled={form.formState.isSubmitting}
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[10px] font-bold" />
-                    </FormItem>
-                  )}
-                />
-
-                {/* UNIT KERJA */}
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        htmlFor="dept-input"
-                        className="font-black text-[10px] uppercase ml-1 tracking-widest text-slate-700"
-                      >
-                        Bidang / Unit
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors md:hidden" />
-                          <Input
-                            id="dept-input"
-                            placeholder="Nama Bidang"
-                            className="h-12 rounded-2xl font-bold border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-50 transition-all shadow-sm md:pl-4 pl-11"
-                            disabled={form.formState.isSubmitting}
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[10px] font-bold" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* PERAN */}
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel
-                      htmlFor="role-select"
-                      className="text-blue-700 font-black text-[10px] uppercase ml-1 tracking-widest flex items-center gap-1 mt-2"
-                    >
-                      <ShieldCheck className="h-3 w-3" /> Prioritas Urutan Cetak
-                    </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
+      {/* FORM CARD */}
+      <div className="w-full max-w-125 bg-white rounded-xl shadow-md md:shadow-[0_4px_12px_rgba(0,0,0,0.1)] border border-gray-100/50 p-5 md:p-8">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4 md:space-y-5"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-semibold text-gray-700">
+                    Nama Lengkap & Gelar
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Contoh: Dr. H. Budi Santoso, M.Si"
+                      className="h-12 md:h-13 rounded-md border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base px-4"
                       disabled={form.formState.isSubmitting}
-                    >
-                      <FormControl>
-                        <SelectTrigger
-                          id="role-select"
-                          className="h-14 rounded-2xl border-blue-100 font-black text-blue-900 bg-blue-50/50 focus:ring-4 focus:ring-blue-100 transition-all shadow-sm"
-                        >
-                          <SelectValue placeholder="Pilih Urutan" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-2xl shadow-2xl border-slate-100 bg-white">
-                        <SelectItem
-                          value="pimpinan"
-                          className="py-3 font-bold text-slate-800 focus:bg-blue-50 focus:text-blue-700 cursor-pointer"
-                        >
-                          1: Pimpinan Rapat / Kepala Daerah
-                        </SelectItem>
-                        <SelectItem
-                          value="pejabat"
-                          className="py-3 font-bold text-slate-800 focus:bg-blue-50 focus:text-blue-700 cursor-pointer"
-                        >
-                          2: Pejabat Struktural / Pemateri
-                        </SelectItem>
-                        <SelectItem
-                          value="peserta"
-                          className="py-3 font-bold text-slate-800 focus:bg-blue-50 focus:text-blue-700 cursor-pointer"
-                        >
-                          3: Peserta Umum / Staff
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-[10px] font-bold" />
-                  </FormItem>
-                )}
-              />
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
 
-              {/* TANDA TANGAN */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
               <FormField
                 control={form.control}
-                name="signature"
-                render={() => (
-                  <FormItem className="mt-6">
-                    <div className="flex justify-between items-center mb-1">
-                      <FormLabel
-                        htmlFor="sig-canvas"
-                        className="font-black text-[10px] uppercase ml-1 tracking-widest text-slate-700"
-                      >
-                        Tanda Tangan Digital
-                      </FormLabel>
-                      <button
-                        type="button" // Cegah button submit form
-                        onClick={handleClearSignature}
-                        disabled={form.formState.isSubmitting}
-                        className="text-[9px] text-red-500 cursor-pointer font-black border border-red-100 px-3 py-1 rounded-full uppercase hover:bg-red-50 transition-colors disabled:opacity-50 flex items-center"
-                      >
-                        <Eraser className="h-3 w-3 mr-1" /> Hapus
-                      </button>
-                    </div>
+                name="nip"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-semibold text-gray-700">
+                      NIP / NIK
+                    </FormLabel>
                     <FormControl>
-                      <div
-                        ref={containerRef}
-                        className="border-2 rounded-[1.5rem] bg-slate-50 focus-within:bg-white border-slate-200 overflow-hidden shadow-inner relative focus-within:ring-4 focus-within:ring-blue-50 focus-within:border-blue-400 transition-all"
-                      >
-                        <SignatureCanvas
-                          ref={sigCanvas}
-                          penColor="#0f172a"
-                          canvasProps={{
-                            id: "sig-canvas",
-                            width: canvasWidth,
-                            height: 200,
-                            className: "cursor-crosshair block w-full h-full",
-                            style: { touchAction: "none" }, // Mencegah scrolling HP saat tanda tangan
-                            tabIndex: -1,
-                          }}
-                          onEnd={onSigEnd}
-                        />
-                      </div>
+                      <Input
+                        placeholder="19xxxxxxxxxxxx"
+                        className="h-12 md:h-13 rounded-md border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base px-4"
+                        disabled={form.formState.isSubmitting}
+                        {...field}
+                      />
                     </FormControl>
-                    <FormMessage className="text-[10px] font-bold" />
+                    <FormMessage className="text-xs" />
                   </FormItem>
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-semibold text-gray-700">
+                      Bidang / Unit
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Nama Bidang/Unit"
+                        className="h-12 md:h-13 rounded-md border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base px-4"
+                        disabled={form.formState.isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-xs" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-semibold text-gray-700">
+                    Peran / Urutan Cetak
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={form.formState.isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-12 md:h-13 rounded-md border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] text-base px-4">
+                        <SelectValue placeholder="Pilih Urutan" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="rounded-xl border-gray-200 bg-white shadow-lg">
+                      <SelectItem
+                        value="pimpinan"
+                        className="py-2.5 cursor-pointer"
+                      >
+                        1: Pimpinan Rapat / Kepala Daerah
+                      </SelectItem>
+                      <SelectItem
+                        value="pejabat"
+                        className="py-2.5 cursor-pointer"
+                      >
+                        2: Pejabat Struktural / Pemateri
+                      </SelectItem>
+                      <SelectItem
+                        value="peserta"
+                        className="py-2.5 cursor-pointer"
+                      >
+                        3: Peserta Umum / Staff
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="signature"
+              render={() => (
+                <FormItem className="pt-2">
+                  <div className="flex justify-between items-end mb-2">
+                    <FormLabel className="text-sm font-semibold text-gray-700">
+                      Tanda Tangan Digital
+                    </FormLabel>
+                    <button
+                      type="button"
+                      onClick={handleClearSignature}
+                      disabled={form.formState.isSubmitting}
+                      className="text-[13px] text-[#0866ff] font-medium hover:underline disabled:opacity-50 flex items-center gap-1 focus:outline-none"
+                    >
+                      <Eraser className="h-3.5 w-3.5" /> Hapus
+                    </button>
+                  </div>
+                  <FormControl>
+                    <div
+                      ref={containerRef}
+                      className="w-full border border-gray-300 rounded-md bg-white overflow-hidden focus-within:border-[#0866ff] focus-within:ring-1 focus-within:ring-[#0866ff] transition-all"
+                    >
+                      <SignatureCanvas
+                        ref={sigCanvas}
+                        penColor="#111827" // gray-900
+                        canvasProps={{
+                          id: "sig-canvas",
+                          width: canvasWidth,
+                          height: 200,
+                          className:
+                            "cursor-crosshair block w-full bg-[#f9fafb]", // gray-50 bg for canvas
+                          style: { touchAction: "none" },
+                          tabIndex: -1,
+                        }}
+                        onEnd={onSigEnd}
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage className="text-xs" />
+                </FormItem>
+              )}
+            />
+
+            <div className="pt-4">
               <Button
                 type="submit"
                 disabled={form.formState.isSubmitting}
-                className="w-full h-14 md:h-16 mt-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-3xl shadow-xl shadow-blue-200/50 uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2"
+                className="w-full h-12 md:h-12.5 bg-[#0866ff] hover:bg-[#1877f2] text-white font-bold text-[17px] md:text-lg rounded-full transition-colors flex items-center justify-center gap-2"
               >
                 {form.formState.isSubmitting ? (
-                  <>
-                    <Loader2 className="animate-spin h-5 w-5" /> MEMPROSES...
-                  </>
+                  <Loader2 className="animate-spin h-5 w-5" />
                 ) : (
                   "Kirim Kehadiran"
                 )}
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </div>
+          </form>
+        </Form>
+      </div>
 
-      <div className="absolute bottom-6 text-white/30 text-[9px] font-black uppercase tracking-[0.3em] pointer-events-none">
-        Digital Presence System &bull; Bapenda Sultra
+      {/* FOOTER TEXT */}
+      <div className="mt-8 text-center text-gray-500 text-[13px] md:text-sm">
+        <p>
+          <span className="font-bold">Bapenda Prov. Sultra</span> &copy;{" "}
+          {new Date().getFullYear()}
+        </p>
       </div>
     </div>
   );

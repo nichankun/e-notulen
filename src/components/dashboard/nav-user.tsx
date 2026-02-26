@@ -49,7 +49,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// --- SCHEMA VALIDASI PASSWORD ---
+// --- SCHEMA VALIDASI PASSWORD (SINKRON DENGAN SERVER) ---
 const passwordSchema = z
   .object({
     oldPassword: z.string().min(1, "Password lama wajib diisi"),
@@ -61,6 +61,11 @@ const passwordSchema = z
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Konfirmasi password tidak cocok",
     path: ["confirmPassword"],
+  })
+  // OPTIMASI REALTIME: Langsung tolak di frontend jika password baru sama dengan yang lama
+  .refine((data) => data.oldPassword !== data.newPassword, {
+    message: "Password baru tidak boleh sama dengan password lama",
+    path: ["newPassword"],
   });
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
@@ -78,7 +83,6 @@ export function NavUser({ user }: NavUserProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // State untuk mengontrol Dialog Ubah Password
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
   const form = useForm<PasswordFormValues>({
@@ -88,6 +92,8 @@ export function NavUser({ user }: NavUserProps) {
       newPassword: "",
       confirmPassword: "",
     },
+    // OPTIMASI: Validasi berjalan saat user mengetik (realtime)
+    mode: "onChange",
   });
 
   const { isSubmitting } = form.formState;
@@ -95,9 +101,10 @@ export function NavUser({ user }: NavUserProps) {
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/auth/logout", { method: "POST" });
-      const result = (await response.json()) as { success: boolean };
+      const result = await response.json();
 
       if (result.success) {
+        // Hapus cache router dan paksa muat ulang ke halaman login
         startTransition(() => {
           router.push("/");
           router.refresh();
@@ -105,12 +112,12 @@ export function NavUser({ user }: NavUserProps) {
       }
     } catch (err: unknown) {
       console.error("Logout error:", err);
+      toast.error("Gagal logout, periksa koneksi Anda.");
     }
   };
 
   const onSubmitPassword = async (data: PasswordFormValues) => {
     try {
-      // NOTE: Sesuaikan endpoint ini dengan route API ganti password Anda
       const response = await fetch("/api/users/reset-password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -125,10 +132,11 @@ export function NavUser({ user }: NavUserProps) {
             "Silakan gunakan password baru pada sesi login berikutnya.",
         });
         setIsPasswordOpen(false);
-        form.reset();
+        form.reset(); // Kosongkan form setelah sukses
       } else {
-        toast.error("Gagal", {
-          description: result.message || "Gagal mengubah password.",
+        // Tampilkan error yang spesifik dari server (misal: Password lama salah)
+        toast.error("Gagal Merubah Password", {
+          description: result.message || "Pastikan password lama Anda benar.",
         });
       }
     } catch (error: unknown) {
@@ -144,6 +152,8 @@ export function NavUser({ user }: NavUserProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
+                id="nav-user-trigger"
+                suppressHydrationWarning
                 size="lg"
                 className="data-[state=open]:bg-slate-900 data-[state=open]:text-white hover:bg-slate-900 hover:text-white rounded-xl transition-all"
                 disabled={isPending}
@@ -192,7 +202,6 @@ export function NavUser({ user }: NavUserProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-slate-800 my-2" />
 
-              {/* TOMBOL UBAH PASSWORD */}
               <DropdownMenuItem
                 onClick={() => setIsPasswordOpen(true)}
                 className="text-slate-300 cursor-pointer focus:bg-slate-800 focus:text-white rounded-lg py-2.5 font-bold mb-1 transition-colors"
@@ -206,20 +215,27 @@ export function NavUser({ user }: NavUserProps) {
                 disabled={isPending}
                 className="text-red-400 cursor-pointer focus:bg-red-500/10 focus:text-red-400 rounded-lg py-2.5 font-bold transition-colors"
               >
-                <LogOut className="mr-2 size-4" />
-                Log out
+                {isPending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <LogOut className="mr-2 size-4" />
+                )}
+                {isPending ? "Keluar..." : "Log out"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
 
-      {/* DIALOG UBAH PASSWORD (DI LUAR MENU AGAR TIDAK TERKENA Z-INDEX/FOCUS TRAP) */}
       <Dialog
         open={isPasswordOpen}
         onOpenChange={(open) => {
           setIsPasswordOpen(open);
-          if (!open) form.reset();
+          // Selalu reset form saat dialog ditutup agar bersih saat dibuka lagi
+          if (!open) {
+            form.reset();
+            form.clearErrors();
+          }
         }}
       >
         <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 md:p-8">
@@ -253,7 +269,7 @@ export function NavUser({ user }: NavUserProps) {
                       <Input
                         type="password"
                         placeholder="••••••••"
-                        className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                        className="bg-slate-50 rounded-xl h-11 border-slate-200 focus-visible:ring-blue-500"
                         disabled={isSubmitting}
                         {...field}
                       />
@@ -274,7 +290,7 @@ export function NavUser({ user }: NavUserProps) {
                       <Input
                         type="password"
                         placeholder="••••••••"
-                        className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                        className="bg-slate-50 rounded-xl h-11 border-slate-200 focus-visible:ring-blue-500"
                         disabled={isSubmitting}
                         {...field}
                       />
@@ -295,7 +311,7 @@ export function NavUser({ user }: NavUserProps) {
                       <Input
                         type="password"
                         placeholder="••••••••"
-                        className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                        className="bg-slate-50 rounded-xl h-11 border-slate-200 focus-visible:ring-blue-500"
                         disabled={isSubmitting}
                         {...field}
                       />

@@ -3,28 +3,59 @@ import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { desc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
+import { verifyAuthToken } from "@/lib/auth"; // PENTING: Gunakan utility kita!
+import { z } from "zod";
 
-// Define strict interface for POST body
-interface CreateMeetingRequest {
-  title: string;
-  date: string;
-  location?: string;
-  leader?: string;
-}
+// 1. ZOD SCHEMA: Validasi input yang lebih ketat & aman
+const createMeetingSchema = z.object({
+  title: z.string().min(1, "Judul rapat wajib diisi"),
+  // Memastikan format tanggal bisa di-parse oleh JavaScript Date
+  date: z
+    .string()
+    .min(1, "Tanggal wajib diisi")
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Format tanggal tidak valid",
+    }),
+  location: z.string().optional(),
+  leader: z.string().optional(),
+});
 
+// ==========================================
+// GET: MENGAMBIL DAFTAR RAPAT
+// ==========================================
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get("auth_token")?.value;
-    const role = cookieStore.get("user_role")?.value;
+    const token = cookieStore.get("auth_token")?.value;
 
-    if (!userId) {
+    if (!token) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 401 },
       );
     }
 
+    // BONGKAR JWT: Ambil ID dan Role yang asli & aman
+    const payload = await verifyAuthToken(token);
+    if (!payload || !payload.id) {
+      return NextResponse.json(
+        { success: false, message: "Sesi tidak valid" },
+        { status: 401 },
+      );
+    }
+
+    const userId = Number(payload.id);
+    const role = (payload.role as string) || "pegawai";
+
+    // Cegah error NaN
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, message: "ID User invalid" },
+        { status: 400 },
+      );
+    }
+
+    // BASE QUERY
     const query = db
       .select({
         id: meetings.id,
@@ -37,65 +68,99 @@ export async function GET() {
       })
       .from(meetings);
 
+    // EKSEKUSI QUERY BERDASARKAN ROLE
     const data =
       role === "admin"
-        ? await query.orderBy(desc(meetings.date))
+        ? await query.orderBy(desc(meetings.date)) // Admin lihat semua
         : await query
-            .where(eq(meetings.userId, Number(userId)))
-            .orderBy(desc(meetings.date));
+            .where(eq(meetings.userId, userId))
+            .orderBy(desc(meetings.date)); // Pegawai lihat miliknya
 
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
-    console.error("API GET Error:", error);
+    console.error("API GET Meetings Error:", error);
     return NextResponse.json(
-      { success: false, message: "Gagal mengambil data" },
+      { success: false, message: "Gagal mengambil data rapat" },
       { status: 500 },
     );
   }
 }
 
+// ==========================================
+// POST: MEMBUAT RAPAT BARU
+// ==========================================
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();
-    const userId = cookieStore.get("auth_token")?.value;
+    const token = cookieStore.get("auth_token")?.value;
 
-    if (!userId) {
+    if (!token) {
       return NextResponse.json(
         { success: false, message: "Sesi habis" },
         { status: 401 },
       );
     }
 
-    const body = (await request.json()) as CreateMeetingRequest;
-
-    if (!body.title || !body.date) {
+    // BONGKAR JWT UNTUK MENDAPATKAN USER ID
+    const payload = await verifyAuthToken(token);
+    if (!payload || !payload.id) {
       return NextResponse.json(
-        { success: false, message: "Judul dan Tanggal wajib diisi" },
+        { success: false, message: "Sesi tidak valid" },
+        { status: 401 },
+      );
+    }
+
+    const userId = Number(payload.id);
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, message: "ID User invalid" },
         { status: 400 },
       );
     }
 
+    // VALIDASI BODY MENGGUNAKAN ZOD
+    const body: unknown = await request.json();
+    const parse = createMeetingSchema.safeParse(body);
+
+    if (!parse.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Validasi gagal",
+          errors: parse.error.flatten(),
+        },
+        { status: 400 },
+      );
+    }
+
+    const { title, date, location, leader } = parse.data;
+
+    // SIMPAN KE DATABASE
     const [inserted] = await db
       .insert(meetings)
       .values({
-        title: body.title,
-        date: new Date(body.date),
-        location: body.location || "",
-        leader: body.leader || "",
+        title,
+        date: new Date(date), // Aman karena sudah divalidasi Zod
+        location: location || "",
+        leader: leader || "",
         status: "live",
         attendanceCount: 0,
-        userId: Number(userId),
+        userId: userId, // Pasti angka yang valid
       })
       .returning({ id: meetings.id });
 
     return NextResponse.json(
-      { success: true, message: "Rapat berhasil dibuat", data: inserted },
+      {
+        success: true,
+        message: "Agenda rapat berhasil dibuat",
+        data: inserted,
+      },
       { status: 201 },
     );
   } catch (error: unknown) {
-    console.error("API POST Error:", error);
+    console.error("API POST Meetings Error:", error);
     return NextResponse.json(
-      { success: false, message: "Gagal menyimpan data" },
+      { success: false, message: "Gagal menyimpan data agenda" },
       { status: 500 },
     );
   }

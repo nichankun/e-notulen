@@ -5,10 +5,13 @@ export async function POST() {
   try {
     const cookieStore = await cookies();
 
-    // OPTIMASI: Hapus semua cookie sesi yang diset saat login
-    // agar tidak ada data residu yang tertinggal di browser.
+    // Cukup hapus token utama.
+    // Jika auth_token hilang, otomatis semua akses (termasuk role) akan terputus.
     cookieStore.delete("auth_token");
-    cookieStore.delete("user_role");
+
+    // Jika sebelumnya kamu mengatur cookie dengan path spesifik,
+    // disarankan untuk memberikan opsi path saat menghapus agar browser tidak bingung
+    // cookieStore.delete({ name: "auth_token", path: "/" });
 
     return NextResponse.json({
       success: true,

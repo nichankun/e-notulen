@@ -87,6 +87,12 @@ export function UserActions({ user }: UserActionsProps) {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // VALIDASI SEDERHANA
+    if (!formData.name || !formData.nip) {
+      return toast.error("Nama dan NIP wajib diisi!");
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`/api/users`, {
@@ -94,19 +100,21 @@ export function UserActions({ user }: UserActionsProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user.id, ...formData }),
       });
+
       const json = await res.json();
-      if (json.success) {
+
+      if (res.ok && json.success) {
         toast.success("Data berhasil diperbarui");
         setOpenEdit(false);
         startTransition(() => {
           router.refresh();
         });
       } else {
-        toast.error(json.message);
+        // Jika NIP sudah ada di database, tampilkan pesan dari backend
+        toast.error(json.message || "Gagal memperbarui data");
       }
-    } catch (err: unknown) {
-      console.error(err);
-      toast.error("Gagal update data");
+    } catch {
+      toast.error("Kesalahan Jaringan: Cek koneksi server Anda.");
     } finally {
       setLoading(false);
     }

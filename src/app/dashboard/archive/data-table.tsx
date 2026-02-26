@@ -232,7 +232,7 @@ export function DataTable<TData, TValue>({
             >
               <SelectTrigger className="h-8 w-17.5 bg-white border-slate-200 rounded-lg text-xs font-bold">
                 <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
+                  placeholder={`${table.getState().pagination.pageSize}`}
                 />
               </SelectTrigger>
               <SelectContent side="top" className="rounded-xl">

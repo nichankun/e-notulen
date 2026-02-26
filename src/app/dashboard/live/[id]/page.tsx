@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCheck, CloudOff } from "lucide-react";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import { toast } from "sonner";
 
@@ -45,9 +45,14 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [progress, setProgress] = useState(13);
 
-  // Kombinasi state untuk transisi halaman
+  // Status khusus Auto-Save: idle | saving | saved | error
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+
   const isRouting = isSaving || isPending;
 
+  // 1. Progress Bar Logic
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (loading) {
@@ -56,6 +61,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
     return () => clearTimeout(timer);
   }, [loading]);
 
+  // 2. Fetch Initial Data
   useEffect(() => {
     setOrigin(window.location.origin);
 
@@ -67,15 +73,11 @@ export default function LiveMeetingPage({ params }: PageProps) {
         if (json.success) {
           setMeetingData(json.data);
           setNotulen(json.data.content || "");
-
           if (json.data.photos) {
             try {
               const parsedPhotos = JSON.parse(json.data.photos);
-              if (Array.isArray(parsedPhotos)) {
-                setPhotos(parsedPhotos);
-              }
-            } catch (e) {
-              console.error("Gagal parse photos:", e);
+              if (Array.isArray(parsedPhotos)) setPhotos(parsedPhotos);
+            } catch {
               setPhotos([]);
             }
           }
@@ -83,9 +85,8 @@ export default function LiveMeetingPage({ params }: PageProps) {
           toast.error("Rapat tidak ditemukan");
           router.push("/dashboard");
         }
-      } catch (e: unknown) {
-        // PERBAIKAN: Gunakan unknown untuk error fetch awal
-        console.error(e);
+      } catch {
+        console.error("Gagal inisialisasi data rapat.");
       } finally {
         setProgress(100);
         setTimeout(() => setLoading(false), 300);
@@ -94,10 +95,9 @@ export default function LiveMeetingPage({ params }: PageProps) {
     initData();
   }, [id, router]);
 
-  // OPTIMASI: Polling dengan AbortController agar tidak memory leak
+  // 3. Polling Attendees with AbortController
   useEffect(() => {
     const controller = new AbortController();
-
     const fetchAttendees = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}/attendees`, {
@@ -105,24 +105,58 @@ export default function LiveMeetingPage({ params }: PageProps) {
         });
         const json = await res.json();
         if (json.success) setAttendees(json.data);
-      } catch (e: unknown) {
-        // PERBAIKAN: Ganti any menjadi unknown
-        // Validasi tipe error sebelum membaca property .name
-        if (e instanceof Error && e.name !== "AbortError") {
-          console.error("Polling error", e);
+      } catch (_error) {
+        if (_error instanceof Error && _error.name !== "AbortError") {
+          console.error("Polling error:", _error.message);
         }
       }
     };
 
     fetchAttendees();
     const interval = setInterval(fetchAttendees, 3000);
-
     return () => {
       clearInterval(interval);
-      controller.abort(); // Batalkan antrean fetch jika user pindah halaman
+      controller.abort();
     };
   }, [id]);
 
+  // 4. 🔥 AUTO-SAVE LOGIC (Debounced 3s)
+  useEffect(() => {
+    if (loading || isSaving || notulen === meetingData?.content) return;
+
+    const timer = setTimeout(async () => {
+      setSaveStatus("saving");
+      try {
+        const res = await fetch(`/api/meetings/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: notulen,
+            photos: photos,
+          }),
+        });
+
+        if (res.ok) {
+          setSaveStatus("saved");
+          // Update data pembanding agar tidak loop terus menerus
+          setMeetingData((prev) =>
+            prev
+              ? { ...prev, content: notulen, photos: JSON.stringify(photos) }
+              : null,
+          );
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        } else {
+          setSaveStatus("error");
+        }
+      } catch {
+        setSaveStatus("error");
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [notulen, photos, id, loading, isSaving, meetingData]);
+
+  // 5. Finalize Meeting
   const handleFinish = async () => {
     setIsSaving(true);
     try {
@@ -138,11 +172,9 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
       if (res.ok) {
         toast.success("Rapat Selesai", {
-          description: "Notulen dan data absensi telah diarsipkan.",
+          description: "Notulen telah diarsipkan.",
         });
         setIsDialogOpen(false);
-
-        // OPTIMASI: Navigasi menggunakan useTransition agar smooth
         startTransition(() => {
           router.push("/dashboard/archive");
           router.refresh();
@@ -151,59 +183,47 @@ export default function LiveMeetingPage({ params }: PageProps) {
         toast.error("Gagal Menyimpan");
         setIsSaving(false);
       }
-    } catch (e: unknown) {
-      // PERBAIKAN: Ganti any menjadi unknown
-      console.error(e);
-      toast.error("Error Jaringan");
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    setIsSaving(true);
-    try {
-      const res = await fetch(`/api/meetings/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: notulen,
-          photos: photos,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success("Draft Disimpan", {
-          description: "Perubahan notulen berhasil disimpan.",
-          duration: 2000,
-        });
-      }
-    } catch (e: unknown) {
-      // PERBAIKAN: Ganti any menjadi unknown
-      console.error(e);
-      toast.error("Gagal Simpan Draft");
-    } finally {
+    } catch {
+      toast.error("Terjadi kesalahan jaringan.");
       setIsSaving(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4">
-        <div className="flex flex-col items-center text-slate-500 mb-4">
-          <Loader2 className="animate-spin h-10 w-10 mb-4 text-blue-600" />
-          <p className="font-semibold text-sm">Menyiapkan Ruang Rapat...</p>
-          <p className="text-xs text-slate-400 mt-1">
-            Mengambil data peserta dan notulen.
-          </p>
-        </div>
-        <Progress value={progress} className="w-full h-2" />
+      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4 text-center">
+        <Loader2 className="animate-spin h-10 w-10 text-blue-600" />
+        <p className="font-bold text-slate-700">Menyiapkan Ruang Rapat...</p>
+        <Progress value={progress} className="w-full h-1.5" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-0">
-      <MeetingHeader date={meetingData?.date} />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <MeetingHeader date={meetingData?.date} />
+
+        {/* Indikator Status Auto-Save (Hanya muncul di Mobile/Header) */}
+        <div className="flex lg:hidden items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
+          {saveStatus === "saving" && (
+            <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+          )}
+          {saveStatus === "saved" && (
+            <CheckCheck className="h-3 w-3 text-green-600" />
+          )}
+          {saveStatus === "error" && (
+            <CloudOff className="h-3 w-3 text-red-500" />
+          )}
+          <span className="text-[10px] font-black uppercase text-slate-500">
+            {saveStatus === "saving"
+              ? "Menyimpan..."
+              : saveStatus === "saved"
+                ? "Tersimpan"
+                : "E-Notulen Live"}
+          </span>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
@@ -211,7 +231,8 @@ export default function LiveMeetingPage({ params }: PageProps) {
           <MeetingAttendees attendees={attendees} />
         </div>
 
-        <div className="lg:col-span-2 h-full">
+        <div className="lg:col-span-2">
+          {/* 🔥 SINKRONISASI: Mengirim saveStatus ke Editor */}
           <MeetingEditor
             title={meetingData?.title || ""}
             leader={meetingData?.leader || ""}
@@ -219,38 +240,37 @@ export default function LiveMeetingPage({ params }: PageProps) {
             setContent={setNotulen}
             photos={photos}
             setPhotos={setPhotos}
-            onSaveDraft={handleSaveDraft}
             onFinish={() => setIsDialogOpen(true)}
             isSaving={isRouting}
+            saveStatus={saveStatus}
           />
         </div>
       </div>
 
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent className="bg-white rounded-3xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Selesaikan Rapat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini akan mengakhiri absensi dan mengarsipkan notulensi
-              secara permanen. Pastikan semua data pembahasan telah tercatat
-              dengan benar.
+            <AlertDialogTitle className="font-black uppercase tracking-tight">
+              Selesaikan Rapat?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-500">
+              Data absensi dan notulensi akan diarsipkan secara permanen.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRouting}>Batal</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={isRouting} className="rounded-xl">
+              Batal
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
                 handleFinish();
               }}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-slate-900 hover:bg-blue-700 text-white rounded-xl font-bold transition-all"
               disabled={isRouting}
             >
               {isRouting ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Menyimpan...
-                </div>
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Ya, Selesaikan"
               )}

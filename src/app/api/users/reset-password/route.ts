@@ -5,23 +5,28 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { verifyAuthToken } from "@/lib/auth"; // Import utility auth kita
 
-// 1. SCHEMA VALIDASI REQUEST BODY
-const resetPasswordSchema = z.object({
-  oldPassword: z.string().min(1, "Password lama wajib diisi"),
-  newPassword: z.string().min(6, "Password baru minimal 6 karakter"),
-  // confirmPassword tidak perlu dicek di server lagi karena sudah dicek via Zod di Frontend,
-  // tapi kita tambahkan opsional agar tidak error saat parsing JSON.
-  confirmPassword: z.string().optional(),
-});
+// 1. SCHEMA VALIDASI (DENGAN PENGECEKAN PASSWORD SAMA)
+const resetPasswordSchema = z
+  .object({
+    oldPassword: z.string().min(1, "Password lama wajib diisi"),
+    newPassword: z.string().min(6, "Password baru minimal 6 karakter"),
+    confirmPassword: z.string().optional(),
+  })
+  // OPTIMASI: Cegah user menggunakan password yang sama persis
+  .refine((data) => data.oldPassword !== data.newPassword, {
+    message: "Password baru tidak boleh sama dengan password lama",
+    path: ["newPassword"],
+  });
 
 export async function PATCH(req: Request) {
   try {
-    // 2. OTENTIKASI SESI: Pastikan user yang mengubah password adalah user yang sedang login
+    // 2. OTENTIKASI SESI MENGGUNAKAN UTILITY
     const cookieStore = await cookies();
-    const userIdString = cookieStore.get("auth_token")?.value;
+    const token = cookieStore.get("auth_token")?.value;
 
-    if (!userIdString) {
+    if (!token) {
       return NextResponse.json(
         {
           success: false,
@@ -31,9 +36,28 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const userId = Number(userIdString);
+    // Gunakan fungsi verifyAuthToken agar kode lebih bersih
+    const payload = await verifyAuthToken(token);
 
-    // 3. VALIDASI PAYLOAD
+    if (!payload || !payload.id) {
+      return NextResponse.json(
+        { success: false, message: "Sesi tidak valid atau telah kedaluwarsa." },
+        { status: 401 },
+      );
+    }
+
+    const userId = Number(payload.id);
+
+    // OPTIMASI: Pastikan userId adalah angka valid (Mencegah error NaN di Database)
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, message: "Identitas pengguna tidak valid." },
+        { status: 401 },
+      );
+    }
+
+    // 3. VALIDASI PAYLOAD REQ.JSON()
+    // Catatan: Jika body kosong, req.json() akan melempar error dan masuk ke block catch (500), ini wajar.
     const body: unknown = await req.json();
     const parse = resetPasswordSchema.safeParse(body);
 
@@ -42,7 +66,7 @@ export async function PATCH(req: Request) {
         {
           success: false,
           message: "Validasi gagal",
-          errors: parse.error.flatten(),
+          errors: parse.error.flatten(), // Format error dari Zod sudah sangat bagus
         },
         { status: 400 },
       );
@@ -50,7 +74,7 @@ export async function PATCH(req: Request) {
 
     const { oldPassword, newPassword } = parse.data;
 
-    // 4. CEK DATABASE: Ambil password lama (hashed) dari database
+    // 4. CEK DATABASE (Ambil password lama)
     const [currentUser] = await db
       .select({ id: users.id, password: users.password })
       .from(users)
@@ -64,7 +88,7 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // 5. VERIFIKASI PASSWORD LAMA
+    // 5. VERIFIKASI PASSWORD LAMA (Mencegah orang lain meretas ganti password)
     const isPasswordMatch = await bcrypt.compare(
       oldPassword,
       currentUser.password,
@@ -73,7 +97,7 @@ export async function PATCH(req: Request) {
     if (!isPasswordMatch) {
       return NextResponse.json(
         { success: false, message: "Password lama yang Anda masukkan salah." },
-        { status: 401 }, // 401 Unauthorized karena kredensial tidak cocok
+        { status: 401 },
       );
     }
 

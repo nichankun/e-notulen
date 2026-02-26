@@ -20,7 +20,11 @@ export const columns: ColumnDef<Meeting>[] = [
     header: "Tanggal",
     cell: ({ row }) => {
       return (
-        <div className="whitespace-nowrap text-sm text-slate-500 font-medium">
+        // 🔥 TAMBAHKAN suppressHydrationWarning DI SINI
+        <div
+          suppressHydrationWarning
+          className="whitespace-nowrap text-sm text-slate-500 font-medium"
+        >
           {dateFormatter.format(new Date(row.getValue("date")))}
         </div>
       );

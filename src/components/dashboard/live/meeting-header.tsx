@@ -31,7 +31,7 @@ export function MeetingHeader({ date }: MeetingHeaderProps) {
 
       <div className="flex items-center justify-center sm:justify-start gap-2 font-mono text-xs sm:text-sm font-medium bg-white/60 px-3 py-1.5 sm:py-1 rounded-md w-full sm:w-auto border border-green-100 sm:border-0">
         <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-700" />
-        <span className="truncate">
+        <span className="truncate" suppressHydrationWarning>
           {date ? headerDateFormatter.format(new Date(date)) : "-"}
         </span>
       </div>
