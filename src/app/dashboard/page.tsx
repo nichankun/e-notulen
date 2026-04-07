@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
-import { count, eq, and, avg } from "drizzle-orm"; // PERBAIKAN: Import avg dari drizzle-orm
+import { count, eq, and, avg } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation"; // TAMBAHAN: untuk proteksi redirect
-import { verifyAuthToken } from "@/lib/auth"; // TAMBAHAN: Import fungsi utility JWT kita
+import { redirect } from "next/navigation";
+import { verifyAuthToken } from "@/lib/auth";
 import {
   CalendarCheck,
   Users,
@@ -40,16 +40,17 @@ export default async function DashboardPage() {
 
   if (!authToken) redirect("/");
 
-  // 2. Ekstrak Data dari JWT (Mencegah error NaN dan spoofing Role)
+  // 2. Ekstrak Data dari JWT (Mencegah error dan spoofing Role)
   const payload = await verifyAuthToken(authToken);
   if (!payload || !payload.id) redirect("/");
 
-  const userId = Number(payload.id);
+  // PERBAIKAN: Ekstrak sebagai String karena struktur DB sekarang menggunakan UUID
+  const userId = String(payload.id);
   const role = (payload.role as string) || "pegawai";
 
-  // Pastikan ID benar-benar angka yang valid sebelum menembak database
-  if (isNaN(userId)) {
-    console.error("Dashboard Error: Invalid User ID format");
+  // Pastikan ID valid (berupa teks UUID yang tidak kosong) sebelum menembak database
+  if (!userId || userId.trim() === "" || userId === "undefined") {
+    console.error("Dashboard Error: Invalid User ID format (Expected UUID)");
     redirect("/");
   }
 
@@ -65,7 +66,6 @@ export default async function DashboardPage() {
         .from(meetings)
         .where(and(eq(meetings.status, "live"), roleFilter)),
 
-      // PERBAIKAN: Menggunakan fungsi avg() bawaan Drizzle, bukan raw sql
       db
         .select({ avg: avg(meetings.attendanceCount) })
         .from(meetings)
@@ -172,7 +172,6 @@ export default async function DashboardPage() {
       </div>
     );
   } catch (error) {
-    // Menangkap error jika tabel kosong atau koneksi database terputus
     console.error("Gagal memuat statistik dashboard:", error);
     return (
       <div className="p-8 text-center text-gray-500 flex flex-col items-center justify-center h-64 border border-dashed border-gray-300 rounded-xl bg-white m-4 md:m-6">
@@ -220,7 +219,6 @@ function StatCard({
           </div>
         </div>
 
-        {/* Ikon Stat - Dibikin bulat / full-rounded mengikuti gaya FB yang lembut */}
         <div
           className={`shrink-0 h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center transition-all group-hover:scale-105 duration-300 ${color}`}
         >

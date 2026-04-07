@@ -24,7 +24,13 @@ export default async function DashboardLayout({
   const payload = await verifyAuthToken(authToken);
   if (!payload || !payload.id) redirect("/");
 
-  const userId = Number(payload.id);
+  // PERBAIKAN: Gunakan String() karena id sekarang adalah UUID, bukan angka
+  const userId = String(payload.id);
+
+  // Validasi tambahan untuk mencegah error jika token rusak/kosong
+  if (!userId || userId.trim() === "" || userId === "undefined") {
+    redirect("/");
+  }
 
   // Ambil data user dari DB
   const [currentUser] = await db
