@@ -122,7 +122,14 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   // 4. 🔥 AUTO-SAVE LOGIC (Debounced 3s)
   useEffect(() => {
-    if (loading || isSaving || notulen === meetingData?.content) return;
+    // Sinkronisasi pengecekan: Cek perubahan pada notulen ATAU foto
+    const hasContentChanged = notulen !== (meetingData?.content ?? "");
+    const currentPhotosJson = JSON.stringify(photos);
+    const savedPhotosJson = meetingData?.photos ?? "[]";
+    const hasPhotosChanged = currentPhotosJson !== savedPhotosJson;
+
+    if (loading || isSaving || (!hasContentChanged && !hasPhotosChanged))
+      return;
 
     const timer = setTimeout(async () => {
       setSaveStatus("saving");
@@ -206,7 +213,10 @@ export default function LiveMeetingPage({ params }: PageProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-6 font-sans">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <MeetingHeader date={meetingData?.date} />
+        {/* Memastikan date selalu diproses sebagai objek Date untuk konsistensi UI */}
+        <MeetingHeader
+          date={meetingData?.date ? new Date(meetingData.date) : undefined}
+        />
 
         {/* Indikator Status Auto-Save (Hanya muncul di Mobile/Header) */}
         {/* Diselaraskan warnanya dengan palet abu-abu terang */}

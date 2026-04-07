@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { meetings } from "@/db/database/schema";
+import { meetings, type NewMeeting } from "@/db/database/schema";
 import { eq, and } from "drizzle-orm";
 import { supabase } from "@/lib/supabaseClient";
 import { cookies } from "next/headers";
@@ -10,7 +10,8 @@ import { z } from "zod";
 // 1. ZOD SCHEMA: Validasi data update yang masuk
 const updateMeetingSchema = z.object({
   content: z.string().optional(),
-  status: z.enum(["live", "completed"]).optional(),
+  // SINKRONISASI: Tambahkan "completed" agar sesuai dengan kiriman dari UI
+  status: z.enum(["draft", "live", "archived", "completed"]).optional(),
   photos: z.array(z.string()).optional(),
 });
 
@@ -21,10 +22,12 @@ async function requireAuth() {
   if (!token) return null;
 
   const payload = await verifyAuthToken(token);
-  if (!payload || !payload.id || isNaN(Number(payload.id))) return null;
+
+  // PERBAIKAN: Hapus isNaN() karena ID sekarang adalah string (UUID)
+  if (!payload || !payload.id) return null;
 
   return {
-    userId: Number(payload.id),
+    userId: String(payload.id),
     role: (payload.role as string) || "pegawai",
   };
 }
@@ -44,8 +47,9 @@ export async function GET(
         { status: 401 },
       );
 
-    const meetingId = parseInt((await params).id, 10);
-    if (isNaN(meetingId))
+    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
+    const meetingId = (await params).id;
+    if (!meetingId || meetingId.trim() === "")
       return NextResponse.json(
         { success: false, message: "ID tidak valid" },
         { status: 400 },
@@ -93,8 +97,9 @@ export async function PATCH(
         { status: 401 },
       );
 
-    const meetingId = parseInt((await params).id, 10);
-    if (isNaN(meetingId))
+    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
+    const meetingId = (await params).id;
+    if (!meetingId || meetingId.trim() === "")
       return NextResponse.json(
         { success: false, message: "ID tidak valid" },
         { status: 400 },
@@ -116,14 +121,9 @@ export async function PATCH(
 
     const { content, status, photos } = parse.data;
 
-    // 🔥 PERBAIKAN: Strict Typing tanpa 'any'
-    type UpdatePayload = {
-      content?: string;
-      status?: "live" | "completed";
-      photos?: string;
-    };
-
-    const updateData: UpdatePayload = {};
+    // SINKRONISASI: Gunakan Partial<NewMeeting> agar tipe data
+    // selalu mengikuti definisi tabel di schema.ts secara otomatis.
+    const updateData: Partial<NewMeeting> = {};
 
     if (content !== undefined) updateData.content = content;
     if (status !== undefined) updateData.status = status;
@@ -186,8 +186,9 @@ export async function DELETE(
         { status: 401 },
       );
 
-    const meetingId = parseInt((await params).id, 10);
-    if (isNaN(meetingId))
+    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
+    const meetingId = (await params).id;
+    if (!meetingId || meetingId.trim() === "")
       return NextResponse.json(
         { success: false, message: "ID tidak valid" },
         { status: 400 },

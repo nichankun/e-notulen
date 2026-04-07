@@ -214,7 +214,10 @@ export function UserActions({ user }: UserActionsProps) {
               </Label>
               <Select
                 value={formData.role}
-                onValueChange={(val) => setFormData({ ...formData, role: val })}
+                // PERBAIKAN: Beri tahu TypeScript bahwa 'val' pasti berupa "admin" atau "pegawai"
+                onValueChange={(val) =>
+                  setFormData({ ...formData, role: val as "admin" | "pegawai" })
+                }
                 disabled={isProcessing}
               >
                 <SelectTrigger className="bg-slate-50 rounded-xl border-slate-200 h-11">

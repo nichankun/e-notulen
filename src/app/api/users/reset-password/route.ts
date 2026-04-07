@@ -46,10 +46,11 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const userId = Number(payload.id);
+    // PERBAIKAN: Gunakan String karena ID sekarang menggunakan UUID
+    const userId = String(payload.id);
 
-    // OPTIMASI: Pastikan userId adalah angka valid (Mencegah error NaN di Database)
-    if (isNaN(userId)) {
+    // Validasi tambahan agar tidak mengirim string kosong atau "undefined" ke DB
+    if (!userId || userId.trim() === "" || userId === "undefined") {
       return NextResponse.json(
         { success: false, message: "Identitas pengguna tidak valid." },
         { status: 401 },
@@ -57,7 +58,6 @@ export async function PATCH(req: Request) {
     }
 
     // 3. VALIDASI PAYLOAD REQ.JSON()
-    // Catatan: Jika body kosong, req.json() akan melempar error dan masuk ke block catch (500), ini wajar.
     const body: unknown = await req.json();
     const parse = resetPasswordSchema.safeParse(body);
 
@@ -66,7 +66,7 @@ export async function PATCH(req: Request) {
         {
           success: false,
           message: "Validasi gagal",
-          errors: parse.error.flatten(), // Format error dari Zod sudah sangat bagus
+          errors: parse.error.flatten(),
         },
         { status: 400 },
       );
@@ -88,7 +88,7 @@ export async function PATCH(req: Request) {
       );
     }
 
-    // 5. VERIFIKASI PASSWORD LAMA (Mencegah orang lain meretas ganti password)
+    // 5. VERIFIKASI PASSWORD LAMA
     const isPasswordMatch = await bcrypt.compare(
       oldPassword,
       currentUser.password,

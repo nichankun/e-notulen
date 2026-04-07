@@ -16,13 +16,13 @@ export const meetingStatusEnum = pgEnum("meeting_status", [
   "draft",
   "live",
   "archived",
+  "completed",
 ]);
 export const attendeeRoleEnum = pgEnum("attendee_role", [
+  "pimpinan",
+  "pejabat",
   "peserta",
-  "panitia",
-  "narasumber",
 ]);
-
 // 1. Tabel Users
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(), // Inovasi: Menggunakan UUID

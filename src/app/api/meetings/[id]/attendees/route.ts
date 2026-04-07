@@ -9,6 +9,7 @@ const attendanceSchema = z.object({
   name: z.string().min(1, "Nama lengkap wajib diisi"),
   nip: z.string().min(1, "NIP wajib diisi"),
   department: z.string().optional(),
+  // Catatan: Pastikan di file schema.ts, attendeeRoleEnum diubah mengikuti array ini!
   role: z.enum(["pimpinan", "pejabat", "peserta"]),
   signature: z.string().min(1, "Tanda tangan digital wajib diisi"),
   deviceId: z.string().min(1, "Gagal mengidentifikasi perangkat"),
@@ -22,8 +23,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const meetingId = parseInt((await params).id, 10);
-    if (isNaN(meetingId)) {
+    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
+    const meetingId = (await params).id;
+
+    // PERBAIKAN: Validasi string kosong, bukan isNaN()
+    if (!meetingId || meetingId.trim() === "") {
       return NextResponse.json(
         { success: false, message: "ID Rapat tidak valid" },
         { status: 400 },
@@ -37,7 +41,7 @@ export async function GET(
 
     if (
       !meeting ||
-      (meeting.status !== "live" && meeting.status !== "completed")
+      (meeting.status !== "live" && meeting.status !== "archived") // Catatan: Anda mungkin ingin mengubah "completed" menjadi "archived" sesuai enum DB baru Anda
     ) {
       return NextResponse.json(
         { success: false, message: "Akses rapat ditutup" },
@@ -74,8 +78,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const meetingId = parseInt((await params).id, 10);
-    if (isNaN(meetingId)) {
+    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
+    const meetingId = (await params).id;
+
+    // PERBAIKAN: Validasi string kosong, bukan isNaN()
+    if (!meetingId || meetingId.trim() === "") {
       return NextResponse.json(
         { success: false, message: "ID Rapat tidak valid" },
         { status: 400 },

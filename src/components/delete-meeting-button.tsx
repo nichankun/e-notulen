@@ -17,18 +17,20 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export function DeleteMeetingButton({ id }: { id: number }) {
+// PERBAIKAN: Ubah tipe id dari 'number' menjadi 'string' karena kita sudah beralih ke UUID
+export function DeleteMeetingButton({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  // Gabungan status loading API dan transisi refresh data
   const isDeleting = loading || isPending;
 
   const handleDelete = async () => {
     setLoading(true);
     try {
+      // Endpoint API tetap sama, namun Template Literal akan mengirimkan string UUID
+      // yang sekarang sudah sesuai dengan ekspektasi route handler di backend.
       const res = await fetch(`/api/meetings/${id}`, {
         method: "DELETE",
       });
@@ -40,7 +42,6 @@ export function DeleteMeetingButton({ id }: { id: number }) {
           description: "Data dan dokumentasi fisik telah dibersihkan.",
         });
 
-        // OPTIMASI: Refresh data secara halus tanpa freeze
         startTransition(() => {
           router.refresh();
           setOpen(false);
@@ -77,18 +78,17 @@ export function DeleteMeetingButton({ id }: { id: number }) {
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent className="rounded-2xl bg-white">
+      <AlertDialogContent className="rounded-2xl bg-white border-slate-200">
         <AlertDialogHeader>
           <div className="mx-auto bg-red-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
             <AlertTriangle className="text-red-600 h-6 w-6" />
           </div>
-          <AlertDialogTitle className="text-center font-bold">
+          <AlertDialogTitle className="text-center font-bold text-slate-900">
             Hapus Arsip Permanen?
           </AlertDialogTitle>
           <AlertDialogDescription className="text-center text-slate-500">
             Tindakan ini tidak dapat dibatalkan. Seluruh data notulensi, daftar
-            hadir, dan dokumentasi foto pada rapat ini akan dihapus dari server
-            Bapenda.
+            hadir, dan dokumentasi foto pada rapat ini akan dihapus dari server.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="sm:justify-center gap-2 mt-2">
@@ -100,7 +100,7 @@ export function DeleteMeetingButton({ id }: { id: number }) {
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
-              e.preventDefault(); // Mencegah dialog menutup otomatis sebelum proses selesai
+              e.preventDefault();
               handleDelete();
             }}
             disabled={isDeleting}

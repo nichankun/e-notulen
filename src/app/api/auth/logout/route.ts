@@ -4,14 +4,17 @@ import { cookies } from "next/headers";
 export async function POST() {
   try {
     const cookieStore = await cookies();
+    const isProd = process.env.NODE_ENV === "production";
 
-    // Cukup hapus token utama.
-    // Jika auth_token hilang, otomatis semua akses (termasuk role) akan terputus.
-    cookieStore.delete("auth_token");
-
-    // Jika sebelumnya kamu mengatur cookie dengan path spesifik,
-    // disarankan untuk memberikan opsi path saat menghapus agar browser tidak bingung
-    // cookieStore.delete({ name: "auth_token", path: "/" });
+    // INOVASI: Menghapus cookie dengan parameter keamanan yang persis sama
+    // dengan saat diciptakan di fungsi Login. Ini menjamin browser (terutama Safari)
+    // akan benar-benar menghancurkan sesi secara permanen tanpa "bingung".
+    cookieStore.delete({
+      name: "auth_token",
+      path: "/",
+      secure: isProd,
+      sameSite: "lax",
+    });
 
     return NextResponse.json({
       success: true,

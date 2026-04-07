@@ -33,7 +33,12 @@ import Link from "next/link";
 
 const formSchema = z.object({
   title: z.string().min(5, "Judul rapat minimal 5 karakter"),
-  date: z.string().refine((val) => val !== "", "Tanggal dan waktu wajib diisi"),
+  date: z
+    .string()
+    .min(1, "Tanggal dan waktu wajib diisi")
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "Format tanggal tidak valid",
+    }),
   location: z.string().min(3, "Lokasi minimal 3 karakter"),
   leader: z.string().min(3, "Nama pimpinan minimal 3 karakter"),
 });

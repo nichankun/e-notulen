@@ -27,7 +27,8 @@ async function requireAdminAuth() {
   // Pastikan token valid, memiliki ID, dan role-nya WAJIB 'admin'
   if (!payload || !payload.id || payload.role !== "admin") return null;
 
-  return { userId: Number(payload.id) };
+  // PERBAIKAN: Gunakan String karena ID sekarang UUID
+  return { userId: String(payload.id) };
 }
 
 // 1. SCHEMA VALIDASI POST (Create)
@@ -41,7 +42,8 @@ const userSchema = z.object({
 
 // 2. SCHEMA VALIDASI PATCH (Update)
 const patchUserSchema = z.object({
-  id: z.number(),
+  // PERBAIKAN: id sekarang adalah string (UUID)
+  id: z.string().min(1, "ID tidak valid"),
   name: z.string().min(3),
   nip: z.string().min(5),
   role: z.enum(["admin", "pegawai"]),
@@ -197,16 +199,15 @@ export async function DELETE(req: Request) {
       );
 
     const { searchParams } = new URL(req.url);
-    const idParam = searchParams.get("id");
+    const targetId = searchParams.get("id");
 
-    if (!idParam || isNaN(Number(idParam))) {
+    // PERBAIKAN: Hapus pengecekan isNaN() karena UUID adalah teks (string)
+    if (!targetId || targetId.trim() === "") {
       return NextResponse.json(
         { success: false, message: "ID tidak valid" },
         { status: 400 },
       );
     }
-
-    const targetId = Number(idParam);
 
     // Mencegah admin menghapus dirinya sendiri secara tidak sengaja
     if (targetId === adminUser.userId) {

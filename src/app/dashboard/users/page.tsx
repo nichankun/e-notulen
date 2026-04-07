@@ -12,7 +12,7 @@ import { desc } from "drizzle-orm";
 async function getUsers(): Promise<User[]> {
   const dbData = await db
     .select({
-      id: users.id,
+      id: users.id, // Sekarang ini otomatis berupa string (UUID)
       name: users.name,
       nip: users.nip,
       role: users.role,
@@ -23,10 +23,11 @@ async function getUsers(): Promise<User[]> {
 
   // Mapping dengan type-safety tanpa 'any'
   return dbData.map((user) => ({
-    id: user.id,
+    id: user.id, // Teruskan string UUID apa adanya
     name: user.name,
     nip: user.nip,
-    role: user.role ?? "pegawai", // Fallback jika role null
+    // PERBAIKAN: Type casting yang aman menyesuaikan enum PostgreSQL
+    role: (user.role as "admin" | "pegawai") ?? "pegawai",
     agency: user.agency,
   }));
 }

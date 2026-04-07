@@ -8,7 +8,7 @@ import { z } from "zod";
 
 // 1. ZOD SCHEMA: Validasi input yang lebih ketat & aman
 const createMeetingSchema = z.object({
-  title: z.string().min(1, "Judul rapat wajib diisi"),
+  title: z.string().min(5, "Judul rapat minimal 5 karakter"),
   // Memastikan format tanggal bisa di-parse oleh JavaScript Date
   date: z
     .string()
@@ -16,8 +16,8 @@ const createMeetingSchema = z.object({
     .refine((val) => !isNaN(Date.parse(val)), {
       message: "Format tanggal tidak valid",
     }),
-  location: z.string().optional(),
-  leader: z.string().optional(),
+  location: z.string().min(3, "Lokasi minimal 3 karakter"),
+  leader: z.string().min(3, "Nama pimpinan minimal 3 karakter"),
 });
 
 // ==========================================
@@ -44,11 +44,12 @@ export async function GET() {
       );
     }
 
-    const userId = Number(payload.id);
+    // PERBAIKAN: Ubah ke String untuk UUID
+    const userId = String(payload.id);
     const role = (payload.role as string) || "pegawai";
 
-    // Cegah error NaN
-    if (isNaN(userId)) {
+    // PERBAIKAN: Cegah string kosong atau undefined
+    if (!userId || userId.trim() === "" || userId === "undefined") {
       return NextResponse.json(
         { success: false, message: "ID User invalid" },
         { status: 400 },
@@ -110,8 +111,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const userId = Number(payload.id);
-    if (isNaN(userId)) {
+    // PERBAIKAN: Ubah ke String untuk UUID
+    const userId = String(payload.id);
+
+    // PERBAIKAN: Validasi string kosong/undefined
+    if (!userId || userId.trim() === "" || userId === "undefined") {
       return NextResponse.json(
         { success: false, message: "ID User invalid" },
         { status: 400 },
@@ -145,7 +149,7 @@ export async function POST(request: Request) {
         leader: leader || "",
         status: "live",
         attendanceCount: 0,
-        userId: userId, // Pasti angka yang valid
+        userId: userId, // Pasti UUID String yang valid
       })
       .returning({ id: meetings.id });
 

@@ -12,16 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserActions } from "./user-actions";
 
+// PERBAIKAN: Sinkronisasi tipe data dengan schema UUID dan Enum
 export type User = {
-  id: number;
+  id: string; // HARUS string karena sekarang UUID
   name: string;
   nip: string;
-  role: string;
+  role: "admin" | "pegawai"; // Menyesuaikan dengan Enum role
   agency: string | null;
 };
+
 const formatNIP = (nip: string) => {
   return nip.replace(/(\d{8})(\d{6})(\d{1})(\d{3})/, "$1 $2 $3 $4");
 };
+
 export const columns: ColumnDef<User>[] = [
   {
     accessorKey: "name",
