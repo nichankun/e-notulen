@@ -173,7 +173,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
         body: JSON.stringify({
           content: notulen,
           photos: photos,
-          status: "completed",
+          status: "archived",
         }),
       });
 

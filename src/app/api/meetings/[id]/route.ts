@@ -10,8 +10,7 @@ import { z } from "zod";
 // 1. ZOD SCHEMA: Validasi data update yang masuk
 const updateMeetingSchema = z.object({
   content: z.string().optional(),
-  // SINKRONISASI: Tambahkan "completed" agar sesuai dengan kiriman dari UI
-  status: z.enum(["draft", "live", "archived", "completed"]).optional(),
+  status: z.enum(["draft", "live", "archived"]).optional(),
   photos: z.array(z.string()).optional(),
 });
 
