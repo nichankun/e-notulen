@@ -104,34 +104,45 @@ const styles = StyleSheet.create({
   },
 });
 
-// OPTIMASI: Parser HTML yang Type-Safe
+// OPTIMASI: Parser HTML yang Type-Safe & Ramah Mobile
 const parseHtmlContent = (html: string): React.ReactNode[] | string => {
   if (!html) return "Tidak ada catatan pembahasan.";
 
   let text = html;
 
+  // 1. Hapus karakter tersembunyi (zero-width spaces) bawaan keyboard mobile
+  text = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+  // 2. Bersihkan paragraf kosong dari HP (<p></p>, <p><br></p>, <p>&nbsp;</p>)
+  text = text.replace(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, "\n");
+  text = text.replace(/<p[^>]*>\s*&nbsp;\s*<\/p>/gi, "\n");
+  text = text.replace(/<p[^>]*>\s*<\/p>/gi, "");
+
+  // 3. Format List
   text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_match, content) => {
-    return `<li>${content.replace(/<\/?p[^>]*>/gi, "")}</li>`;
+    return `<li>${content.replace(/<\/?(p|div)[^>]*>/gi, "")}</li>`;
   });
 
   text = text.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_match, inner) => {
     let i = 1;
     return inner.replace(
       /<li>([\s\S]*?)<\/li>/gi,
-      (_m: string, content: string) => `\n${i++}. ${content}`,
+      (_m: string, content: string) => `\n${i++}. ${content.trim()}`,
     );
   });
 
   text = text.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_match, inner) => {
     return inner.replace(
       /<li>([\s\S]*?)<\/li>/gi,
-      (_m: string, content: string) => `\n• ${content}`,
+      (_m: string, content: string) => `\n• ${content.trim()}`,
     );
   });
 
-  text = text.replace(/<\/p>/gi, "\n\n");
+  // 4. Ubah penutup blok dan <br> menjadi enter
+  text = text.replace(/<\/(p|div)>/gi, "\n\n");
   text = text.replace(/<br\s*\/?>/gi, "\n");
 
+  // 5. Buang semua tag HTML KECUALI tag formatting font
   text = text.replace(
     /<(\/?)([a-z0-9]+)[^>]*>/gi,
     (match, _slash, tagName: string) => {
@@ -140,14 +151,19 @@ const parseHtmlContent = (html: string): React.ReactNode[] | string => {
     },
   );
 
+  // 6. Decode HTML Entities
   text = text
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
 
-  text = text.replace(/\n\s*\n/g, "\n\n").trim();
+  // 7. Normalisasi Spasi & Baris Baru (PENTING UNTUK MOBILE)
+  text = text.replace(/[ \t]+/g, " "); // Deretan spasi berlebih dari HP jadi 1 spasi
+  text = text.replace(/\n\s*\n/g, "\n\n");
+  text = text.replace(/\n{3,}/g, "\n\n").trim(); // Cegah enter yang terlalu jauh
 
+  // 8. Tokenisasi text to React-PDF Text
   const tokens = text.split(/(<\/?(?:strong|b|i|em|u)[^>]*>)/gi);
 
   let isBold = false;

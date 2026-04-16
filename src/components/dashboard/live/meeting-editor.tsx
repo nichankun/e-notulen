@@ -19,7 +19,7 @@ import {
   UploadCloud,
   Heading2,
   Heading3,
-  CloudOff, // Tambahan untuk status error
+  CloudOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,7 +36,7 @@ interface MeetingEditorProps {
   setPhotos: (val: string[]) => void;
   onFinish: () => void;
   isSaving: boolean;
-  saveStatus: "idle" | "saving" | "saved" | "error"; // Props baru dari parent
+  saveStatus: "idle" | "saving" | "saved" | "error";
 }
 
 export function MeetingEditor({
@@ -48,7 +48,7 @@ export function MeetingEditor({
   setPhotos,
   onFinish,
   isSaving,
-  saveStatus, // Gunakan status ini
+  saveStatus,
 }: MeetingEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -59,7 +59,11 @@ export function MeetingEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[400px] p-4 md:p-8 bg-white",
+          "prose prose-base max-w-none focus:outline-none min-h-[400px] p-8 bg-white",
+        // OPTIMASI MOBILE: Mencegah keyboard HP menyisipkan spasi ganda atau format aneh
+        spellcheck: "false",
+        autocorrect: "off",
+        autocapitalize: "sentences",
       },
     },
     onUpdate: ({ editor }) => {
@@ -132,7 +136,7 @@ export function MeetingEditor({
 
   return (
     <Card className="h-full flex flex-col border-slate-200 shadow-xl overflow-hidden bg-white rounded-3xl">
-      {/* HEADER: Info Rapat & Status Indikator (Ganti tombol Draft) */}
+      {/* HEADER: Info Rapat & Status Indikator */}
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
         <div className="min-w-0">
           <h3 className="font-black text-lg text-slate-800 truncate tracking-tight">
