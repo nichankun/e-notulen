@@ -6,7 +6,7 @@ interface MeetingHeaderProps {
   date?: string | Date | null;
 }
 
-// OPTIMASI: Formatter statis untuk performa render
+// Formatter statis tetap dipertahankan karena sudah sangat optimal
 const headerDateFormatter = new Intl.DateTimeFormat("id-ID", {
   weekday: "short",
   day: "numeric",
@@ -18,19 +18,26 @@ const headerDateFormatter = new Intl.DateTimeFormat("id-ID", {
 
 export function MeetingHeader({ date }: MeetingHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-green-50 border border-green-200 p-3 sm:p-4 rounded-xl text-green-800 shadow-sm transition-all">
+    // PERBAIKAN 1: Menggunakan bg-emerald-500/10 dan border-emerald-500/20.
+    // Ini memberikan efek warna yang modern, transparan, dan aman untuk Dark Mode.
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-500/10 border border-emerald-500/20 p-3 sm:p-4 rounded-xl text-emerald-700 dark:text-emerald-400 shadow-sm transition-all duration-300">
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Status Indicator: Ping Animation */}
         <span className="flex h-2.5 w-2.5 sm:h-3 sm:w-3 relative">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-green-500"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 sm:h-3 sm:w-3 bg-emerald-500"></span>
         </span>
-        <span className="font-bold tracking-tight text-xs sm:text-sm">
-          SESI RAPAT LIVE
+
+        {/* PERBAIKAN 2: Menggunakan tracking-widest agar teks uppercase terlihat lebih profesional */}
+        <span className="font-bold tracking-widest text-[10px] sm:text-xs uppercase">
+          Sesi Rapat Live
         </span>
       </div>
 
-      <div className="flex items-center justify-center sm:justify-start gap-2 font-mono text-xs sm:text-sm font-medium bg-white/60 px-3 py-1.5 sm:py-1 rounded-md w-full sm:w-auto border border-green-100 sm:border-0">
-        <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-700" />
+      {/* PERBAIKAN 3: Kontainer tanggal menggunakan bg-background/50 dengan backdrop blur 
+          agar terlihat kontras dan premium di atas latar belakang emerald. */}
+      <div className="flex items-center justify-center sm:justify-start gap-2 font-mono text-xs sm:text-sm font-medium bg-background/50 backdrop-blur-sm px-3 py-1.5 sm:py-1 rounded-lg w-full sm:w-auto border border-emerald-500/10">
+        <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />
         <span className="truncate" suppressHydrationWarning>
           {date ? headerDateFormatter.format(new Date(date)) : "-"}
         </span>

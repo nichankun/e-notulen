@@ -12,33 +12,25 @@ export default async function ArchivePage() {
   const cookieStore = await cookies();
   const authToken = cookieStore.get("auth_token")?.value;
 
-  // 1. Proteksi Halaman Dasar
   if (!authToken) redirect("/");
 
-  // 2. Bongkar JWT untuk mendapatkan Identitas Asli
   const payload = await verifyAuthToken(authToken);
-  if (!payload || !payload.id) redirect("/");
+  if (!payload?.id) redirect("/");
 
-  // PERBAIKAN: Gunakan String karena id sekarang adalah UUID
   const userId = String(payload.id);
   const role = (payload.role as string) || "pegawai";
 
-  // Mencegah string kosong atau undefined merusak query
   if (!userId || userId === "undefined") redirect("/");
 
-  // OPTIMASI: Fallback array kosong dengan Type-Safe Drizzle
   let allMeetings: (typeof meetings.$inferSelect)[] = [];
 
   try {
-    // 3. Eksekusi Query berdasarkan Role dari JWT
     if (role === "admin") {
-      // Admin menarik semua data rapat instansi
       allMeetings = await db
         .select()
         .from(meetings)
         .orderBy(desc(meetings.date));
     } else {
-      // Pegawai hanya menarik data miliknya sendiri menggunakan UUID string
       allMeetings = await db
         .select()
         .from(meetings)
@@ -48,31 +40,37 @@ export default async function ArchivePage() {
   } catch (error) {
     console.error("Gagal memuat data arsip:", error);
     return (
-      <div className="p-8 text-center bg-red-50 text-red-600 rounded-2xl border border-red-100">
-        Gagal memuat data arsip. Silakan muat ulang halaman.
+      // PERBAIKAN UI 1: Error state menggunakan variabel 'destructive' shadcn
+      <div className="p-8 text-center bg-destructive/10 text-destructive rounded-xl border border-destructive/20 m-4 md:m-0">
+        <p className="font-semibold">Gagal memuat data arsip</p>
+        <p className="text-sm opacity-90">Silakan muat ulang halaman.</p>
       </div>
     );
-    // allMeetings tetap [] jika terjadi error database
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0 font-sans">
+    // PERBAIKAN UI 2: Menghapus 'font-sans' (sudah di-handle globals.css)
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 md:gap-4">
-          <div className="shrink-0 p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
+          {/* PERBAIKAN UI 3: Ikon menggunakan warna primary + opacity */}
+          <div className="shrink-0 p-3.5 bg-primary/10 text-primary rounded-xl">
             <FileText className="h-6 w-6" />
           </div>
 
           <div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2.5">
+            {/* PERBAIKAN UI 4: text-gray-900 diubah ke text-foreground */}
+            <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
               Arsip Digital
               {role === "admin" && (
-                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-600 uppercase tracking-wider">
+                // Label admin disesuaikan warnanya dengan tema utama (primary)
+                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary uppercase tracking-wider">
                   Admin
                 </span>
               )}
             </h2>
-            <p className="text-sm text-gray-500 mt-1 font-medium">
+            {/* PERBAIKAN UI 5: text-gray-500 diubah ke text-muted-foreground */}
+            <p className="text-sm text-muted-foreground mt-1 font-medium">
               {role === "admin"
                 ? "Kelola seluruh data notulen instansi"
                 : "Riwayat notulen yang Anda buat"}
@@ -81,7 +79,7 @@ export default async function ArchivePage() {
         </div>
       </div>
 
-      {/* DataTable sekarang menerima data dengan ID format string (UUID) */}
+      {/* DataTable dibiarkan utuh karena logikanya sudah terpisah dengan baik */}
       <DataTable columns={columns} data={allMeetings} />
     </div>
   );

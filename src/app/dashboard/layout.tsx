@@ -1,13 +1,17 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+
+import { db } from "@/db";
+import { users } from "@/db/database/schema";
+import { verifyAuthToken } from "@/lib/auth";
+
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { Header } from "@/components/dashboard/header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { db } from "@/db";
-import { users } from "@/db/database/schema";
-import { eq } from "drizzle-orm";
 import { Toaster } from "@/components/ui/sonner";
-import { verifyAuthToken } from "@/lib/auth"; // Import dari file utility
+// 1. IMPORT TOOLTIP PROVIDER DI SINI
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default async function DashboardLayout({
   children,
@@ -17,22 +21,14 @@ export default async function DashboardLayout({
   const cookieStore = await cookies();
   const authToken = cookieStore.get("auth_token")?.value;
 
-  // Jika tidak ada token, tendang ke login
   if (!authToken) redirect("/");
 
-  // Verifikasi dan ambil payload menggunakan fungsi utility
   const payload = await verifyAuthToken(authToken);
-  if (!payload || !payload.id) redirect("/");
+  if (!payload?.id) redirect("/");
 
-  // PERBAIKAN: Gunakan String() karena id sekarang adalah UUID, bukan angka
   const userId = String(payload.id);
+  if (!userId || userId === "undefined") redirect("/");
 
-  // Validasi tambahan untuk mencegah error jika token rusak/kosong
-  if (!userId || userId.trim() === "" || userId === "undefined") {
-    redirect("/");
-  }
-
-  // Ambil data user dari DB
   const [currentUser] = await db
     .select({
       name: users.name,
@@ -54,18 +50,21 @@ export default async function DashboardLayout({
   };
 
   return (
-    <SidebarProvider>
-      <AppSidebar user={userData} />
+    /* 2. BUNGKUS SELURUH PROVIDER DENGAN TOOLTIP PROVIDER */
+    <TooltipProvider>
+      <SidebarProvider>
+        <AppSidebar user={userData} />
 
-      <SidebarInset className="bg-slate-50 h-svh overflow-hidden flex flex-col">
-        <Header userAgency={userData.agency} />
+        <SidebarInset className="flex flex-col min-h-svh bg-background">
+          <Header userAgency={userData.agency} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 pt-6 w-full max-w-7xl mx-auto animate-in fade-in duration-700">
-          {children}
-        </main>
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto animate-in fade-in duration-500">
+            {children}
+          </main>
+        </SidebarInset>
 
         <Toaster position="top-center" richColors />
-      </SidebarInset>
-    </SidebarProvider>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }

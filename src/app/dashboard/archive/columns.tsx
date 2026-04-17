@@ -23,7 +23,8 @@ export const columns: ColumnDef<Meeting>[] = [
       return (
         <div
           suppressHydrationWarning
-          className="whitespace-nowrap text-sm text-slate-500 font-medium"
+          // PERBAIKAN: Gunakan text-muted-foreground agar otomatis support Dark Mode
+          className="whitespace-nowrap text-sm text-muted-foreground font-medium"
         >
           {date ? dateFormatter.format(new Date(date as string)) : "-"}
         </div>
@@ -35,7 +36,8 @@ export const columns: ColumnDef<Meeting>[] = [
     header: "Nama Kegiatan",
     cell: ({ row }) => (
       <div
-        className="font-bold text-slate-800 min-w-50 md:min-w-0 truncate max-w-75"
+        // PERBAIKAN: Menggunakan text-foreground, dan memperbaiki logika truncate responsif
+        className="font-bold text-foreground max-w-37.5 md:max-w-75 truncate"
         title={row.getValue("title")}
       >
         {row.getValue("title")}
@@ -47,7 +49,11 @@ export const columns: ColumnDef<Meeting>[] = [
     header: "Kehadiran",
     cell: ({ row }) => (
       <div className="whitespace-nowrap">
-        <Badge className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-0 px-2.5 py-0.5 rounded-md shadow-none font-medium">
+        {/* PERBAIKAN: Menggunakan variant="secondary" bawaan shadcn agar warnanya soft/kalem */}
+        <Badge
+          variant="secondary"
+          className="px-2.5 py-0.5 rounded-md font-medium"
+        >
           {row.getValue("attendanceCount") ?? 0} Hadir
         </Badge>
       </div>
@@ -57,33 +63,35 @@ export const columns: ColumnDef<Meeting>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-      // PERBAIKAN: Gunakan tipe status dari schema untuk type-safety
       const status = row.getValue("status") as Meeting["status"];
 
       return (
-        <div className="whitespace-nowrap">
+        <div className="whitespace-nowrap flex items-center">
           {status === "live" && (
+            // Live: Gunakan warna primary (tema utama Anda) tapi diberi efek transparan agar tidak terlalu mencolok
             <Badge
               variant="outline"
-              className="border-blue-200 text-blue-700 bg-blue-50 shadow-none gap-1 px-2"
+              className="bg-primary/10 text-primary border-primary/20 gap-1.5 px-2"
             >
-              <Clock className="h-3 w-3 animate-pulse" /> Live Aktif
+              <Clock className="h-3.5 w-3.5 animate-pulse" /> Live Aktif
             </Badge>
           )}
           {status === "archived" && (
+            // Archived: Dianggap selesai/sukses. Kita pakai variant outline biasa tapi dengan warna netral/muted
             <Badge
               variant="outline"
-              className="border-emerald-200 text-emerald-700 bg-emerald-50 shadow-none gap-1 px-2"
+              className="text-muted-foreground gap-1.5 px-2 bg-transparent"
             >
-              <CheckCircle2 className="h-3 w-3" /> Selesai
+              <CheckCircle2 className="h-3.5 w-3.5" /> Selesai
             </Badge>
           )}
           {status === "draft" && (
+            // Draft: Belum dimulai. Pakai variant secondary agar terlihat pasif
             <Badge
-              variant="outline"
-              className="border-slate-200 text-slate-600 bg-slate-50 shadow-none gap-1 px-2"
+              variant="secondary"
+              className="text-muted-foreground gap-1.5 px-2"
             >
-              <FileEdit className="h-3 w-3" /> Draft
+              <FileEdit className="h-3.5 w-3.5" /> Draft
             </Badge>
           )}
         </div>
@@ -96,7 +104,6 @@ export const columns: ColumnDef<Meeting>[] = [
     cell: ({ row }) => {
       const item = row.original;
 
-      // LOGIKA LINK: Draft & Live masuk ke halaman Live, Archived masuk ke halaman Result
       const destination =
         item.status === "archived"
           ? `/dashboard/result/${item.id}`
@@ -107,7 +114,8 @@ export const columns: ColumnDef<Meeting>[] = [
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+            // PERBAIKAN: Efek hover disesuaikan dengan tema (text-primary)
+            className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-lg transition-colors"
             asChild
           >
             <Link href={destination}>
@@ -115,7 +123,6 @@ export const columns: ColumnDef<Meeting>[] = [
             </Link>
           </Button>
 
-          {/* UUID (string) otomatis didukung oleh komponen ini */}
           <DeleteMeetingButton id={item.id} />
         </div>
       );

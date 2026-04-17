@@ -1,4 +1,3 @@
-import React from "react";
 import { Text, View, Image as PdfImage } from "@react-pdf/renderer";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import { styles } from "./pdf-styles";

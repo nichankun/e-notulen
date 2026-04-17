@@ -21,8 +21,9 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      {/* PERUBAHAN UI: Teks label diubah menjadi text-blue-200 agar terbaca elegan di atas background biru pekat */}
-      <SidebarGroupLabel className="text-blue-200 text-[10px] uppercase tracking-wider font-semibold group-data-[collapsible=icon]:hidden mb-2 px-3">
+      {/* PERBAIKAN 1: Menggunakan text-sidebar-foreground dengan opacity.
+          Ini jauh lebih aman daripada blue-200 jika suatu saat tema warna diubah. */}
+      <SidebarGroupLabel className="text-sidebar-foreground/60 text-[10px] uppercase tracking-[0.15em] font-bold group-data-[collapsible=icon]:hidden mb-2 px-3">
         Menu Utama
       </SidebarGroupLabel>
 
@@ -35,17 +36,22 @@ export function NavMain({
 
           return (
             <SidebarMenuItem key={item.title}>
+              {/* PERBAIKAN 2: Membersihkan warna kaku.
+                  - text-sidebar-foreground: warna teks default sidebar.
+                  - hover:bg-sidebar-accent: warna hover otomatis (transparan halus).
+                  - data-[active=true]: menggunakan warna aksen sidebar yang solid.
+              */}
               <SidebarMenuButton
                 asChild
                 tooltip={item.title}
                 isActive={isActive}
-                // PERUBAHAN UI: Styling transparan putih untuk hover dan active state
-                className="h-11 px-3 text-blue-100 hover:bg-white/10 hover:text-white data-[active=true]:bg-white/20 data-[active=true]:text-white transition-colors rounded-xl gap-3 group"
+                className="h-10 px-3 transition-all duration-200 rounded-lg gap-3 group text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:font-semibold"
               >
                 <Link href={item.url}>
-                  {/* Icon shrink-0 agar tidak miring saat dikompres */}
-                  <item.icon className="size-5 shrink-0" />
-                  <span className="font-medium group-data-[active=true]:font-bold tracking-tight group-data-[collapsible=icon]:hidden truncate text-[15px]">
+                  {/* Icon tetap shrink-0 agar stabil */}
+                  <item.icon className="size-4.5 shrink-0 opacity-80 group-data-[active=true]:opacity-100" />
+
+                  <span className="tracking-tight group-data-[collapsible=icon]:hidden truncate text-sm">
                     {item.title}
                   </span>
                 </Link>

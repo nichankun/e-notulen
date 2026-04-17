@@ -1,7 +1,7 @@
 // file: components/change-password-dialog.tsx
 "use client";
 
-import { KeyRound, Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -26,7 +26,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// --- SCHEMA VALIDASI PASSWORD ---
 const passwordSchema = z
   .object({
     oldPassword: z.string().min(1, "Password lama wajib diisi"),
@@ -105,15 +104,14 @@ export function ChangePasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 md:p-8 font-sans border-gray-100 shadow-xl">
+      {/* PERBAIKAN 1: Menghapus bg-white dan font-sans. 
+          Menggunakan rounded-2xl untuk kesan modern. */}
+      <DialogContent className="sm:max-w-md rounded-2xl p-6 md:p-8">
         <DialogHeader className="mb-4 text-left">
-          <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-            <KeyRound className="h-6 w-6 text-[#0866ff]" />
-          </div>
-          <DialogTitle className="text-xl font-bold text-gray-900 tracking-tight">
+          <DialogTitle className="text-xl font-bold tracking-tight">
             Ubah Password Akun
           </DialogTitle>
-          <DialogDescription className="text-gray-500 font-medium">
+          <DialogDescription className="text-muted-foreground font-medium">
             Pastikan Anda menggunakan kombinasi karakter yang unik untuk menjaga
             keamanan akun.
           </DialogDescription>
@@ -129,14 +127,15 @@ export function ChangePasswordDialog({
               name="oldPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-gray-700">
+                  <FormLabel className="text-sm font-semibold text-foreground">
                     Password Saat Ini
                   </FormLabel>
                   <FormControl>
+                    {/* PERBAIKAN 3: Input dibersihkan dari border kaku, biarkan shadcn yang mengurus focus-ring-nya. */}
                     <Input
                       type="password"
                       placeholder="••••••••"
-                      className="bg-white rounded-lg h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] px-4"
+                      className="h-12 bg-background rounded-xl"
                       disabled={isSubmitting}
                       {...field}
                     />
@@ -150,14 +149,14 @@ export function ChangePasswordDialog({
               name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-gray-700">
+                  <FormLabel className="text-sm font-semibold text-foreground">
                     Password Baru
                   </FormLabel>
                   <FormControl>
                     <Input
                       type="password"
                       placeholder="••••••••"
-                      className="bg-white rounded-lg h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] px-4"
+                      className="h-12 bg-background rounded-xl"
                       disabled={isSubmitting}
                       {...field}
                     />
@@ -171,14 +170,14 @@ export function ChangePasswordDialog({
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-gray-700">
+                  <FormLabel className="text-sm font-semibold text-foreground">
                     Konfirmasi Password Baru
                   </FormLabel>
                   <FormControl>
                     <Input
                       type="password"
                       placeholder="••••••••"
-                      className="bg-white rounded-lg h-12 border-gray-300 focus:border-[#0866ff] focus:ring-1 focus:ring-[#0866ff] px-4"
+                      className="h-12 bg-background rounded-xl"
                       disabled={isSubmitting}
                       {...field}
                     />
@@ -189,19 +188,21 @@ export function ChangePasswordDialog({
             />
 
             <DialogFooter className="pt-4">
+              {/* PERBAIKAN 4: Tombol submit mengikuti standar variant primary aplikasi. 
+                  Menghapus hex warna manual. */}
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-[#0866ff] hover:bg-[#1877f2] text-white font-bold h-12 rounded-full transition-colors flex items-center justify-center"
+                className="w-full font-bold h-12 rounded-xl transition-all shadow-md"
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Memproses...
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
                     Simpan Password Baru
                   </>
                 )}

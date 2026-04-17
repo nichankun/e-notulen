@@ -35,7 +35,6 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
-  // Memoize menu agar performa tetap ringan meski terjadi re-render di parent
   const navMainItems = React.useMemo(() => {
     const items = [
       {
@@ -69,29 +68,31 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     <Sidebar
       collapsible="icon"
       {...props}
-      // UI BIRU SOLID: Sama persis dengan warna tombol login (#0866ff)
-      className="border-r-0 bg-[#0866ff] text-white shadow-xl"
+      // PERBAIKAN 1: Hapus bg-[#0866ff].
+      // Gunakan 'bg-sidebar' dan 'text-sidebar-foreground'.
+      // Warna biru solid Anda sekarang diatur di globals.css pada variabel --sidebar-background.
+      className="border-r-0 shadow-xl"
     >
       {/* 1. HEADER: LOGO INSTANSI */}
-      <SidebarHeader className="bg-[#0866ff] border-b border-white/20 p-2 overflow-hidden">
+      <SidebarHeader className="border-b border-sidebar-border/50 p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              // Hover memakai efek kaca (putih transparan) agar elegan di atas warna biru
-              className="hover:bg-white/10 hover:text-white transition-all duration-200"
+              // PERBAIKAN 2: Gunakan sidebar-accent untuk hover yang konsisten
+              className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200"
             >
-              {/* KOTAK LOGO: Warnanya dibalik (kotak putih, logo biru) agar terlihat */}
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#0866ff] shadow-sm">
+              {/* KOTAK LOGO: Menggunakan warna primary tema agar serasi */}
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
                 <Layers className="size-4" />
               </div>
 
               {/* TEKS BRANDING */}
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden overflow-hidden ml-1">
-                <span className="truncate font-bold tracking-wide text-white">
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden ml-1">
+                <span className="truncate font-bold tracking-tight">
                   E-Notulen
                 </span>
-                <span className="truncate text-[10px] text-blue-200 uppercase tracking-widest font-semibold">
+                <span className="truncate text-[10px] opacity-70 uppercase tracking-widest font-semibold">
                   Bapenda Sultra
                 </span>
               </div>
@@ -101,17 +102,17 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
       </SidebarHeader>
 
       {/* 2. CONTENT: MENU NAVIGASI */}
-      <SidebarContent className="bg-[#0866ff] scrollbar-none pt-2">
+      <SidebarContent className="scrollbar-none pt-2">
         <NavMain items={navMainItems} />
       </SidebarContent>
 
       {/* 3. FOOTER: INFORMASI USER */}
-      <SidebarFooter className="bg-[#0866ff] border-t border-white/20 p-2">
+      <SidebarFooter className="border-t border-sidebar-border/50 p-2">
         <NavUser user={user} />
       </SidebarFooter>
 
-      {/* Interactive Rail (Desktop Only) */}
-      <SidebarRail className="hover:after:bg-white/40" />
+      {/* Interactive Rail */}
+      <SidebarRail />
     </Sidebar>
   );
 }

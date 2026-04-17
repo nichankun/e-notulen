@@ -10,7 +10,6 @@ import { MeetingQRCode } from "@/components/dashboard/live/meeting-qr";
 import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees";
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
 
-// Import komponen UI yang sudah dipisah (Sesuaikan letak path-nya)
 import { LoadingScreen } from "./loading-screen";
 import { MobileSaveStatus } from "./mobile-save-status";
 import { FinishMeetingDialog } from "./finish-meeting-dialog";
@@ -188,22 +187,27 @@ export default function LiveMeetingPage({ params }: PageProps) {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-6 font-sans">
+    // PERBAIKAN: Menghapus font-sans dan menyelaraskan padding serta animasi masuk
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 p-4 md:p-6 bg-background">
+      {/* HEADER SECTION: Desktop & Mobile Save Status */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <MeetingHeader
           date={meetingData?.date ? new Date(meetingData.date) : undefined}
         />
 
-        {/* Indikator Status Auto-Save Mobile */}
+        {/* Indikator Status Auto-Save Mobile (Hanya tampil di layar kecil) */}
         <MobileSaveStatus saveStatus={saveStatus} />
       </div>
 
+      {/* MAIN CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        <div className="lg:col-span-1 space-y-6">
+        {/* KOLOM KIRI: QR Code & Attendees (Sticky di desktop) */}
+        <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 h-fit">
           <MeetingQRCode meetingId={id} origin={origin} />
           <MeetingAttendees attendees={attendees} />
         </div>
 
+        {/* KOLOM KANAN: Text Editor & Foto */}
         <div className="lg:col-span-2">
           <MeetingEditor
             title={meetingData?.title || ""}
@@ -219,7 +223,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Pop Up Finalisasi */}
+      {/* Dialog Konfirmasi Selesai */}
       <FinishMeetingDialog
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}

@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -17,7 +16,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// PERBAIKAN: Ubah tipe id dari 'number' menjadi 'string' karena kita sudah beralih ke UUID
 export function DeleteMeetingButton({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,8 +27,6 @@ export function DeleteMeetingButton({ id }: { id: string }) {
   const handleDelete = async () => {
     setLoading(true);
     try {
-      // Endpoint API tetap sama, namun Template Literal akan mengirimkan string UUID
-      // yang sekarang sudah sesuai dengan ekspektasi route handler di backend.
       const res = await fetch(`/api/meetings/${id}`, {
         method: "DELETE",
       });
@@ -64,10 +60,12 @@ export function DeleteMeetingButton({ id }: { id: string }) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
+        {/* PERBAIKAN 1: Menggunakan text-muted-foreground. 
+            Hover menggunakan destructive (merah) transparan agar elegan. */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors rounded-lg"
+          className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors rounded-lg"
           disabled={isDeleting}
         >
           {isDeleting ? (
@@ -78,33 +76,40 @@ export function DeleteMeetingButton({ id }: { id: string }) {
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent className="rounded-2xl bg-white border-slate-200">
+      {/* PERBAIKAN 2: Menghapus bg-white dan border-slate agar otomatis adaptif tema */}
+      <AlertDialogContent className="rounded-2xl border-border">
         <AlertDialogHeader>
-          <div className="mx-auto bg-red-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
-            <AlertTriangle className="text-red-600 h-6 w-6" />
+          {/* PERBAIKAN 3: Ikon peringatan menggunakan bg-destructive/10 agar senada dengan UI modern shadcn */}
+          <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="text-destructive h-6 w-6" />
           </div>
-          <AlertDialogTitle className="text-center font-bold text-slate-900">
+          <AlertDialogTitle className="text-center font-bold text-foreground">
             Hapus Arsip Permanen?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-center text-slate-500">
+          <AlertDialogDescription className="text-center text-muted-foreground">
             Tindakan ini tidak dapat dibatalkan. Seluruh data notulensi, daftar
             hadir, dan dokumentasi foto pada rapat ini akan dihapus dari server.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="sm:justify-center gap-2 mt-2">
+
+        <AlertDialogFooter className="sm:justify-center gap-2 mt-4">
           <AlertDialogCancel
             disabled={isDeleting}
-            className="rounded-xl border-slate-200"
+            className="rounded-xl border-border"
           >
             Batalkan
           </AlertDialogCancel>
-          <AlertDialogAction
+
+          {/* PERBAIKAN 4: Menggunakan variant="destructive" bawaan shadcn. 
+              Menghapus bayangan merah kaku (shadow-red-200) yang merusak dark mode. */}
+          <Button
+            variant="destructive"
             onClick={(e) => {
               e.preventDefault();
               handleDelete();
             }}
             disabled={isDeleting}
-            className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200"
+            className="rounded-xl font-bold px-6"
           >
             {isDeleting ? (
               <div className="flex items-center gap-2">
@@ -114,7 +119,7 @@ export function DeleteMeetingButton({ id }: { id: string }) {
             ) : (
               "Ya, Hapus Sekarang"
             )}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

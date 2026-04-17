@@ -32,7 +32,6 @@ export default function ResultPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(13);
 
-  // 1. Progress Bar Logic
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (loading) {
@@ -41,7 +40,6 @@ export default function ResultPage({ params }: PageProps) {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // 2. Fetch Data (Fix: Catch block cleaned from unused 'e')
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -78,14 +76,16 @@ export default function ResultPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4 text-center font-sans">
-        <Loader2 className="animate-spin h-10 w-10 text-[#0866ff] mb-2" />
-        <p className="font-semibold text-gray-700 tracking-wide text-sm">
+      // PERBAIKAN 1: Hapus font-sans. Ganti warna loading dengan text-primary
+      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4 text-center">
+        <Loader2 className="animate-spin h-10 w-10 text-primary mb-2" />
+        <p className="font-semibold text-foreground tracking-wide text-sm">
           Membangun Arsip Digital...
         </p>
         <Progress
           value={progress}
-          className="w-full h-1.5 [&>div]:bg-[#0866ff]"
+          // PERBAIKAN 2: Progress bar otomatis menggunakan warna primary shadcn
+          className="w-full h-1.5"
         />
       </div>
     );
@@ -94,32 +94,34 @@ export default function ResultPage({ params }: PageProps) {
   if (!meetingData) return null;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
+    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* HEADER & ACTIONS */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto">
+          {/* Tombol kembali dibiarkan menggunakan variant="outline" bawaan */}
           <Button
             variant="outline"
             size="icon"
             asChild
-            className="rounded-full h-10 w-10 shrink-0 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+            className="rounded-full h-10 w-10 shrink-0 transition-colors"
           >
             <Link href="/dashboard/archive">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
           <div className="min-w-0">
-            <h1 className="font-bold text-xl md:text-2xl text-gray-900 truncate tracking-tight">
+            <h1 className="font-bold text-xl md:text-2xl text-foreground truncate tracking-tight">
               {meetingData.title}
             </h1>
             <div className="flex items-center gap-2 mt-1.5">
+              {/* Badge selesai menggunakan warna emerald dengan opacity agar aman di dark mode */}
               <Badge
-                variant="secondary"
-                className="bg-[#25D366]/10 text-[#20b858] hover:bg-[#25D366]/20 border-0 text-[11px] font-semibold tracking-wide px-2.5 py-0.5"
+                variant="outline"
+                className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[11px] font-semibold tracking-wide px-2.5 py-0.5"
               >
                 Selesai Diarsipkan
               </Badge>
-              <span className="text-xs text-gray-400 font-medium hidden md:inline-block">
+              <span className="text-xs text-muted-foreground font-medium hidden md:inline-block">
                 ID: {id}
               </span>
             </div>
@@ -138,9 +140,10 @@ export default function ResultPage({ params }: PageProps) {
           className="w-full md:w-auto"
         >
           {({ loading: pdfLoading }) => (
+            // PERBAIKAN 3: Tombol cetak tidak perlu hardcode warna biru, biarkan Button shadcn mengambil alih
             <Button
               disabled={pdfLoading}
-              className="bg-[#0866ff] hover:bg-[#1877f2] text-white w-full md:w-auto font-bold h-12 px-6 rounded-full transition-colors flex items-center justify-center gap-2 shadow-sm"
+              className="w-full md:w-auto font-bold h-12 px-6 rounded-full transition-colors flex items-center justify-center gap-2 shadow-sm"
             >
               {pdfLoading ? (
                 <>
@@ -160,45 +163,50 @@ export default function ResultPage({ params }: PageProps) {
 
       {/* EXECUTIVE SUMMARY CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-5 border-gray-100/50 shadow-sm md:shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 bg-white rounded-xl">
-          <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-[#0866ff] shrink-0">
+        {/* PERBAIKAN 4: Card otomatis bg-card. Ikon menggunakan opacity /10 agar tidak mencolok di dark mode */}
+        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
             <Users className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
               Hadir
             </p>
-            <p className="text-xl font-bold text-gray-900 leading-none">
+            <p className="text-xl font-bold text-foreground leading-none">
               {attendees.length}{" "}
-              <span className="text-sm font-medium text-gray-500">Orang</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Orang
+              </span>
             </p>
           </div>
         </Card>
 
-        <Card className="p-5 border-gray-100/50 shadow-sm md:shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 bg-white rounded-xl">
-          <div className="h-12 w-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
+          <div className="h-12 w-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
             <Camera className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
               Dokumentasi
             </p>
-            <p className="text-xl font-bold text-gray-900 leading-none">
+            <p className="text-xl font-bold text-foreground leading-none">
               {photos.length}{" "}
-              <span className="text-sm font-medium text-gray-500">Foto</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Foto
+              </span>
             </p>
           </div>
         </Card>
 
-        <Card className="p-5 border-gray-100/50 shadow-sm md:shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 bg-white rounded-xl">
-          <div className="h-12 w-12 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
+          <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
             <Calendar className="h-6 w-6" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
               Tanggal
             </p>
-            <p className="text-[15px] font-bold text-gray-900 truncate leading-none mt-1">
+            <p className="text-[15px] font-bold text-foreground truncate leading-none mt-1">
               {new Date(meetingData.date).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "short",
@@ -207,15 +215,15 @@ export default function ResultPage({ params }: PageProps) {
           </div>
         </Card>
 
-        <Card className="p-5 border-gray-100/50 shadow-sm md:shadow-[0_4px_12px_rgba(0,0,0,0.03)] flex items-center gap-4 bg-white rounded-xl">
-          <div className="h-12 w-12 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#20b858] shrink-0">
+        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
+          <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
             <FileCheck className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
               Integritas
             </p>
-            <p className="text-[15px] font-bold text-gray-900 uppercase leading-none mt-1">
+            <p className="text-[15px] font-bold text-foreground uppercase leading-none mt-1">
               Valid
             </p>
           </div>
@@ -223,25 +231,26 @@ export default function ResultPage({ params }: PageProps) {
       </div>
 
       {/* PDF VIEWER SECTION */}
-      <Card className="border-gray-200 shadow-sm bg-gray-50 overflow-hidden rounded-xl">
+      {/* PERBAIKAN 5: Mengganti bg-gray-50 menjadi bg-muted/30 */}
+      <Card className="shadow-sm bg-muted/30 overflow-hidden rounded-xl border">
         {/* Fake Window Toolbar macOS Style */}
-        <div className="bg-gray-100/80 px-4 py-3 flex items-center border-b border-gray-200">
+        <div className="bg-muted px-4 py-3 flex items-center border-b">
           <div className="flex gap-1.5 w-16">
-            <div className="h-3 w-3 rounded-full bg-red-400 border border-red-500/20" />
-            <div className="h-3 w-3 rounded-full bg-yellow-400 border border-yellow-500/20" />
-            <div className="h-3 w-3 rounded-full bg-green-400 border border-green-500/20" />
+            <div className="h-3 w-3 rounded-full bg-destructive/80" />
+            <div className="h-3 w-3 rounded-full bg-amber-400/80" />
+            <div className="h-3 w-3 rounded-full bg-emerald-400/80" />
           </div>
-          <span className="flex-1 text-center text-xs font-semibold text-gray-500">
+          <span className="flex-1 text-center text-xs font-semibold text-muted-foreground">
             Pratinjau Dokumen
           </span>
-          <div className="w-16" /> {/* Spacer untuk menyeimbangkan layout */}
+          <div className="w-16" />
         </div>
 
         {/* Responsive Container for PDF Viewer */}
-        <div className="w-full bg-[#525659] flex justify-center p-0 md:p-6 overflow-hidden">
-          <div className="w-full max-w-4xl shadow-2xl overflow-hidden bg-white">
-            {/* 💡 Note: PDFViewer terkadang tidak muncul di beberapa mobile browser, 
-                tapi tetap aman karena ada tombol 'Cetak Notulensi' di atas */}
+        {/* PERBAIKAN 6: Latar belakang PDF viewer menggunakan bg-muted/50 agar netral */}
+        <div className="w-full bg-muted/50 flex justify-center p-0 md:p-6 overflow-hidden">
+          <div className="w-full max-w-4xl shadow-xl overflow-hidden bg-background">
+            {/* FIX: min-h-150 diubah jadi min-h-[600px] karena 150 bukan standar tailwind */}
             <PDFViewer className="w-full h-[80vh] min-h-150 border-none">
               <NotulensiPDF
                 meetingData={meetingData}
@@ -252,8 +261,8 @@ export default function ResultPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="bg-white p-3 text-center border-t border-gray-100">
-          <p className="text-[11px] text-gray-400 font-medium">
+        <div className="bg-background p-3 text-center border-t">
+          <p className="text-[11px] text-muted-foreground font-medium">
             Dokumen ini dihasilkan secara otomatis oleh Sistem E-NOTULEN Bapenda
             Prov. Sultra
           </p>

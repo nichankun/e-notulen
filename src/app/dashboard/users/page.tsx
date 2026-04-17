@@ -36,14 +36,17 @@ export default async function UsersPage() {
   const data = await getUsers();
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0 font-sans">
-      {/* HEADER SECTION (Lebih Clean & Modern) */}
+    // PERBAIKAN 1: Menghapus 'font-sans' karena sudah dikendalikan secara global oleh tag <body> di layout.tsx
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+          {/* PERBAIKAN 2: text-gray-900 diubah ke text-foreground */}
+          <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">
             Manajemen Pengguna
           </h2>
-          <p className="text-sm text-gray-500 mt-1 font-medium">
+          {/* PERBAIKAN 3: text-gray-500 diubah ke text-muted-foreground */}
+          <p className="text-sm text-muted-foreground mt-1 font-medium">
             Kelola data hak akses administrator dan pegawai instansi.
           </p>
         </div>
@@ -57,7 +60,7 @@ export default async function UsersPage() {
       {/* TABLE SECTION */}
       {/* Kita tidak perlu lagi membungkus dengan Card di sini karena 
           DataTable yang kita buat sebelumnya sudah memiliki styling 
-          rounded-xl dan shadow-sm yang serasi.
+          rounded-xl, border, dan shadow-sm yang serasi.
       */}
       <DataTable
         columns={columns}

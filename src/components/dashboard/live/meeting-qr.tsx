@@ -12,11 +12,9 @@ interface MeetingQRCodeProps {
 }
 
 export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
-  // ID Dinamis agar tidak terjadi konflik jika ada banyak QR Code di satu halaman
   const canvasId = `qr-code-canvas-${meetingId}`;
 
   const downloadQRCode = () => {
-    // Cari elemen berdasarkan ID yang spesifik untuk rapat ini
     const canvas = document.getElementById(
       canvasId,
     ) as HTMLCanvasElement | null;
@@ -36,7 +34,6 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
           description: "Gambar QR telah disimpan ke perangkat Anda.",
         });
       } catch (error: unknown) {
-        // TYPE-SAFE: Tangkap error tanpa menggunakan 'any'
         console.error("Gagal memproses kanvas QR:", error);
         toast.error("Gagal Mengunduh", {
           description: "Terjadi kesalahan sistem saat menyimpan gambar.",
@@ -50,34 +47,39 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
   };
 
   return (
-    <Card className="p-5 sm:p-6 text-center border-slate-200 shadow-sm flex flex-col items-center justify-center h-fit bg-white">
+    // PERBAIKAN 1: Menggunakan bg-card dan border standar shadcn
+    <Card className="p-5 sm:p-6 text-center border shadow-sm flex flex-col items-center justify-center h-fit bg-card">
       {/* Header Kecil */}
-      <div className="mb-4 space-y-1 w-full">
-        <h4 className="font-bold text-slate-800 flex items-center justify-center gap-2 text-sm sm:text-base">
-          <QrCode className="h-4 w-4 text-blue-600" />
+      <div className="mb-4 space-y-2 w-full">
+        <h4 className="font-bold text-foreground flex items-center justify-center gap-2 text-sm sm:text-base">
+          {/* Ikon menggunakan warna primary tema Anda */}
+          <QrCode className="h-4 w-4 text-primary" />
           Scan Absensi
         </h4>
-        <div className="text-[10px] sm:text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full font-mono inline-block border border-slate-200">
-          ID: <span className="font-bold text-slate-700">{meetingId}</span>
+        {/* Badge ID Rapat: Menggunakan bg-muted agar lebih soft */}
+        <div className="text-[10px] sm:text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full font-mono inline-block border border-border">
+          ID: <span className="font-bold text-foreground">{meetingId}</span>
         </div>
       </div>
 
       {/* Container QR Code */}
-      <div className="bg-white p-3 border border-slate-200 rounded-xl shadow-inner mb-5">
+      {/* QR Code tetap butuh latar putih agar mudah di-scan kamera, 
+          tapi pembungkusnya kita sesuaikan dengan border shadcn */}
+      <div className="bg-white p-4 border border-border rounded-2xl shadow-inner mb-6 transition-all duration-300">
         {origin ? (
           <QRCodeCanvas
-            id={canvasId} // Gunakan ID Dinamis di sini
+            id={canvasId}
             value={`${origin}/attend/${meetingId}`}
             size={160}
-            fgColor="#1e293b"
+            fgColor="#0f172a" // Slate-900: Warna sangat gelap untuk kontras maksimal saat scan
             bgColor="#ffffff"
-            level={"H"} // Level High sangat bagus untuk URL pendek agar mudah di-scan dari jauh
-            includeMargin={true}
+            level={"H"}
+            includeMargin={false}
             style={{ width: "100%", height: "auto", maxWidth: "160px" }}
           />
         ) : (
-          <div className="h-40 w-40 bg-slate-100 animate-pulse rounded-xl flex items-center justify-center">
-            <QrCode className="h-10 w-10 text-slate-300 opacity-50" />
+          <div className="h-40 w-40 bg-muted animate-pulse rounded-xl flex items-center justify-center">
+            <QrCode className="h-10 w-10 text-muted-foreground/30" />
           </div>
         )}
       </div>
@@ -86,9 +88,9 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
       <Button
         variant="outline"
         onClick={downloadQRCode}
-        // Matikan tombol jika origin belum ada (mencegah klik saat loading)
         disabled={!origin}
-        className="w-full text-xs font-bold h-10 bg-white border-slate-200 hover:bg-slate-50 hover:text-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        // PERBAIKAN 2: Membersihkan class manual, mengandalkan standar Button shadcn
+        className="w-full text-xs font-bold h-10 transition-all rounded-xl"
       >
         <Download className="mr-2 h-4 w-4" /> Simpan Gambar
       </Button>

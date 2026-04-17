@@ -55,12 +55,10 @@ export function CreateUserDialog() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  // State untuk menyimpan data yang baru saja berhasil dibuat
   const [createdUser, setCreatedUser] = useState<z.infer<
     typeof formSchema
   > | null>(null);
 
-  // Form tetap kosong di awal sesuai permintaan Anda
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -88,7 +86,6 @@ export function CreateUserDialog() {
       if (result.success) {
         toast.success(result.message || "User berhasil ditambahkan");
 
-        // Simpan data untuk WA, TAPI jangan tutup dialognya dulu
         setCreatedUser(values);
 
         startTransition(() => {
@@ -103,7 +100,6 @@ export function CreateUserDialog() {
     }
   };
 
-  // --- FUNGSI MENGIRIM KREDENSIAL VIA WA ---
   const handleSendWhatsApp = () => {
     if (!createdUser) return;
 
@@ -111,10 +107,8 @@ export function CreateUserDialog() {
       `Halo Bapak/Ibu *${createdUser.name}*,\n\nPermintaan akses Anda untuk sistem E-Notulen Bapenda Prov. Sultra telah kami proses. Berikut adalah detail akun Anda:\n\n👤 *NIP (Username)*: ${createdUser.nip}\n🔑 *Password*: ${createdUser.password}\n\nSilakan login melalui tautan berikut:\n🔗 [Link Website E-Notulen Anda]\n\n_Catatan: Harap simpan pesan ini baik-baik._\n\nTerima kasih,\n*Tim IT Bapenda Sultra*`,
     );
 
-    // Membuka WA tanpa nomor tujuan (Admin pilih sendiri chat-nya)
     window.open(`https://wa.me/?text=${textMessage}`, "_blank");
 
-    // Tutup dialog dan kembalikan form ke kondisi semula (kosong)
     setOpen(false);
     setCreatedUser(null);
     form.reset();
@@ -126,7 +120,6 @@ export function CreateUserDialog() {
       onOpenChange={(isOpen) => {
         setOpen(isOpen);
         if (!isOpen) {
-          // Bersihkan data WA jika admin menekan 'Esc' atau klik area luar
           setTimeout(() => {
             setCreatedUser(null);
             form.reset();
@@ -135,33 +128,35 @@ export function CreateUserDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 transition-all font-bold rounded-xl">
+        {/* PERBAIKAN 1: Menghapus warna kaku, menggunakan Button primary bawaan shadcn */}
+        <Button className="w-full md:w-auto font-bold transition-all">
           <Plus className="mr-2 h-4 w-4" /> Tambah User Baru
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl p-6">
-        {/* CONDITIONAL RENDERING: Cek apakah user sudah berhasil dibuat */}
         {createdUser ? (
-          /* TAMPILAN JIKA SUKSES -> MUNCUL TOMBOL WA */
+          /* TAMPILAN SUKSES */
           <div className="flex flex-col items-center text-center py-4 animate-in zoom-in-95 duration-500">
-            <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-4 border-4 border-white shadow-sm">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+            {/* PERBAIKAN 2: Warna sukses menggunakan semantik emerald agar cocok di light/dark mode */}
+            <div className="h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 border-4 border-background shadow-sm">
+              <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">
+            <h3 className="text-xl font-black text-foreground mb-2">
               Akun Berhasil Dibuat!
             </h3>
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+            <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
               Akun untuk NIP{" "}
-              <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1 rounded">
+              <span className="font-mono font-bold text-foreground bg-muted px-1.5 py-0.5 rounded-md">
                 {createdUser.nip}
               </span>{" "}
               telah terdaftar di sistem.
             </p>
 
+            {/* Tombol WA tetap menggunakan warna brand WA, tetapi bayangan yang merusak dark mode dihapus */}
             <Button
               onClick={handleSendWhatsApp}
-              className="w-full h-12 bg-[#25D366] hover:bg-[#20b858] text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all text-base flex items-center justify-center"
+              className="w-full h-11 bg-[#25D366] hover:bg-[#20b858] text-white font-bold transition-all text-base flex items-center justify-center"
             >
               <MessageCircle className="mr-2 h-5 w-5" />
               Kirim Kredensial via WA
@@ -170,7 +165,7 @@ export function CreateUserDialog() {
 
             <Button
               variant="ghost"
-              className="mt-3 text-slate-400 font-bold hover:text-slate-600 w-full"
+              className="mt-3 text-muted-foreground font-bold hover:text-foreground w-full"
               onClick={() => {
                 setOpen(false);
                 setCreatedUser(null);
@@ -181,7 +176,7 @@ export function CreateUserDialog() {
             </Button>
           </div>
         ) : (
-          /* TAMPILAN DEFAULT -> FORM INPUT (KOSONG DI AWAL) */
+          /* TAMPILAN FORM */
           <>
             <DialogHeader>
               <DialogTitle className="font-bold">
@@ -202,15 +197,17 @@ export function CreateUserDialog() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      {/* PERBAIKAN 3: text-slate-500 diubah menjadi text-muted-foreground */}
+                      <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
                         Nama Lengkap
                       </FormLabel>
                       <FormControl>
+                        {/* PERBAIKAN 4: Menghapus bg-slate-50 dan border manual. Gunakan bg-background standar. */}
                         <Input
                           placeholder="Input nama lengkap..."
                           {...field}
                           disabled={isLoading}
-                          className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                          className="h-11 bg-background"
                         />
                       </FormControl>
                       <FormMessage />
@@ -224,7 +221,7 @@ export function CreateUserDialog() {
                     name="nip"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
                           NIP / Username
                         </FormLabel>
                         <FormControl>
@@ -232,7 +229,7 @@ export function CreateUserDialog() {
                             placeholder="199XXXXX"
                             {...field}
                             disabled={isLoading}
-                            className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                            className="h-11 bg-background"
                           />
                         </FormControl>
                         <FormMessage />
@@ -244,7 +241,7 @@ export function CreateUserDialog() {
                     name="agency"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
                           Instansi
                         </FormLabel>
                         <FormControl>
@@ -252,7 +249,7 @@ export function CreateUserDialog() {
                             placeholder="Bapenda"
                             {...field}
                             disabled={isLoading}
-                            className="bg-slate-50 rounded-xl h-11 border-slate-200"
+                            className="h-11 bg-background"
                           />
                         </FormControl>
                         <FormMessage />
@@ -266,17 +263,16 @@ export function CreateUserDialog() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
                         Password
                       </FormLabel>
                       <FormControl>
-                        {/* UPDATE KECIL: Diubah jadi type="text" agar admin bisa melihat apa yang dia ketik */}
                         <Input
                           type="text"
                           placeholder="••••••"
                           {...field}
                           disabled={isLoading}
-                          className="bg-slate-50 rounded-xl h-11 border-slate-200 font-mono"
+                          className="h-11 bg-background font-mono"
                         />
                       </FormControl>
                       <FormMessage />
@@ -289,7 +285,7 @@ export function CreateUserDialog() {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                      <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
                         Hak Akses (Role)
                       </FormLabel>
                       <Select
@@ -298,7 +294,7 @@ export function CreateUserDialog() {
                         disabled={isLoading}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-slate-50 rounded-xl h-11 border-slate-200 font-medium">
+                          <SelectTrigger className="h-11 bg-background font-medium">
                             <SelectValue placeholder="Pilih Role" />
                           </SelectTrigger>
                         </FormControl>
@@ -317,10 +313,11 @@ export function CreateUserDialog() {
                 />
 
                 <DialogFooter className="pt-4">
+                  {/* PERBAIKAN 5: Button submit tidak perlu warna manual, biarkan default shadcn (primary) bekerja */}
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 font-bold h-12 rounded-xl shadow-lg shadow-blue-100 transition-all text-white"
+                    className="w-full font-bold h-11 transition-all"
                   >
                     {isLoading ? (
                       <>

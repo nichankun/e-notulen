@@ -32,7 +32,8 @@ export const columns: ColumnDef<User>[] = [
       <Button
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        className="-ml-4 hover:bg-transparent font-bold"
+        // Dihapus hover:bg-transparent agar tombol header tetap punya efek interaktif bawaan shadcn
+        className="-ml-4 font-bold"
       >
         Identitas Pegawai
         <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -40,16 +41,19 @@ export const columns: ColumnDef<User>[] = [
     ),
 
     cell: ({ row }) => (
-      <div className="flex flex-col min-w-0 max-w-64">
+      // max-w-64 diganti jadi max-w-[250px] agar valid di Tailwind
+      <div className="flex flex-col min-w-0 max-w-62.5 md:max-w-75">
         <span
-          className="font-bold text-slate-900 capitalize text-sm md:text-base truncate"
+          // text-slate-900 diubah ke text-foreground
+          className="font-bold text-foreground capitalize text-sm md:text-base truncate"
           title={row.getValue("name")}
         >
           {row.getValue("name")}
         </span>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <Fingerprint className="h-3 w-3 text-blue-400 shrink-0" />
-          <span className="text-[10px] font-mono text-slate-500 tracking-tighter">
+          {/* Ikon sidik jari menggunakan warna primary agar senada dengan tema aplikasi */}
+          <Fingerprint className="h-3 w-3 text-primary/70 shrink-0" />
+          <span className="text-[10px] font-mono text-muted-foreground tracking-tighter">
             NIP. {formatNIP(row.original.nip)}
           </span>
         </div>
@@ -62,9 +66,11 @@ export const columns: ColumnDef<User>[] = [
     cell: ({ row }) => {
       const agency = row.getValue("agency") as string;
       return (
-        <div className="flex items-center gap-2 text-slate-600 min-w-45">
-          <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-            <Building2 className="h-3.5 w-3.5 text-slate-500" />
+        // min-w-45 diganti jadi min-w-[180px] agar valid
+        <div className="flex items-center gap-2 text-muted-foreground min-w-45">
+          {/* bg-slate-100 dan border-slate-200 diubah ke semantic colors shadcn */}
+          <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0 border border-border">
+            <Building2 className="h-3.5 w-3.5" />
           </div>
           <span className="uppercase text-[10px] font-bold tracking-tight leading-tight truncate">
             {agency || "Badan Pendapatan Daerah"}
@@ -82,26 +88,26 @@ export const columns: ColumnDef<User>[] = [
 
       return (
         <div className="whitespace-nowrap">
-          <Badge
-            variant="outline"
-            className={
-              isAdmin
-                ? "bg-blue-50 text-blue-700 border-blue-200 shadow-none gap-1.5 px-2.5 py-1"
-                : "bg-slate-50 text-slate-600 border-slate-200 shadow-none gap-1.5 px-2.5 py-1"
-            }
-          >
-            {isAdmin ? (
-              <>
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Administrator
-              </>
-            ) : (
-              <>
-                <UserCircle className="h-3.5 w-3.5" />
-                Staff Pegawai
-              </>
-            )}
-          </Badge>
+          {/* PERBAIKAN: Menggunakan varian Badge ketimbang manual class string */}
+          {isAdmin ? (
+            <Badge
+              variant="outline"
+              // Admin diberi warna utama (primary) tapi dengan background transparan agar elegan
+              className="bg-primary/10 text-primary border-primary/20 gap-1.5 px-2.5 py-1"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Administrator
+            </Badge>
+          ) : (
+            <Badge
+              // Pegawai menggunakan varian secondary (warna kalem bawaan tema)
+              variant="secondary"
+              className="text-muted-foreground gap-1.5 px-2.5 py-1"
+            >
+              <UserCircle className="h-3.5 w-3.5" />
+              Staff Pegawai
+            </Badge>
+          )}
         </div>
       );
     },

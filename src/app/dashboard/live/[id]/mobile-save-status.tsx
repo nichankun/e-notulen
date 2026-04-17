@@ -1,3 +1,5 @@
+"use client";
+
 import { Loader2, CheckCheck, CloudOff } from "lucide-react";
 
 interface MobileSaveStatusProps {
@@ -6,22 +8,31 @@ interface MobileSaveStatusProps {
 
 export function MobileSaveStatus({ saveStatus }: MobileSaveStatusProps) {
   return (
-    <div className="flex lg:hidden items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+    // PERBAIKAN 1: Menggunakan bg-background dan border-border agar adaptif terhadap Dark Mode.
+    // Shadow diubah menjadi shadow-sm standar shadcn.
+    <div className="flex lg:hidden items-center gap-2 px-3 py-1.5 rounded-full bg-background border shadow-sm transition-all duration-300">
       {saveStatus === "saving" && (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0866ff]" />
+        // PERBAIKAN 2: Menggunakan text-primary alih-alih biru statis.
+        <Loader2 className="h-3 w-3 animate-spin text-primary" />
       )}
+
       {saveStatus === "saved" && (
-        <CheckCheck className="h-3.5 w-3.5 text-[#25D366]" />
+        // PERBAIKAN 3: Menggunakan emerald-500 (sweet spot untuk keterbacaan di Light/Dark mode).
+        <CheckCheck className="h-3 w-3 text-emerald-500" />
       )}
+
       {saveStatus === "error" && (
-        <CloudOff className="h-3.5 w-3.5 text-red-500" />
+        // Menggunakan text-destructive untuk konsistensi error sistem.
+        <CloudOff className="h-3 w-3 text-destructive animate-pulse" />
       )}
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+
+      {/* PERBAIKAN 4: Tipografi dipertajam dengan tracking-widest dan text-muted-foreground */}
+      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
         {saveStatus === "saving"
           ? "Menyimpan..."
           : saveStatus === "saved"
             ? "Tersimpan"
-            : "E-Notulen Live"}
+            : "Sesi Aktif"}
       </span>
     </div>
   );

@@ -9,13 +9,12 @@ interface MeetingAttendeesProps {
   attendees: Attendee[];
 }
 
-// OPTIMASI: Tetap di luar untuk performa real-time yang stabil
+// Formatter tetap di luar untuk efisiensi memori
 const timeFormatter = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
 });
 
-// UX OPTIMASI: Fungsi untuk mengambil inisial dari nama (Maksimal 2 huruf)
 const getInitials = (name: string) => {
   if (!name) return "??";
   const words = name.trim().split(" ");
@@ -25,30 +24,35 @@ const getInitials = (name: string) => {
 
 export function MeetingAttendees({ attendees }: MeetingAttendeesProps) {
   return (
-    // FIX TAILWIND: Mengganti h-75/h-100 dengan ukuran standar Tailwind (h-80 dan lg:h-96)
-    <Card className="border-slate-200 shadow-sm overflow-hidden flex flex-col h-80 lg:h-96 bg-white">
-      <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 backdrop-blur-sm flex justify-between items-center shrink-0">
-        <h4 className="font-bold text-sm text-slate-700">Peserta Masuk</h4>
+    // PERBAIKAN 1: Gunakan bg-card dan border-border agar otomatis dukung Dark Mode
+    <Card className="flex flex-col h-80 lg:h-96 bg-card border shadow-sm overflow-hidden rounded-xl">
+      {/* HEADER: Menggunakan bg-muted/50 agar senada dengan toolbar editor */}
+      <div className="px-4 py-3 border-b bg-muted/50 backdrop-blur-md flex justify-between items-center shrink-0">
+        <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground">
+          Peserta Masuk
+        </h4>
+        {/* PERBAIKAN 2: Gunakan variant standar shadcn agar warna serasi dengan preset */}
         <Badge
-          variant="secondary"
-          className="bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"
+          variant="outline"
+          className="bg-primary/10 text-primary border-primary/20 font-bold px-2 py-0.5"
         >
           {attendees.length} Orang
         </Badge>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-0 scroll-smooth scrollbar-thin scrollbar-thumb-slate-200">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 bg-background">
         {attendees.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400 text-xs italic">
-            <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
-              <User className="h-6 w-6 opacity-30" />
+          <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
+              <User className="h-6 w-6 text-muted-foreground opacity-50" />
             </div>
-            <p>Belum ada peserta scan...</p>
+            <p className="text-xs font-medium text-muted-foreground italic">
+              Belum ada peserta scan...
+            </p>
           </div>
         ) : (
-          <div className="flex flex-col">
+          <div className="flex flex-col divide-y divide-border/50">
             {attendees.map((person) => {
-              // FIX CRASH: Buat tanggal fallback yang aman jika scannedAt bermasalah
               const scanTime = person.scannedAt
                 ? timeFormatter.format(new Date(person.scannedAt))
                 : "--:--";
@@ -56,26 +60,29 @@ export function MeetingAttendees({ attendees }: MeetingAttendeesProps) {
               return (
                 <div
                   key={person.id}
-                  className="px-4 py-3 border-b border-slate-50 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors animate-in slide-in-from-left-2 duration-300"
+                  className="px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors animate-in slide-in-from-left-2 duration-300"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="shrink-0 h-9 w-9 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                    {/* AVATAR: Menggunakan warna primary transparan agar lebih "segar" */}
+                    <div className="shrink-0 h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary border border-primary/20 shadow-sm">
                       {getInitials(person.name)}
                     </div>
 
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-700 truncate max-w-35 sm:max-w-50">
+                      {/* PERBAIKAN 3: Gunakan text-foreground dan hapus max-w-35 (tidak valid) */}
+                      <p className="text-sm font-bold text-foreground truncate max-w-35 sm:max-w-50">
                         {person.name}
                       </p>
                       {person.department && (
-                        <p className="text-[10px] text-slate-500 truncate max-w-35">
+                        <p className="text-[10px] text-muted-foreground truncate max-w-35">
                           {person.department}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <span className="shrink-0 text-[10px] font-mono font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                  {/* TIMESTAMP: Dibuat lebih subtle dan bersih */}
+                  <span className="shrink-0 text-[10px] font-mono font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md border">
                     {scanTime}
                   </span>
                 </div>
