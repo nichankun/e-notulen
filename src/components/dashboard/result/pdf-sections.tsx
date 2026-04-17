@@ -180,69 +180,8 @@ export function PdfPhotos({ photos }: { photos: string[] }) {
           ))}
         </View>
       ) : (
-        <Text style={styles.noPhoto}>Tidak ada lampiran dokumentasi</Text>
+        <Text style={styles.noPhoto}></Text>
       )}
     </>
-  );
-}
-
-export function PdfSignatures({
-  leader,
-  date,
-}: {
-  leader: string;
-  date: Date | string;
-}) {
-  return (
-    <View style={styles.signatureSection} wrap={false}>
-      <View style={styles.signatureBlock}>
-        <Text style={styles.signatureDate}>Mengetahui,</Text>
-        <Text
-          style={[
-            styles.signatureName,
-            { textDecoration: "none", marginBottom: 2 },
-          ]}
-        >
-          Pimpinan Rapat
-        </Text>
-        <Text style={{ fontSize: 9, marginBottom: 50 }}>
-          (......................................)
-        </Text>
-        <Text style={styles.signatureName}>
-          {leader || "................................"}
-        </Text>
-        <Text style={styles.signatureNip}>
-          NIP. ................................
-        </Text>
-      </View>
-
-      <View style={styles.signatureBlock}>
-        <Text style={styles.signatureDate}>
-          Kendari,{" "}
-          {new Date(date).toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </Text>
-        <Text
-          style={[
-            styles.signatureName,
-            { textDecoration: "none", marginBottom: 2 },
-          ]}
-        >
-          Notulis
-        </Text>
-        <Text style={{ fontSize: 9, marginBottom: 50 }}>
-          (......................................)
-        </Text>
-        <Text style={styles.signatureName}>
-          ................................
-        </Text>
-        <Text style={styles.signatureNip}>
-          NIP. ................................
-        </Text>
-      </View>
-    </View>
   );
 }

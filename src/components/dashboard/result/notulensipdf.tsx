@@ -12,7 +12,6 @@ import {
   PdfRisalah,
   PdfAttendanceTable,
   PdfPhotos,
-  PdfSignatures,
 } from "./pdf-sections";
 
 export default function NotulensiPDF({
@@ -33,10 +32,6 @@ export default function NotulensiPDF({
         <PdfRisalah content={meetingData.content || ""} />
         <PdfAttendanceTable attendees={attendees} />
         <PdfPhotos photos={photos} />
-        <PdfSignatures
-          leader={meetingData.leader || ""}
-          date={meetingData.date}
-        />
 
         {/* NOMOR HALAMAN OTOMATIS */}
         <Text
