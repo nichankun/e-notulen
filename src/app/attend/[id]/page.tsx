@@ -18,11 +18,15 @@ export default function AttendancePage({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!id) return;
+
     const fetchAttendees = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}/attendees`);
-        const json = await res.json();
-        if (json.success) setAttendees(json.data);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success) setAttendees(json.data);
+        }
       } catch (err) {
         console.error("Gagal mengambil data peserta:", err);
       } finally {

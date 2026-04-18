@@ -5,6 +5,9 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Building2, CalendarDays } from "lucide-react";
 
+// 1. IMPORT TOMBOL TEMA KITA DI SINI
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+
 // Formatter di luar untuk efisiensi
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   weekday: "long",
@@ -41,8 +44,8 @@ export function Header({ userAgency }: { userAgency?: string }) {
         </h1>
       </div>
 
-      {/* KANAN: Tanggal & Identitas Instansi */}
-      <div className="flex items-center gap-4 shrink-0">
+      {/* KANAN: Tanggal, Identitas Instansi & Ganti Tema */}
+      <div className="flex items-center gap-3 md:gap-4 shrink-0">
         {/* Tanggal (Hanya Desktop) */}
         <div className="hidden lg:flex items-center gap-3 text-right">
           <div className="flex flex-col items-end leading-none">
@@ -77,6 +80,9 @@ export function Header({ userAgency }: { userAgency?: string }) {
             </span>
           </div>
         </div>
+
+        {/* 2. TOMBOL TEMA DIPANGGIL DI SINI */}
+        <ThemeToggle />
       </div>
     </header>
   );
