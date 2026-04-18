@@ -1,32 +1,29 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings, attendees } from "@/db/database/schema";
-import { eq, sql, asc, and, ne, count } from "drizzle-orm"; // Tambahkan 'count'
+import { eq, sql, asc, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 
-// 1. ZOD SCHEMA: Menggantikan interface manual agar validasi terjamin di level runtime
+// 1. ZOD SCHEMA
 const attendanceSchema = z.object({
   name: z.string().min(1, "Nama lengkap wajib diisi"),
   nip: z.string().min(1, "NIP wajib diisi"),
   department: z.string().optional(),
-  // Catatan: Pastikan di file schema.ts, attendeeRoleEnum diubah mengikuti array ini!
   role: z.enum(["pimpinan", "pejabat", "peserta"]),
   signature: z.string().min(1, "Tanda tangan digital wajib diisi"),
   deviceId: z.string().min(1, "Gagal mengidentifikasi perangkat"),
 });
 
 // ==========================================
-// GET: MENGAMBIL DAFTAR HADIR (Bisa ditampilkan realtime di layar proyektor)
+// GET: MENGAMBIL DAFTAR HADIR
 // ==========================================
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
     const meetingId = (await params).id;
 
-    // PERBAIKAN: Validasi string kosong, bukan isNaN()
     if (!meetingId || meetingId.trim() === "") {
       return NextResponse.json(
         { success: false, message: "ID Rapat tidak valid" },
@@ -41,7 +38,7 @@ export async function GET(
 
     if (
       !meeting ||
-      (meeting.status !== "live" && meeting.status !== "archived") // Catatan: Anda mungkin ingin mengubah "completed" menjadi "archived" sesuai enum DB baru Anda
+      (meeting.status !== "live" && meeting.status !== "archived")
     ) {
       return NextResponse.json(
         { success: false, message: "Akses rapat ditutup" },
@@ -54,7 +51,6 @@ export async function GET(
       .from(attendees)
       .where(eq(attendees.meetingId, meetingId))
       .orderBy(
-        // Pengurutan hierarki untuk layar monitor rapat
         sql`CASE 
           WHEN ${attendees.role} = 'pimpinan' THEN 1 
           WHEN ${attendees.role} = 'pejabat' THEN 2 
@@ -78,10 +74,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
     const meetingId = (await params).id;
 
-    // PERBAIKAN: Validasi string kosong, bukan isNaN()
     if (!meetingId || meetingId.trim() === "") {
       return NextResponse.json(
         { success: false, message: "ID Rapat tidak valid" },
@@ -89,7 +83,7 @@ export async function POST(
       );
     }
 
-    // VALIDASI ZOD PENGGANTI MANUAL IF-ELSE
+    // VALIDASI ZOD
     const body: unknown = await request.json();
     const parse = attendanceSchema.safeParse(body);
 
@@ -98,13 +92,12 @@ export async function POST(
         {
           success: false,
           message: "Data tidak lengkap",
-          errors: parse.error.flatten(),
+          errors: parse.error.flatten().fieldErrors,
         },
         { status: 400 },
       );
     }
 
-    // Tipe data sudah otomatis infer (tanpa any, tanpa as)
     const { name, nip, department, role, signature, deviceId } = parse.data;
 
     const meeting = await db.query.meetings.findFirst({
@@ -121,12 +114,12 @@ export async function POST(
       );
     }
 
-    // FITUR ANTI-FRAUD: Cek jika Device ID dipakai absen NIP lain
+    // FITUR ANTI-FRAUD: Cek menggunakan name, bukan nip (karena nip sekarang bypass "-")
     const deviceUsedByOthers = await db.query.attendees.findFirst({
       where: and(
         eq(attendees.meetingId, meetingId),
         eq(attendees.deviceId, deviceId),
-        ne(attendees.nip, nip),
+        ne(attendees.name, name),
       ),
     });
 
@@ -141,11 +134,14 @@ export async function POST(
       );
     }
 
+    // UPSERT LOGIC: Cek existing berdasarkan deviceId, bukan nip
     const existing = await db.query.attendees.findFirst({
-      where: and(eq(attendees.meetingId, meetingId), eq(attendees.nip, nip)),
+      where: and(
+        eq(attendees.meetingId, meetingId),
+        eq(attendees.deviceId, deviceId),
+      ),
     });
 
-    // UPSERT LOGIC
     if (existing) {
       await db
         .update(attendees)
@@ -170,7 +166,7 @@ export async function POST(
       });
     }
 
-    // OPTIMASI: Menghitung total kehadiran dengan fungsi bawaan Drizzle
+    // UPDATE TOTAL HADIR
     const [stats] = await db
       .select({ count: count() })
       .from(attendees)

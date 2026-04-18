@@ -111,6 +111,34 @@ export default function LiveMeetingPage({ params }: PageProps) {
     };
   }, [id]);
 
+  // ========================================================
+  // 3.5. FITUR SINKRONISASI STATUS (Auto-Kick)
+  // ========================================================
+  useEffect(() => {
+    const checkMeetingStatus = async () => {
+      try {
+        const res = await fetch(`/api/meetings/${id}`);
+        const json = await res.json();
+
+        if (json.success) {
+          if (json.data.status !== "live") {
+            toast.info("Rapat Telah Berakhir", {
+              description:
+                "Rapat ini telah difinalisasi melalui perangkat lain.",
+            });
+            router.push("/dashboard/archive");
+            router.refresh();
+          }
+        }
+      } catch (err) {
+        console.error("Gagal sinkronisasi status rapat:", err);
+      }
+    };
+
+    const statusInterval = setInterval(checkMeetingStatus, 5000);
+    return () => clearInterval(statusInterval);
+  }, [id, router]);
+
   // 4. AUTO-SAVE LOGIC
   useEffect(() => {
     const hasContentChanged = notulen !== (meetingData?.content ?? "");
@@ -187,7 +215,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
   }
 
   return (
-    // PERBAIKAN: Menghapus font-sans dan menyelaraskan padding serta animasi masuk
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 p-4 md:p-6 bg-background">
       {/* HEADER SECTION: Desktop & Mobile Save Status */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -195,13 +222,13 @@ export default function LiveMeetingPage({ params }: PageProps) {
           date={meetingData?.date ? new Date(meetingData.date) : undefined}
         />
 
-        {/* Indikator Status Auto-Save Mobile (Hanya tampil di layar kecil) */}
+        {/* Indikator Status Auto-Save Mobile */}
         <MobileSaveStatus saveStatus={saveStatus} />
       </div>
 
       {/* MAIN CONTENT GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* KOLOM KIRI: QR Code & Attendees (Sticky di desktop) */}
+        {/* KOLOM KIRI: QR Code & Attendees */}
         <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 h-fit">
           <MeetingQRCode meetingId={id} origin={origin} />
           <MeetingAttendees attendees={attendees} />

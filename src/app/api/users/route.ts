@@ -7,7 +7,11 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { verifyAuthToken } from "@/lib/auth";
 
-// --- TYPE GUARD UNTUK POSTGRES ERROR (Lebih aman dari 'in' operator biasa) ---
+// ==========================================
+// 1. HELPERS & TYPE GUARDS
+// ==========================================
+
+// Mencegah aplikasi crash jika terjadi duplikasi NIP di Database
 function isPgUniqueError(err: unknown): err is { code: string } {
   return (
     typeof err === "object" &&
@@ -17,21 +21,29 @@ function isPgUniqueError(err: unknown): err is { code: string } {
   );
 }
 
-// --- FUNGSI BANTUAN PROTEKSI ADMIN-ONLY ---
-async function requireAdminAuth() {
+// Memusatkan logika Auth dan penanganan Error Respons
+async function authenticateAdmin() {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
-  if (!token) return null;
+
+  if (!token)
+    return { error: "Sesi tidak valid atau telah habis", status: 401 };
 
   const payload = await verifyAuthToken(token);
-  // Pastikan token valid, memiliki ID, dan role-nya WAJIB 'admin'
-  if (!payload || !payload.id || payload.role !== "admin") return null;
 
-  // PERBAIKAN: Gunakan String karena ID sekarang UUID
-  return { userId: String(payload.id) };
+  if (!payload || !payload.id || payload.role !== "admin") {
+    return {
+      error: "Akses Ditolak: Hanya Administrator yang diizinkan",
+      status: 403,
+    };
+  }
+
+  return { user: { id: String(payload.id) } };
 }
 
-// 1. SCHEMA VALIDASI POST (Create)
+// ==========================================
+// 2. ZOD SCHEMAS
+// ==========================================
 const userSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter"),
   nip: z.string().min(5, "NIP minimal 5 karakter"),
@@ -40,20 +52,16 @@ const userSchema = z.object({
   agency: z.string().min(2, "Instansi wajib diisi"),
 });
 
-// 2. SCHEMA VALIDASI PATCH (Update)
 const patchUserSchema = z.object({
-  // PERBAIKAN: id sekarang adalah string (UUID)
   id: z.string().min(1, "ID tidak valid"),
-  name: z.string().min(3),
-  nip: z.string().min(5),
+  name: z.string().min(3, "Nama minimal 3 karakter"),
+  nip: z.string().min(5, "NIP minimal 5 karakter"),
   role: z.enum(["admin", "pegawai"]),
-  agency: z.string().min(2),
-  // OPTIMASI ZOD: Langsung validasi minimal 6 karakter jika diisi, atau abaikan jika kosong
+  agency: z.string().min(2, "Instansi wajib diisi"),
   password: z
     .union([
       z.string().min(6, "Password baru minimal 6 karakter"),
       z.literal(""),
-      z.undefined(),
     ])
     .optional(),
 });
@@ -67,19 +75,17 @@ interface UserUpdatePayload {
 }
 
 // ==========================================
-// POST: MEMBUAT USER BARU (Hanya Admin)
+// POST: MEMBUAT USER BARU (Admin Only)
 // ==========================================
 export async function POST(req: Request) {
   try {
-    const adminUser = await requireAdminAuth();
-    if (!adminUser)
+    const auth = await authenticateAdmin();
+    if (auth.error) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Akses Ditolak: Hanya Administrator yang diizinkan",
-        },
-        { status: 403 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
+    }
 
     const body: unknown = await req.json();
     const parse = userSchema.safeParse(body);
@@ -88,8 +94,8 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Validasi gagal",
-          errors: parse.error.flatten(),
+          message: "Validasi data gagal",
+          errors: parse.error.flatten().fieldErrors, // Konsisten dengan route lain
         },
         { status: 400 },
       );
@@ -117,7 +123,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    console.error("User Create Error:", error);
+    console.error("API POST User Error:", error);
     return NextResponse.json(
       { success: false, message: "Terjadi kesalahan pada server" },
       { status: 500 },
@@ -126,19 +132,17 @@ export async function POST(req: Request) {
 }
 
 // ==========================================
-// PATCH: UPDATE USER (Hanya Admin)
+// PATCH: UPDATE USER (Admin Only)
 // ==========================================
 export async function PATCH(req: Request) {
   try {
-    const adminUser = await requireAdminAuth();
-    if (!adminUser)
+    const auth = await authenticateAdmin();
+    if (auth.error) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Akses Ditolak: Hanya Administrator yang diizinkan",
-        },
-        { status: 403 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
+    }
 
     const body: unknown = await req.json();
     const parse = patchUserSchema.safeParse(body);
@@ -148,14 +152,13 @@ export async function PATCH(req: Request) {
         {
           success: false,
           message: "Data tidak valid",
-          errors: parse.error.flatten(),
+          errors: parse.error.flatten().fieldErrors,
         },
         { status: 400 },
       );
     }
 
     const { id, name, nip, role, agency, password } = parse.data;
-
     const updateData: UserUpdatePayload = { name, nip, role, agency };
 
     if (password && password.trim() !== "") {
@@ -175,7 +178,7 @@ export async function PATCH(req: Request) {
         { status: 400 },
       );
     }
-    console.error("User Update Error:", error);
+    console.error("API PATCH User Error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal memperbarui data user" },
       { status: 500 },
@@ -184,39 +187,37 @@ export async function PATCH(req: Request) {
 }
 
 // ==========================================
-// DELETE: HAPUS USER (Hanya Admin)
+// DELETE: HAPUS USER (Admin Only)
 // ==========================================
 export async function DELETE(req: Request) {
   try {
-    const adminUser = await requireAdminAuth();
-    if (!adminUser)
+    const auth = await authenticateAdmin();
+    if (auth.error) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Akses Ditolak: Hanya Administrator yang diizinkan",
-        },
-        { status: 403 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
+    }
 
     const { searchParams } = new URL(req.url);
     const targetId = searchParams.get("id");
 
-    // PERBAIKAN: Hapus pengecekan isNaN() karena UUID adalah teks (string)
     if (!targetId || targetId.trim() === "") {
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "ID pengguna tidak valid" },
         { status: 400 },
       );
     }
 
-    // Mencegah admin menghapus dirinya sendiri secara tidak sengaja
-    if (targetId === adminUser.userId) {
+    // Mencegah admin "bunuh diri" (menghapus akunnya sendiri yang sedang aktif)
+    if (targetId === auth.user!.id) {
       return NextResponse.json(
         {
           success: false,
-          message: "Anda tidak dapat menghapus akun Anda sendiri",
+          message:
+            "Sistem menolak: Anda tidak dapat menghapus akun Anda sendiri",
         },
-        { status: 400 },
+        { status: 403 },
       );
     }
 
@@ -227,19 +228,22 @@ export async function DELETE(req: Request) {
 
     if (deleted.length === 0) {
       return NextResponse.json(
-        { success: false, message: "Data pengguna tidak ditemukan" },
+        {
+          success: false,
+          message: "Data pengguna tidak ditemukan di database",
+        },
         { status: 404 },
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "User berhasil dihapus permanen",
+      message: "User berhasil dihapus secara permanen",
     });
   } catch (error: unknown) {
-    console.error("User Delete Error:", error);
+    console.error("API DELETE User Error:", error);
     return NextResponse.json(
-      { success: false, message: "Gagal menghapus user" },
+      { success: false, message: "Gagal menghapus data pengguna" },
       { status: 500 },
     );
   }

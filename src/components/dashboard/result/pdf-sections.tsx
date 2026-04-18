@@ -80,7 +80,7 @@ export function PdfAttendanceTable({ attendees }: { attendees: Attendee[] }) {
             <Text style={styles.tableCellHeader}>No</Text>
           </View>
           <View style={[styles.tableColHeader, { width: "32%" }]}>
-            <Text style={styles.tableCellHeader}>Nama / NIP</Text>
+            <Text style={styles.tableCellHeader}>Nama</Text>
           </View>
           <View style={[styles.tableColHeader, { width: "25%" }]}>
             <Text style={styles.tableCellHeader}>Instansi / Bidang</Text>
@@ -103,9 +103,6 @@ export function PdfAttendanceTable({ attendees }: { attendees: Attendee[] }) {
               <View style={[styles.tableCol, { width: "32%" }]}>
                 <Text style={[styles.tableCell, { fontWeight: "bold" }]}>
                   {person.name}
-                </Text>
-                <Text style={{ fontSize: 8, color: "#475569", marginTop: 2 }}>
-                  NIP. {person.nip || "-"}
                 </Text>
               </View>
               <View style={[styles.tableCol, { width: "25%" }]}>

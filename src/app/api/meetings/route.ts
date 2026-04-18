@@ -3,13 +3,14 @@ import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { desc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
-import { verifyAuthToken } from "@/lib/auth"; // PENTING: Gunakan utility kita!
+import { verifyAuthToken } from "@/lib/auth";
 import { z } from "zod";
 
-// 1. ZOD SCHEMA: Validasi input yang lebih ketat & aman
+// ==========================================
+// 1. ZOD SCHEMA (Validasi Input)
+// ==========================================
 const createMeetingSchema = z.object({
   title: z.string().min(5, "Judul rapat minimal 5 karakter"),
-  // Memastikan format tanggal bisa di-parse oleh JavaScript Date
   date: z
     .string()
     .min(1, "Tanggal wajib diisi")
@@ -21,40 +22,47 @@ const createMeetingSchema = z.object({
 });
 
 // ==========================================
+// 2. HELPER: OTENTIKASI & VALIDASI SESI
+// ==========================================
+// Memisahkan logika pengecekan token agar tidak berulang di GET dan POST
+async function authenticateRequest() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("auth_token")?.value;
+
+  if (!token)
+    return { error: "Sesi habis atau tidak memiliki akses", status: 401 };
+
+  const payload = await verifyAuthToken(token);
+  if (!payload || !payload.id)
+    return { error: "Sesi tidak valid", status: 401 };
+
+  const userId = String(payload.id);
+  if (!userId || userId.trim() === "" || userId === "undefined") {
+    return { error: "Identitas pengguna tidak valid", status: 400 };
+  }
+
+  return {
+    user: {
+      id: userId,
+      role: (payload.role as string) || "pegawai",
+    },
+  };
+}
+
+// ==========================================
 // GET: MENGAMBIL DAFTAR RAPAT
 // ==========================================
 export async function GET() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
-
-    if (!token) {
+    const auth = await authenticateRequest();
+    if (auth.error) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
     }
 
-    // BONGKAR JWT: Ambil ID dan Role yang asli & aman
-    const payload = await verifyAuthToken(token);
-    if (!payload || !payload.id) {
-      return NextResponse.json(
-        { success: false, message: "Sesi tidak valid" },
-        { status: 401 },
-      );
-    }
-
-    // PERBAIKAN: Ubah ke String untuk UUID
-    const userId = String(payload.id);
-    const role = (payload.role as string) || "pegawai";
-
-    // PERBAIKAN: Cegah string kosong atau undefined
-    if (!userId || userId.trim() === "" || userId === "undefined") {
-      return NextResponse.json(
-        { success: false, message: "ID User invalid" },
-        { status: 400 },
-      );
-    }
+    const { id: userId, role } = auth.user!;
 
     // BASE QUERY
     const query = db
@@ -92,35 +100,15 @@ export async function GET() {
 // ==========================================
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
-
-    if (!token) {
+    const auth = await authenticateRequest();
+    if (auth.error) {
       return NextResponse.json(
-        { success: false, message: "Sesi habis" },
-        { status: 401 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
     }
 
-    // BONGKAR JWT UNTUK MENDAPATKAN USER ID
-    const payload = await verifyAuthToken(token);
-    if (!payload || !payload.id) {
-      return NextResponse.json(
-        { success: false, message: "Sesi tidak valid" },
-        { status: 401 },
-      );
-    }
-
-    // PERBAIKAN: Ubah ke String untuk UUID
-    const userId = String(payload.id);
-
-    // PERBAIKAN: Validasi string kosong/undefined
-    if (!userId || userId.trim() === "" || userId === "undefined") {
-      return NextResponse.json(
-        { success: false, message: "ID User invalid" },
-        { status: 400 },
-      );
-    }
+    const { id: userId } = auth.user!;
 
     // VALIDASI BODY MENGGUNAKAN ZOD
     const body: unknown = await request.json();
@@ -130,8 +118,8 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Validasi gagal",
-          errors: parse.error.flatten(),
+          message: "Validasi data gagal",
+          errors: parse.error.flatten().fieldErrors, // Lebih spesifik mengambil fieldErrors
         },
         { status: 400 },
       );
@@ -144,12 +132,12 @@ export async function POST(request: Request) {
       .insert(meetings)
       .values({
         title,
-        date: new Date(date), // Aman karena sudah divalidasi Zod
-        location: location || "",
-        leader: leader || "",
+        date: new Date(date),
+        location, // Zod sudah memastikan ini bukan string kosong
+        leader, // Zod sudah memastikan ini bukan string kosong
         status: "live",
         attendanceCount: 0,
-        userId: userId, // Pasti UUID String yang valid
+        userId,
       })
       .returning({ id: meetings.id });
 

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Eraser, Loader2, CheckCircle2 } from "lucide-react";
+import { Eraser, Loader2, CheckCircle2, Info } from "lucide-react";
 
 const formSchema = z.object({
   name: z.string().min(3, "Nama lengkap wajib diisi"),
@@ -59,134 +59,149 @@ export function AttendanceForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-5 bg-card p-6 md:p-10 rounded-[2.5rem] border shadow-2xl"
+        className="space-y-6 bg-card/80 backdrop-blur-xl p-6 md:p-8 rounded-[2rem] border shadow-xl"
       >
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-widest ml-1">
-                Nama Lengkap
-              </FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="Input nama lengkap..."
-                  className="h-14 rounded-2xl bg-muted/30 border-none px-6"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
           <FormField
             control={form.control}
-            name="department"
+            name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-widest ml-1">
-                  Unit Kerja
+                <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest ml-1">
+                  Nama Lengkap
                 </FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Contoh: Bidang Pajak"
-                    className="h-14 rounded-2xl bg-muted/30 border-none px-6"
+                    placeholder="Contoh: Dr. H. Budi Santoso"
+                    className="h-12 rounded-xl bg-background border-muted-foreground/20 px-4 focus-visible:ring-primary"
                     {...field}
                   />
                 </FormControl>
+                <FormMessage className="text-[10px]" />
               </FormItem>
             )}
           />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest ml-1">
+                    Instansi / Bidang
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Contoh: Bidang Pajak"
+                      className="h-12 rounded-xl bg-background border-muted-foreground/20 px-4 focus-visible:ring-primary"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-[10px]" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="role"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest ml-1">
+                    Peran
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-12 rounded-xl bg-background border-muted-foreground/20 px-4 focus:ring-primary">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="pimpinan">Pimpinan</SelectItem>
+                      <SelectItem value="pejabat">Pejabat</SelectItem>
+                      <SelectItem value="peserta">Staff / Peserta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          </div>
+
           <FormField
             control={form.control}
-            name="role"
-            render={({ field }) => (
+            name="signature"
+            render={() => (
               <FormItem>
-                <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-widest ml-1">
-                  Peran
-                </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="h-14 rounded-2xl bg-muted/30 border-none px-6">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="rounded-2xl border-none shadow-2xl">
-                    <SelectItem value="pimpinan">Pimpinan</SelectItem>
-                    <SelectItem value="pejabat">Pejabat</SelectItem>
-                    <SelectItem value="peserta">Staff</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex justify-between items-end px-1 mb-1">
+                  <FormLabel className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest">
+                    Paraf Digital
+                  </FormLabel>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sigCanvas.current?.clear();
+                      form.setValue("signature", "");
+                    }}
+                    className="text-[10px] text-destructive font-bold flex items-center gap-1 hover:opacity-70 transition-opacity"
+                  >
+                    <Eraser className="size-3" /> HAPUS
+                  </button>
+                </div>
+                <FormControl>
+                  <div
+                    ref={containerRef}
+                    className="w-full border-2 border-dashed border-primary/30 rounded-2xl bg-muted/10 overflow-hidden focus-within:border-primary transition-colors"
+                  >
+                    <SignatureCanvas
+                      ref={sigCanvas}
+                      penColor="#000"
+                      onEnd={() =>
+                        form.setValue(
+                          "signature",
+                          sigCanvas.current
+                            ?.getTrimmedCanvas()
+                            .toDataURL("image/png") || "",
+                          { shouldValidate: true },
+                        )
+                      }
+                      canvasProps={{
+                        width: canvasWidth,
+                        height: 130, // DIKECILKAN agar lebih rapi
+                        className: "cursor-crosshair w-full",
+                      }}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage className="text-[10px]" />
               </FormItem>
             )}
           />
         </div>
 
-        <FormField
-          control={form.control}
-          name="signature"
-          render={() => (
-            <FormItem>
-              <div className="flex justify-between items-end px-1">
-                <FormLabel className="text-xs font-bold uppercase text-muted-foreground tracking-widest">
-                  Tanda Tangan
-                </FormLabel>
-                <button
-                  type="button"
-                  onClick={() => {
-                    sigCanvas.current?.clear();
-                    form.setValue("signature", "");
-                  }}
-                  className="text-[11px] text-destructive font-bold flex items-center gap-1"
-                >
-                  <Eraser className="size-3" /> RESET
-                </button>
-              </div>
-              <FormControl>
-                <div
-                  ref={containerRef}
-                  className="w-full border-2 border-dashed border-muted-foreground/20 rounded-[2rem] bg-muted/20 overflow-hidden"
-                >
-                  <SignatureCanvas
-                    ref={sigCanvas}
-                    penColor="#000"
-                    onEnd={() =>
-                      form.setValue(
-                        "signature",
-                        sigCanvas.current
-                          ?.getTrimmedCanvas()
-                          .toDataURL("image/png") || "",
-                        { shouldValidate: true },
-                      )
-                    }
-                    canvasProps={{
-                      width: canvasWidth,
-                      height: 200,
-                      className: "cursor-crosshair w-full",
-                    }}
-                  />
-                </div>
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        {/* INFO BOX: Penjelasan Revisi vs Duplikat */}
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex gap-3 text-sm">
+          <Info className="size-5 text-primary shrink-0 mt-0.5" />
+          <div className="text-muted-foreground leading-relaxed text-[11px] md:text-xs">
+            <strong className="text-foreground">Sistem Anti-Duplikat:</strong> 1
+            Perangkat hanya untuk 1 Nama. Jika ada kesalahan penulisan bidang
+            atau bentuk paraf, Anda dapat absen ulang untuk{" "}
+            <strong>merevisi</strong> selama menggunakan nama yang persis sama.
+          </div>
+        </div>
 
         <Button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className="w-full h-16 rounded-full font-black text-xl shadow-xl shadow-primary/20 active:scale-95 transition-all"
+          className="w-full h-14 rounded-xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all"
         >
           {form.formState.isSubmitting ? (
-            <Loader2 className="animate-spin" />
+            <Loader2 className="animate-spin size-6" />
           ) : (
             <>
-              ABSEN SEKARANG <CheckCircle2 />
+              Kirim Presensi <CheckCircle2 className="ml-2 size-5" />
             </>
           )}
         </Button>

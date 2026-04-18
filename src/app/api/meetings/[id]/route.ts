@@ -4,31 +4,45 @@ import { meetings, type NewMeeting } from "@/db/database/schema";
 import { eq, and } from "drizzle-orm";
 import { supabase } from "@/lib/supabaseClient";
 import { cookies } from "next/headers";
-import { verifyAuthToken } from "@/lib/auth"; // Utility auth kebanggaan kita
+import { verifyAuthToken } from "@/lib/auth";
 import { z } from "zod";
 
-// 1. ZOD SCHEMA: Validasi data update yang masuk
+// ==========================================
+// 1. ZOD SCHEMA
+// ==========================================
 const updateMeetingSchema = z.object({
   content: z.string().optional(),
   status: z.enum(["draft", "live", "archived"]).optional(),
   photos: z.array(z.string()).optional(),
 });
 
-// FUNGSI BANTUAN OTENTIKASI AGAR DRY (Don't Repeat Yourself)
-async function requireAuth() {
+// ==========================================
+// 2. HELPER: OTENTIKASI & KONDISI QUERY
+// ==========================================
+async function authenticateRequest() {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
-  if (!token) return null;
+
+  if (!token)
+    return { error: "Sesi tidak valid atau telah habis", status: 401 };
 
   const payload = await verifyAuthToken(token);
-
-  // PERBAIKAN: Hapus isNaN() karena ID sekarang adalah string (UUID)
-  if (!payload || !payload.id) return null;
+  if (!payload || !payload.id)
+    return { error: "Akses ditolak (Unauthorized)", status: 401 };
 
   return {
-    userId: String(payload.id),
-    role: (payload.role as string) || "pegawai",
+    user: {
+      id: String(payload.id),
+      role: (payload.role as string) || "pegawai",
+    },
   };
+}
+
+// Mengekstrak logika otorisasi agar tidak diulang di GET, PATCH, dan DELETE
+function getAuthCondition(meetingId: string, userId: string, role: string) {
+  return role === "admin"
+    ? eq(meetings.id, meetingId) // Admin bebas akses ID apa saja
+    : and(eq(meetings.id, meetingId), eq(meetings.userId, userId)); // Pegawai hanya miliknya
 }
 
 // ==========================================
@@ -39,27 +53,25 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireAuth();
-    if (!user)
+    const auth = await authenticateRequest();
+    if (auth.error)
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
 
-    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
     const meetingId = (await params).id;
-    if (!meetingId || meetingId.trim() === "")
+    if (!meetingId)
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "ID rapat tidak valid" },
         { status: 400 },
       );
 
-    // FILTER: Pegawai hanya boleh GET rapatnya sendiri. Admin bebas.
-    const condition =
-      user.role === "admin"
-        ? eq(meetings.id, meetingId)
-        : and(eq(meetings.id, meetingId), eq(meetings.userId, user.userId));
-
+    const condition = getAuthCondition(
+      meetingId,
+      auth.user!.id,
+      auth.user!.role,
+    );
     const [data] = await db.select().from(meetings).where(condition).limit(1);
 
     if (!data) {
@@ -82,6 +94,7 @@ export async function GET(
   }
 }
 
+// ==========================================
 // PATCH: MENGUBAH NOTULEN/STATUS
 // ==========================================
 export async function PATCH(
@@ -89,18 +102,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireAuth();
-    if (!user)
+    const auth = await authenticateRequest();
+    if (auth.error)
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
 
-    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
     const meetingId = (await params).id;
-    if (!meetingId || meetingId.trim() === "")
+    if (!meetingId)
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "ID rapat tidak valid" },
         { status: 400 },
       );
 
@@ -111,24 +123,20 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message: "Validasi gagal",
-          errors: parse.error.flatten(),
+          message: "Validasi data gagal",
+          errors: parse.error.flatten().fieldErrors, // Konsisten dengan format error Zod
         },
         { status: 400 },
       );
     }
 
     const { content, status, photos } = parse.data;
-
-    // SINKRONISASI: Gunakan Partial<NewMeeting> agar tipe data
-    // selalu mengikuti definisi tabel di schema.ts secara otomatis.
     const updateData: Partial<NewMeeting> = {};
 
     if (content !== undefined) updateData.content = content;
     if (status !== undefined) updateData.status = status;
     if (photos !== undefined) updateData.photos = JSON.stringify(photos);
 
-    // Pastikan payload tidak kosong sebelum membebani database
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { success: false, message: "Tidak ada data yang diubah" },
@@ -136,11 +144,11 @@ export async function PATCH(
       );
     }
 
-    const condition =
-      user.role === "admin"
-        ? eq(meetings.id, meetingId)
-        : and(eq(meetings.id, meetingId), eq(meetings.userId, user.userId));
-
+    const condition = getAuthCondition(
+      meetingId,
+      auth.user!.id,
+      auth.user!.role,
+    );
     const updated = await db
       .update(meetings)
       .set(updateData)
@@ -178,27 +186,27 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const user = await requireAuth();
-    if (!user)
+    const auth = await authenticateRequest();
+    if (auth.error)
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 },
+        { success: false, message: auth.error },
+        { status: auth.status },
       );
 
-    // PERBAIKAN: Ambil ID langsung sebagai string (UUID)
     const meetingId = (await params).id;
-    if (!meetingId || meetingId.trim() === "")
+    if (!meetingId)
       return NextResponse.json(
-        { success: false, message: "ID tidak valid" },
+        { success: false, message: "ID rapat tidak valid" },
         { status: 400 },
       );
 
-    // FILTER OTORISASI DELETE
-    const condition =
-      user.role === "admin"
-        ? eq(meetings.id, meetingId)
-        : and(eq(meetings.id, meetingId), eq(meetings.userId, user.userId));
+    const condition = getAuthCondition(
+      meetingId,
+      auth.user!.id,
+      auth.user!.role,
+    );
 
+    // Ambil data untuk mengecek lampiran foto
     const [existing] = await db
       .select()
       .from(meetings)
@@ -212,14 +220,14 @@ export async function DELETE(
       );
     }
 
-    // Eksekusi pembersihan file Supabase (Sangat Bagus!)
+    // Pembersihan file Supabase yang sangat efisien
     if (existing.photos) {
       try {
         const photoUrls = JSON.parse(existing.photos) as string[];
         if (photoUrls.length > 0) {
           const fileNames = photoUrls
             .map((url) => url.split("/").pop())
-            .filter((name): name is string => typeof name === "string");
+            .filter((name): name is string => Boolean(name)); // Perbaikan filter strict boolean
 
           await supabase.storage.from("notulen").remove(fileNames);
         }
