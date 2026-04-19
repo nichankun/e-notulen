@@ -74,7 +74,7 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
             fgColor="#0f172a" // Slate-900: Warna sangat gelap untuk kontras maksimal saat scan
             bgColor="#ffffff"
             level={"H"}
-            includeMargin={false}
+            marginSize={4}
             style={{ width: "100%", height: "auto", maxWidth: "160px" }}
           />
         ) : (

@@ -3,7 +3,7 @@ import { meetings } from "@/db/database/schema";
 import { desc, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { FileText } from "lucide-react";
+
 import { columns } from "./columns";
 import { DataTable } from "./data-table";
 import { verifyAuthToken } from "@/lib/auth";
@@ -54,9 +54,6 @@ export default async function ArchivePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 md:gap-4">
           {/* PERBAIKAN UI 3: Ikon menggunakan warna primary + opacity */}
-          <div className="shrink-0 p-3.5 bg-primary/10 text-primary rounded-xl">
-            <FileText className="h-6 w-6" />
-          </div>
 
           <div>
             {/* PERBAIKAN UI 4: text-gray-900 diubah ke text-foreground */}
