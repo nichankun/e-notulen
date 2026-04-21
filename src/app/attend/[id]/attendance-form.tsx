@@ -182,7 +182,7 @@ export function AttendanceForm({
         </div>
 
         {/* INFO BOX: Penjelasan Revisi vs Duplikat */}
-        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex gap-3 text-sm">
+        {/* <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex gap-3 text-sm">
           <Info className="size-5 text-primary shrink-0 mt-0.5" />
           <div className="text-muted-foreground leading-relaxed text-[11px] md:text-xs">
             <strong className="text-foreground">Sistem Anti-Duplikat:</strong> 1
@@ -190,7 +190,7 @@ export function AttendanceForm({
             atau bentuk paraf, Anda dapat absen ulang untuk{" "}
             <strong>merevisi</strong> selama menggunakan nama yang persis sama.
           </div>
-        </div>
+        </div> */}
 
         <Button
           type="submit"
