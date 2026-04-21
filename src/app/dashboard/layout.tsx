@@ -12,7 +12,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 // 1. IMPORT TOOLTIP PROVIDER DI SINI
 import { TooltipProvider } from "@/components/ui/tooltip";
-
+import { ThemeProvider } from "@/components/theme/theme-provider";
 export default async function DashboardLayout({
   children,
 }: {
@@ -51,20 +51,27 @@ export default async function DashboardLayout({
 
   return (
     /* 2. BUNGKUS SELURUH PROVIDER DENGAN TOOLTIP PROVIDER */
-    <TooltipProvider>
-      <SidebarProvider>
-        <AppSidebar user={userData} />
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <TooltipProvider>
+        <SidebarProvider>
+          <AppSidebar user={userData} />
 
-        <SidebarInset className="flex flex-col min-h-svh bg-background">
-          <Header userAgency={userData.agency} />
+          <SidebarInset className="flex flex-col min-h-svh bg-background">
+            <Header userAgency={userData.agency} />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto animate-in fade-in duration-500">
-            {children}
-          </main>
-        </SidebarInset>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto animate-in fade-in duration-500">
+              {children}
+            </main>
+          </SidebarInset>
 
-        <Toaster position="top-center" richColors />
-      </SidebarProvider>
-    </TooltipProvider>
+          <Toaster position="top-center" richColors />
+        </SidebarProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   );
 }
