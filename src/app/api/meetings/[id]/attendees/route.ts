@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings, attendees } from "@/db/database/schema";
-import { eq, sql, asc, and, ne, count } from "drizzle-orm";
+import { eq, sql, asc, and, count } from "drizzle-orm";
 import { z } from "zod";
 
 // 1. ZOD SCHEMA
@@ -114,39 +114,17 @@ export async function POST(
       );
     }
 
-    // FITUR ANTI-FRAUD: Cek menggunakan name, bukan nip (karena nip sekarang bypass "-")
-    const deviceUsedByOthers = await db.query.attendees.findFirst({
-      where: and(
-        eq(attendees.meetingId, meetingId),
-        eq(attendees.deviceId, deviceId),
-        ne(attendees.name, name),
-      ),
-    });
-
-    if (deviceUsedByOthers) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Perangkat ini sudah digunakan untuk absen pegawai lain. Gunakan perangkat Anda sendiri.",
-        },
-        { status: 403 },
-      );
-    }
-
-    // UPSERT LOGIC: Cek existing berdasarkan deviceId, bukan nip
+    // UPSERT LOGIC: Cek existing berdasarkan name, bukan deviceId
+    // Ini memungkinkan perangkat yang sama dipakai banyak orang,
+    // dan merevisi absen lama jika namanya diketik persis sama.
     const existing = await db.query.attendees.findFirst({
-      where: and(
-        eq(attendees.meetingId, meetingId),
-        eq(attendees.deviceId, deviceId),
-      ),
+      where: and(eq(attendees.meetingId, meetingId), eq(attendees.name, name)),
     });
 
     if (existing) {
       await db
         .update(attendees)
         .set({
-          name,
           department: department || "-",
           role,
           signature,

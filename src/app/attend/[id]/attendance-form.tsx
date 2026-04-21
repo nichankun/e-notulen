@@ -121,7 +121,7 @@ export function AttendanceForm({
                     </FormControl>
                     <SelectContent className="rounded-xl">
                       <SelectItem value="pimpinan">Pimpinan</SelectItem>
-                      <SelectItem value="pejabat">Pejabat</SelectItem>
+                      <SelectItem value="pejabat">Kabid / Kasubbid</SelectItem>
                       <SelectItem value="peserta">Staff / Peserta</SelectItem>
                     </SelectContent>
                   </Select>
