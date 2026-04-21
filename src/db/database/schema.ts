@@ -64,24 +64,23 @@ export const attendees = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     meetingId: uuid("meeting_id").references(() => meetings.id, {
-      // Diubah dari integer ke uuid menyesuaikan relasi
       onDelete: "cascade",
     }),
     name: text("name").notNull(),
-    nip: text("nip").notNull(),
+    // Kolom nip telah dihapus dari sini
     department: text("department"),
     signature: text("signature"),
     role: attendeeRoleEnum("role").default("peserta"), // Inovasi: Menggunakan Enum
     deviceId: text("device_id"),
     scannedAt: timestamp("scanned_at").defaultNow(),
-    // Karena data absensi biasanya insert-only, updatedAt bersifat opsional, tapi saya tambahkan demi konsistensi
     updatedAt: timestamp("updated_at")
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
   (table) => {
     return {
-      uniqueNipPerMeeting: unique().on(table.meetingId, table.nip),
+      // Constraint disesuaikan dengan logika Device ID di route.ts
+      uniqueDevicePerMeeting: unique().on(table.meetingId, table.deviceId),
     };
   },
 );

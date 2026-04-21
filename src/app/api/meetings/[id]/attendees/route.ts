@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings, attendees } from "@/db/database/schema";
-import { eq, sql, asc, and, count } from "drizzle-orm";
+import { eq, sql, asc, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 
 // 1. ZOD SCHEMA
 const attendanceSchema = z.object({
   name: z.string().min(1, "Nama lengkap wajib diisi"),
-  nip: z.string().min(1, "NIP wajib diisi"),
   department: z.string().optional(),
   role: z.enum(["pimpinan", "pejabat", "peserta"]),
   signature: z.string().min(1, "Tanda tangan digital wajib diisi"),
@@ -98,7 +97,8 @@ export async function POST(
       );
     }
 
-    const { name, nip, department, role, signature, deviceId } = parse.data;
+    // Ekstrak data tanpa nip
+    const { name, department, role, signature, deviceId } = parse.data;
 
     const meeting = await db.query.meetings.findFirst({
       where: eq(meetings.id, meetingId),
@@ -114,17 +114,39 @@ export async function POST(
       );
     }
 
-    // UPSERT LOGIC: Cek existing berdasarkan name, bukan deviceId
-    // Ini memungkinkan perangkat yang sama dipakai banyak orang,
-    // dan merevisi absen lama jika namanya diketik persis sama.
+    // FITUR ANTI-FRAUD
+    const deviceUsedByOthers = await db.query.attendees.findFirst({
+      where: and(
+        eq(attendees.meetingId, meetingId),
+        eq(attendees.deviceId, deviceId),
+        ne(attendees.name, name),
+      ),
+    });
+
+    if (deviceUsedByOthers) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Perangkat ini sudah digunakan untuk absen pegawai lain. Gunakan perangkat Anda sendiri.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // UPSERT LOGIC
     const existing = await db.query.attendees.findFirst({
-      where: and(eq(attendees.meetingId, meetingId), eq(attendees.name, name)),
+      where: and(
+        eq(attendees.meetingId, meetingId),
+        eq(attendees.deviceId, deviceId),
+      ),
     });
 
     if (existing) {
       await db
         .update(attendees)
         .set({
+          name,
           department: department || "-",
           role,
           signature,
@@ -132,10 +154,10 @@ export async function POST(
         })
         .where(eq(attendees.id, existing.id));
     } else {
+      // INSERT tanpa nip
       await db.insert(attendees).values({
         meetingId,
         name,
-        nip,
         department: department || "-",
         role,
         signature,

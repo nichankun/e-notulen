@@ -122,7 +122,6 @@ export default function AttendancePage({
                   const payloadData = {
                     ...values,
                     deviceId: generatedDeviceId,
-                    nip: "-",
                   };
 
                   const res = await fetch(`/api/meetings/${id}/attendees`, {
