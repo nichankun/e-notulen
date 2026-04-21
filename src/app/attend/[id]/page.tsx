@@ -116,9 +116,8 @@ export default function AttendancePage({
             <AttendanceForm
               onSubmit={async (values) => {
                 try {
-                  // const fingerprint = `${navigator.userAgent}-${window.screen.width}x${window.screen.height}`;
-                  // const generatedDeviceId = btoa(fingerprint);
-                  const generatedDeviceId = crypto.randomUUID();
+                  const fingerprint = `${navigator.userAgent}-${window.screen.width}x${window.screen.height}`;
+                  const generatedDeviceId = btoa(fingerprint);
 
                   const payloadData = {
                     ...values,
