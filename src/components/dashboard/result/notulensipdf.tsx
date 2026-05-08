@@ -1,9 +1,7 @@
 "use client";
 
-import { Document, Page, Text } from "@react-pdf/renderer";
+import { Document, Page } from "@react-pdf/renderer";
 import { type Meeting, type Attendee } from "@/db/database/schema";
-
-// Import file-file pendukung
 import { styles } from "./pdf-styles";
 import {
   PdfHeader,
@@ -15,31 +13,33 @@ import {
 
 export default function NotulensiPDF({
   meetingData,
-  attendees,
-  photos,
+  attendees = [],
+  photos = [], // Mengantisipasi jika nanti ada fitur foto
 }: {
   meetingData: Meeting;
-  attendees: Attendee[];
-  photos: string[];
+  attendees?: Attendee[];
+  photos?: string[];
+  status?: "draft" | "final";
 }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Potongan Komponen PDF */}
-        <PdfHeader />
-        <PdfMeetingInfo meetingData={meetingData} />
-        <PdfRisalah content={meetingData.content || ""} />
-        <PdfAttendanceTable attendees={attendees} />
-        <PdfPhotos photos={photos} />
+        {/* Tampilkan Watermark jika masih Draft */}
 
-        {/* NOMOR HALAMAN OTOMATIS */}
-        <Text
-          style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) =>
-            `Halaman ${pageNumber} dari ${totalPages}`
-          }
-          fixed
-        />
+        {/* 1. Kop Surat Bapenda Sultra */}
+        <PdfHeader />
+
+        {/* 2. Informasi Rapat (Format NOTULA Resmi) */}
+        <PdfMeetingInfo meetingData={meetingData} />
+
+        {/* 3. Isi Notulen & Tanda Tangan Pimpinan */}
+        <PdfRisalah content={meetingData.content || ""} />
+
+        {/* 4. Tabel Daftar Hadir Peserta */}
+        <PdfAttendanceTable attendees={attendees} />
+
+        {/* 5. Lampiran Dokumentasi (Jika Ada) */}
+        <PdfPhotos photos={photos} />
       </Page>
     </Document>
   );

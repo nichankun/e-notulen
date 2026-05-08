@@ -1,121 +1,296 @@
 import React from "react";
-import { Text } from "@react-pdf/renderer";
+import { Text, View, StyleSheet } from "@react-pdf/renderer";
 
-export const parseHtmlContent = (
-  html: string,
-): (React.ReactNode | string)[] | string => {
-  if (!html) return "Tidak ada catatan pembahasan.";
+const parserStyles = StyleSheet.create({
+  heading: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  numberedItem: {
+    flexDirection: "row",
+    marginBottom: 3,
+    marginLeft: 0,
+  },
+  numberedItemBullet: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    width: 18,
+    flexShrink: 0,
+  },
+  numberedItemContent: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Helvetica",
+    textAlign: "justify",
+    lineHeight: 1.5,
+  },
+  bulletItem: {
+    flexDirection: "row",
+    marginBottom: 3,
+    marginLeft: 12,
+  },
+  bulletSymbol: {
+    fontSize: 12,
+    width: 14,
+    flexShrink: 0,
+    fontFamily: "Helvetica",
+  },
+  bulletContent: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Helvetica",
+    textAlign: "justify",
+    lineHeight: 1.5,
+  },
+  paragraph: {
+    fontSize: 12,
+    fontFamily: "Helvetica",
+    textAlign: "justify",
+    lineHeight: 1.5,
+    marginBottom: 3,
+  },
+});
+
+type InlineNode = {
+  text: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+};
+
+type Token =
+  | { type: "heading"; content: InlineNode[] }
+  | { type: "numbered"; num: string; content: InlineNode[] }
+  | { type: "bullet"; content: InlineNode[] }
+  | { type: "paragraph"; content: InlineNode[] };
+
+// ── Helper: parse inline bold/italic/underline ─────────────────────
+function parseInline(html: string): InlineNode[] {
+  // Pisahkan string berdasarkan tag format, membiarkan spasi tetap utuh
+  const tokens = html.split(/(<\/?(?:strong|b|i|em|u)[^>]*>)/gi);
+  let bold = false,
+    italic = false,
+    underline = false;
+  const nodes: InlineNode[] = [];
+
+  tokens.forEach((tok) => {
+    if (!tok) return;
+    if (/^<[^>]+>$/.test(tok)) {
+      const l = tok.toLowerCase();
+      if (/^<(strong|b)\b/.test(l)) bold = true;
+      else if (/^<\/(strong|b)/.test(l)) bold = false;
+      else if (/^<(i|em)\b/.test(l)) italic = true;
+      else if (/^<\/(i|em)/.test(l)) italic = false;
+      else if (/^<u\b/.test(l)) underline = true;
+      else if (/^<\/u/.test(l)) underline = false;
+    } else {
+      // Simpan teks apa adanya (termasuk spasi), hanya bersihkan karakter zero-width
+      const text = tok.replace(/[\u200B-\u200D\uFEFF]/g, "");
+      if (text) nodes.push({ text, bold, italic, underline });
+    }
+  });
+
+  return nodes;
+}
+
+// ── Helper: render InlineNode[] sebagai <Text> inline ─────────────
+function renderInline(
+  nodes: InlineNode[],
+  key: string,
+  defaultBold = false,
+): React.ReactNode {
+  return nodes.map((n, i) => {
+    const isBold = n.bold || defaultBold;
+    let fontFamily: string = "Helvetica";
+
+    if (isBold && n.italic) fontFamily = "Helvetica-BoldOblique";
+    else if (isBold) fontFamily = "Helvetica-Bold";
+    else if (n.italic) fontFamily = "Helvetica-Oblique";
+
+    return (
+      <Text
+        key={`${key}-${i}`}
+        style={{
+          fontFamily,
+          textDecoration: n.underline ? "underline" : "none",
+        }}
+      >
+        {n.text}
+      </Text>
+    );
+  });
+}
+
+// ── Tokenizer Utama ────────────────────────────────────────────────
+function tokenize(html: string): Token[] {
+  if (!html) return [];
 
   let text = html;
 
-  // 1. Bersihkan karakter tak terlihat (unicode gaib)
-  text = text.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  // Fungsi pembantu untuk mencegah teks di dalam list turun ke baris baru
+  const cleanListItem = (content: string) => {
+    return content
+      .replace(/<\/?(p|div|h[1-6]|blockquote)[^>]*>/gi, " ") // Ubah block tag jadi spasi
+      .replace(/<br\s*\/?>/gi, " ") // Ubah <br> jadi spasi
+      .replace(/\s+/g, " ") // Rapikan spasi ganda yang muncul
+      .trim();
+  };
 
-  // 2. Proses isi list (<li>) LEBIH DULU
-  // Konversi <p> dan <br> di dalam list menjadi enter (\n)
-  text = text.replace(
-    /<li[^>]*>([\s\S]*?)<\/li>/gi,
-    (_match: string, content: string) => {
-      let c = content.replace(/<\/?(p|div|h[1-6])[^>]*>/gi, "\n");
-      c = c.replace(/<br\s*\/?>/gi, "\n");
-      return `<li>${c.trim()}</li>`;
-    },
-  );
-
-  // 3. Proses List (ul/ol)
+  // 1. Ekstrak isi list (<ul>/<ol>) menjadi baris-baris berawalan simbol/nomor
   text = text.replace(
     /<ul[^>]*>([\s\S]*?)<\/ul>/gi,
-    (_match: string, inner: string) => {
-      const list = inner.replace(
-        /<li>([\s\S]*?)<\/li>/gi,
-        (_m: string, content: string) => `\n• ${content}`,
+    (_m: string, inner: string) => {
+      return (
+        "\n" +
+        inner.replace(
+          /<li[^>]*>([\s\S]*?)<\/li>/gi,
+          (_m2: string, c: string) => {
+            // Gunakan cleanListItem agar bullet (•) dan teks tetap sejajar 1 baris
+            return `\n• ${cleanListItem(c)}\n`;
+          },
+        ) +
+        "\n"
       );
-      return `\n${list}\n\n`;
     },
   );
 
   text = text.replace(
     /<ol[^>]*>([\s\S]*?)<\/ol>/gi,
-    (_match: string, inner: string) => {
+    (_m: string, inner: string) => {
       let i = 1;
-      const list = inner.replace(
-        /<li>([\s\S]*?)<\/li>/gi,
-        (_m: string, content: string) => `\n${i++}. ${content}`,
+      return (
+        "\n" +
+        inner.replace(
+          /<li[^>]*>([\s\S]*?)<\/li>/gi,
+          (_m2: string, c: string) => {
+            return `\n${i++}. ${cleanListItem(c)}\n`;
+          },
+        ) +
+        "\n"
       );
-      return `\n${list}\n\n`;
     },
   );
 
-  // 4. Konversi blok elemen luar dan break menjadi newline
-  text = text.replace(/<\/(p|div|h[1-6])>/gi, "\n\n");
+  // Jika ada tag <li> yang bocor di luar ul/ol, asumsikan sebagai bullet
+  text = text.replace(
+    /<li[^>]*>([\s\S]*?)<\/li>/gi,
+    (_m: string, c: string) => {
+      return `\n• ${cleanListItem(c)}\n`;
+    },
+  );
+
+  // 2. Beri jarak baris untuk elemen block sisanya
+  text = text.replace(/<\/?(p|div|h[1-6]|table|tr|blockquote)[^>]*>/gi, "\n");
+  text = text.replace(/<\/?(td|th)[^>]*>/gi, " "); // Pisahkan sel tabel dengan spasi
   text = text.replace(/<br\s*\/?>/gi, "\n");
 
-  // 5. Buang tag HTML lainnya kecuali formatting (strong, b, i, em, u)
-  // 🔥 FIX TYPESCRIPT: Parameter `match` dihapus karena tidak digunakan
-  text = text.replace(/<(\/?)(?!strong|b|i|em|u)[a-z0-9]+[^>]*>/gi, () => "");
+  // 3. Hapus SEMUA tag KECUALI tag formatting inline (strong, b, i, em, u)
+  text = text.replace(/<(\/?)(?!strong|b|i|em|u)[a-z0-9]+[^>]*>/gi, "");
 
-  // 6. Decode entitas HTML dasar
+  // 4. Decode HTML entities
   text = text
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">");
 
-  // 7. Normalisasi spasi dan newline
-  text = text.replace(/[ \t]+/g, " ");
-  text = text.replace(/ \n/g, "\n").replace(/\n /g, "\n");
-  text = text.replace(/\n{3,}/g, "\n\n").trim();
+  // 5. Normalisasi dan pecah berdasarkan baris (Enter)
+  const lines = text.split(/\r?\n/);
+  const tokens: Token[] = [];
 
-  // 8. Tokenisasi Style (Bold, Italic, Underline)
-  const tokens = text.split(/(<\/?(?:strong|b|i|em|u)[^>]*>)/gi);
-  let isBold = false;
-  let isItalic = false;
-  let isUnderline = false;
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
 
-  const result: (React.ReactNode | string)[] = [];
-
-  tokens.forEach((token, index) => {
-    if (!token) return;
-
-    if (/^<[^>]+>$/.test(token)) {
-      const lower = token.toLowerCase();
-      if (/^<(strong|b)\b[^>]*>$/.test(lower)) isBold = true;
-      else if (/^<\/(strong|b)[^>]*>$/.test(lower)) isBold = false;
-      else if (/^<(i|em)\b[^>]*>$/.test(lower)) isItalic = true;
-      else if (/^<\/(i|em)[^>]*>$/.test(lower)) isItalic = false;
-      else if (/^<u\b[^>]*>$/.test(lower)) isUnderline = true;
-      else if (/^<\/u[^>]*>$/.test(lower)) isUnderline = false;
-    } else {
-      let fontFamily:
-        | "Helvetica"
-        | "Helvetica-Bold"
-        | "Helvetica-Oblique"
-        | "Helvetica-BoldOblique" = "Helvetica";
-      if (isBold && isItalic) fontFamily = "Helvetica-BoldOblique";
-      else if (isBold) fontFamily = "Helvetica-Bold";
-      else if (isItalic) fontFamily = "Helvetica-Oblique";
-
-      // Memecah token berdasarkan \n dan memasukkan \n sebagai string literal.
-      const textParts = token.split(/(\n)/g);
-      textParts.forEach((part, pIdx) => {
-        if (part === "\n") {
-          result.push("\n");
-        } else if (part) {
-          result.push(
-            <Text
-              key={`${index}-${pIdx}`}
-              style={{
-                fontFamily,
-                textDecoration: isUnderline ? "underline" : "none",
-              }}
-            >
-              {part}
-            </Text>,
-          );
-        }
-      });
+    // Deteksi heading: A. B. C. (Cetak tebal)
+    if (/^[A-Z]{1,3}\.\s+\S/.test(trimmed) && trimmed.length < 80) {
+      tokens.push({ type: "heading", content: parseInline(trimmed) });
+    }
+    // Deteksi list penomoran: 1. 2. 3.
+    else if (/^\d+\.\s+/.test(trimmed)) {
+      const match = trimmed.match(/^(\d+\.)\s+([\s\S]+)$/);
+      if (match) {
+        tokens.push({
+          type: "numbered",
+          num: match[1],
+          content: parseInline(match[2]),
+        });
+      }
+    }
+    // Deteksi list peluru (Bullet)
+    else if (/^[•\-\*]\s+/.test(trimmed)) {
+      const contentText = trimmed.replace(/^[•\-\*]\s+/, "");
+      tokens.push({ type: "bullet", content: parseInline(contentText) });
+    }
+    // Paragraf teks biasa
+    else {
+      tokens.push({ type: "paragraph", content: parseInline(trimmed) });
     }
   });
 
-  return result;
+  return tokens;
+}
+
+// ── Render utama yang dipanggil dari pdf-sections ──────────────────
+export const parseHtmlContent = (html: string): React.ReactNode => {
+  if (!html || html.trim() === "") {
+    return (
+      <Text style={parserStyles.paragraph}>Tidak ada catatan pembahasan.</Text>
+    );
+  }
+
+  const tokens = tokenize(html);
+
+  if (tokens.length === 0) {
+    return (
+      <Text style={parserStyles.paragraph}>Tidak ada catatan pembahasan.</Text>
+    );
+  }
+
+  return (
+    <View>
+      {tokens.map((token, idx) => {
+        const key = `tok-${idx}`;
+
+        switch (token.type) {
+          case "heading":
+            return (
+              <Text key={key} style={parserStyles.heading}>
+                {renderInline(token.content, key, true)}
+              </Text>
+            );
+
+          case "numbered":
+            return (
+              <View key={key} style={parserStyles.numberedItem}>
+                <Text style={parserStyles.numberedItemBullet}>{token.num}</Text>
+                <Text style={parserStyles.numberedItemContent}>
+                  {renderInline(token.content, key)}
+                </Text>
+              </View>
+            );
+
+          case "bullet":
+            return (
+              <View key={key} style={parserStyles.bulletItem}>
+                <Text style={parserStyles.bulletSymbol}>{"•"}</Text>
+                <Text style={parserStyles.bulletContent}>
+                  {renderInline(token.content, key)}
+                </Text>
+              </View>
+            );
+
+          case "paragraph":
+          default:
+            return (
+              <Text key={key} style={parserStyles.paragraph}>
+                {renderInline(token.content, key)}
+              </Text>
+            );
+        }
+      })}
+    </View>
+  );
 };

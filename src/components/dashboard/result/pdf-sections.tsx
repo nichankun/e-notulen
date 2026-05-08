@@ -5,179 +5,260 @@ import { parseHtmlContent } from "./pdf-html-parser";
 
 export function PdfHeader() {
   return (
-    <>
+    <View style={styles.headerWrapper}>
       <View style={styles.headerContainer}>
-        <View style={styles.logoPlaceholder} />
+        <View style={styles.logoContainer}>
+          <PdfImage src="/logo-sultra.png" style={styles.logo} />
+        </View>
         <View style={styles.headerTextContainer}>
           <Text style={styles.kop1}>Pemerintah Provinsi Sulawesi Tenggara</Text>
           <Text style={styles.kop2}>Badan Pendapatan Daerah</Text>
           <Text style={styles.kop3}>
-            Kompleks Bumi Praja Anduonohu, Kendari. Telp: (0401) 312xxxx
+            Kompleks Bumi Praja Anduonohu, Kendari. Telp: (0401) 3122158
           </Text>
           <Text style={styles.kop3}>Email: bapenda@sultraprov.go.id</Text>
         </View>
+        <View style={styles.rightSpacer} />
       </View>
       <View style={styles.kopDividerThick} />
       <View style={styles.kopDividerThin} />
-    </>
+    </View>
   );
 }
 
-export function PdfMeetingInfo({ meetingData }: { meetingData: Meeting }) {
+// ==========================================
+// 2. KOMPONEN INFO RAPAT (UPDATE PESERTA)
+// ==========================================
+// ── Helper lokal ──────────────────────────────────────────────────
+const BLANK =
+  "................................................................";
+
+/** Satu baris info: Label : Value */
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <>
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>NOTULENSI KEGIATAN</Text>
-        <Text style={styles.titleSub}>Dokumen Resmi E-Notulen</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.colLabel}>Kegiatan</Text>
-        <Text style={styles.colColon}>:</Text>
-        <Text style={styles.colValue}>{meetingData.title}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.colLabel}>Hari / Tanggal</Text>
-        <Text style={styles.colColon}>:</Text>
-        <Text style={styles.colValue}>
-          {new Date(meetingData.date).toLocaleDateString("id-ID", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.colLabel}>Tempat</Text>
-        <Text style={styles.colColon}>:</Text>
-        <Text style={styles.colValue}>{meetingData.location || "-"}</Text>
-      </View>
-      <View style={styles.infoRow}>
-        <Text style={styles.colLabel}>Pimpinan</Text>
-        <Text style={styles.colColon}>:</Text>
-        <Text style={styles.colValue}>{meetingData.leader || "-"}</Text>
-      </View>
-    </>
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoColon}>:</Text>
+      {typeof value === "string" ? (
+        <Text style={styles.infoValue}>{value}</Text>
+      ) : (
+        <View style={styles.infoValue}>{value}</View>
+      )}
+    </View>
   );
 }
+
+/** Baris multi-item dengan indentasi (untuk Acara / Peserta) */
+function InfoRowMulti({ label, items }: { label: string; items: string[] }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoColon}>:</Text>
+      <View style={styles.infoValue}>
+        {items.map((item, i) => (
+          <Text key={i}>{item}</Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Garis pemisah tipis antar seksi */
+function Divider() {
+  return (
+    <View
+      style={{
+        borderBottomWidth: 0.5,
+        borderBottomColor: "#ccc",
+        borderBottomStyle: "dashed",
+        marginVertical: 8,
+      }}
+    />
+  );
+}
+
+// ── Komponen utama ────────────────────────────────────────────────
+export function PdfMeetingInfo({ meetingData }: { meetingData: Meeting }) {
+  const dateStr = new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(meetingData.date));
+
+  return (
+    <View style={styles.infoTable}>
+      {/* Judul */}
+      <View style={{ alignItems: "center", marginBottom: 16 }}>
+        <Text
+          style={{
+            fontSize: 12,
+            fontFamily: "Helvetica-Bold",
+            textDecoration: "underline",
+          }}
+        >
+          NOTULA
+        </Text>
+      </View>
+
+      {/* Seksi 1: Identitas Rapat */}
+      <InfoRow label="Sidang/Rapat" value={meetingData.title} />
+      <InfoRow label="Hari/Tanggal" value={dateStr} />
+      <InfoRow label="Surat Undangan" value={BLANK} />
+      <InfoRow label="Waktu Sidang/Rapat" value={BLANK} />
+      <InfoRowMulti
+        label="Acara"
+        items={[`1. Pembahasan ${meetingData.title}`, "2. Dan seterusnya."]}
+      />
+
+      <Divider />
+
+      {/* Seksi 2: Pimpinan Sidang */}
+      <Text style={{ marginBottom: 4, fontFamily: "Helvetica-Bold" }}>
+        Pimpinan Sidang/Rapat
+      </Text>
+      <InfoRow label="Ketua" value={meetingData.leader || BLANK} />
+      <InfoRow label="Sekretaris" value={BLANK} />
+      <InfoRow label="Pencatat" value={BLANK} />
+
+      <Divider />
+
+      {/* Seksi 3: Peserta */}
+      <InfoRowMulti
+        label="Peserta sidang/rapat"
+        items={["1. (Terlampir pada daftar hadir)", "2. Dan seterusnya."]}
+      />
+    </View>
+  );
+}
+
+// ==========================================
+// 3. KOMPONEN ISI NOTULEN & TANDA TANGAN
+// ==========================================
+// HANYA BAGIAN PdfRisalah yang perlu diupdate di pdf-sections.tsx
+// Ganti fungsi PdfRisalah yang lama dengan ini:
 
 export function PdfRisalah({ content }: { content: string }) {
   return (
-    <>
-      <Text style={styles.sectionTitle}>I. RISALAH PEMBAHASAN</Text>
-      <Text style={styles.content}>{parseHtmlContent(content)}</Text>
-    </>
+    <View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>Kegiatan Sidang/Rapat</Text>
+        <Text style={styles.infoColon}>:</Text>
+        <View style={styles.infoValue}>
+          {content && content.trim() !== "" ? (
+            // parseHtmlContent sekarang mengembalikan <View>, bukan <Text>
+            // jadi TIDAK dibungkus <Text> lagi
+            parseHtmlContent(content)
+          ) : (
+            <Text>
+              (Disesuaikan dengan kondisi kegiatan
+              sidang/rapat)............................................
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <View
+        style={{
+          marginTop: 40,
+          flexDirection: "row",
+          justifyContent: "flex-end",
+        }}
+        wrap={false}
+      >
+        <View style={{ width: 220, textAlign: "left" }}>
+          <Text>Pimpinan Sidang/Rapat</Text>
+          <Text>Nama Jabatan,</Text>
+          <View style={{ height: 60 }} />
+          <Text>Nama</Text>
+          <Text>Pangkat/Golongan</Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
+// ==========================================
+// 4. KOMPONEN TABEL DAFTAR HADIR (DENGAN TTD)
+// ==========================================
 export function PdfAttendanceTable({ attendees }: { attendees: Attendee[] }) {
+  if (!attendees || attendees.length === 0) return null;
+
   return (
-    <>
-      <Text style={styles.sectionTitle}>II. DAFTAR HADIR PESERTA</Text>
+    // Tambahkan properti `break` untuk memaksa mulai di halaman baru.
+    // Hapus `wrap={false}` agar baris tabel otomatis turun ke halaman berikutnya jika data sangat banyak.
+    <View break style={{ paddingTop: 10 }}>
+      <Text style={styles.sectionTitle}>DAFTAR HADIR PESERTA</Text>
       <View style={styles.table}>
-        <View style={styles.tableRow}>
-          <View style={[styles.tableColHeader, { width: "8%" }]}>
+        {/* Header Tabel */}
+        <View style={styles.tableRow} fixed>
+          {" "}
+          {/* fixed: agar header muncul lagi jika tabel nyebrang halaman */}
+          <View style={[styles.tableColHeader, { width: "10%" }]}>
             <Text style={styles.tableCellHeader}>No</Text>
           </View>
-          <View style={[styles.tableColHeader, { width: "32%" }]}>
-            <Text style={styles.tableCellHeader}>Nama</Text>
+          <View style={[styles.tableColHeader, { width: "60%" }]}>
+            <Text style={styles.tableCellHeader}>Nama / Jabatan</Text>
           </View>
-          <View style={[styles.tableColHeader, { width: "25%" }]}>
-            <Text style={styles.tableCellHeader}>Instansi / Bidang</Text>
-          </View>
-          <View style={[styles.tableColHeader, { width: "15%" }]}>
-            <Text style={styles.tableCellHeader}>Waktu</Text>
-          </View>
-          <View style={[styles.tableColHeader, { width: "20%" }]}>
-            <Text style={styles.tableCellHeader}>Paraf</Text>
+          <View style={[styles.tableColHeader, { width: "30%" }]}>
+            <Text style={styles.tableCellHeader}>Tanda Tangan</Text>
           </View>
         </View>
-        {attendees.length > 0 ? (
-          attendees.map((person, idx) => (
-            <View style={styles.tableRow} key={idx} wrap={false}>
-              <View
-                style={[styles.tableCol, { width: "8%", alignItems: "center" }]}
-              >
-                <Text style={styles.tableCell}>{idx + 1}</Text>
-              </View>
-              <View style={[styles.tableCol, { width: "32%" }]}>
-                <Text style={[styles.tableCell, { fontWeight: "bold" }]}>
-                  {person.name}
-                </Text>
-              </View>
-              <View style={[styles.tableCol, { width: "25%" }]}>
-                <Text style={[styles.tableCell, { fontSize: 8 }]}>
-                  {person.department || "-"}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.tableCol,
-                  { width: "15%", alignItems: "center" },
-                ]}
-              >
-                <Text style={styles.tableCell}>
-                  {person.scannedAt
-                    ? new Date(person.scannedAt).toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "-"}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.tableCol,
-                  { width: "20%", alignItems: "center", padding: 2 },
-                ]}
-              >
-                {person.signature ? (
-                  <PdfImage
-                    src={person.signature}
-                    style={{ width: 40, height: 20, objectFit: "contain" }}
-                  />
-                ) : (
-                  <Text style={styles.tableCell}>-</Text>
-                )}
-              </View>
+
+        {/* Baris Data Peserta */}
+        {attendees.map((person, idx) => (
+          <View style={styles.tableRow} key={idx} wrap={false}>
+            {/* wrap={false} di sini berguna agar satu baris nama/ttd tidak terpotong setengah di pergantian halaman */}
+            <View
+              style={[styles.tableCol, { width: "10%", alignItems: "center" }]}
+            >
+              <Text style={styles.tableCell}>{idx + 1}</Text>
             </View>
-          ))
-        ) : (
-          <View style={styles.tableRow}>
+            <View style={[styles.tableCol, { width: "60%" }]}>
+              <Text style={styles.tableCell}>{person.name}</Text>
+            </View>
             <View
               style={[
                 styles.tableCol,
-                { width: "100%", alignItems: "center", padding: 10 },
+                {
+                  width: "30%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
               ]}
             >
-              <Text style={[styles.tableCell, { fontStyle: "italic" }]}>
-                Belum ada data absensi
-              </Text>
+              {person.signature ? (
+                <PdfImage
+                  src={person.signature}
+                  style={{ width: 45, height: 25, objectFit: "contain" }}
+                />
+              ) : (
+                <Text style={styles.tableCell}>-</Text>
+              )}
             </View>
           </View>
-        )}
+        ))}
       </View>
-    </>
+    </View>
   );
 }
 
+// ==========================================
+// 5. KOMPONEN FOTO / DOKUMENTASI
+// ==========================================
 export function PdfPhotos({ photos }: { photos: string[] }) {
+  if (!photos || photos.length === 0) return null;
   return (
-    <>
-      <Text style={styles.sectionTitle} wrap={false}>
-        III. DOKUMENTASI FOTO
-      </Text>
-      {photos.length > 0 ? (
-        <View style={styles.photoGrid}>
-          {photos.map((src, idx) => (
-            <View key={idx} style={styles.photoWrapper} wrap={false}>
-              <PdfImage src={src} style={styles.photo} />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <Text style={styles.noPhoto}></Text>
-      )}
-    </>
+    // Tambahkan properti `break` agar seksi dokumentasi selalu dicetak di halaman baru yang bersih
+    <View break style={{ paddingTop: 10 }}>
+      <Text style={styles.sectionTitle}>DOKUMENTASI</Text>
+      <View style={styles.photoGrid}>
+        {photos.map((p, i) => (
+          <View key={i} style={styles.photoWrapper}>
+            <PdfImage src={p} style={styles.photo} />
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }

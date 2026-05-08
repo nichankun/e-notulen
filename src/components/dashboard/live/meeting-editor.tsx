@@ -14,7 +14,7 @@ import { EditorHeader } from "./editor-header";
 import { PhotoDocumentation } from "./photo-documentation";
 import { EditorFooter } from "./editor-footer";
 
-// --- DEKLARASI TIPE SPEECH RECOGNITION (TIDAK ADA 'any') ---
+// --- DEKLARASI TIPE SPEECH RECOGNITION ---
 interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number;
   readonly results: SpeechRecognitionResultList;
@@ -97,6 +97,9 @@ export function MeetingEditor({
   const [rawTranscript, setRawTranscript] = useState<string>("");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // Ref untuk melacak apakah user SECARA SENGAJA ingin mikrofon menyala
+  const isIntentionallyListening = useRef<boolean>(false);
+
   const editor = useEditor({
     extensions: [StarterKit],
     content: content,
@@ -140,11 +143,14 @@ export function MeetingEditor({
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Speech Recognition Error:", event.error);
-        setIsListening(false);
+        // Jangan tampilkan pesan error jika cuma karena keheningan (no-speech)
+        if (event.error !== "no-speech") {
+          console.error("Speech Recognition Error:", event.error);
+        }
 
-        // Penanganan error HP & Jaringan
         if (event.error === "not-allowed") {
+          isIntentionallyListening.current = false; // Paksa berhenti niat merekam
+          setIsListening(false);
           toast.error(
             "Akses mikrofon ditolak. Pastikan URL menggunakan HTTPS dan izin mikrofon diberikan.",
           );
@@ -153,8 +159,20 @@ export function MeetingEditor({
         }
       };
 
+      // Logika Auto-Restart jika mati karena diam
       recognition.onend = () => {
-        setIsListening(false);
+        // Jika mikrofon mati TAPI user belum menekan tombol stop, NYALAKAN LAGI!
+        if (isIntentionallyListening.current) {
+          try {
+            recognition.start();
+          } catch (err) {
+            console.error("Gagal auto-restart mikrofon:", err);
+            setIsListening(false);
+          }
+        } else {
+          // Benar-benar berhenti karena user menekan tombol
+          setIsListening(false);
+        }
       };
 
       recognitionRef.current = recognition;
@@ -167,7 +185,8 @@ export function MeetingEditor({
       return;
     }
 
-    if (isListening) {
+    if (isListening || isIntentionallyListening.current) {
+      isIntentionallyListening.current = false;
       try {
         recognitionRef.current.stop();
       } catch (err) {
@@ -176,19 +195,20 @@ export function MeetingEditor({
       setIsListening(false);
       toast.info("Perekaman dihentikan");
     } else {
+      isIntentionallyListening.current = true;
       try {
         recognitionRef.current.start();
         setIsListening(true);
-        toast.success("Mulai merekam suara...");
+        toast.success("Mulai merekam suara... Sistem akan terus mendengarkan.");
       } catch (err) {
         const error = err as Error;
         if (error.name === "InvalidStateError") {
-          // Menangani error "recognition has already started"
           setIsListening(true);
           toast.info("Mikrofon sebenarnya sudah berjalan");
         } else {
           console.error("Gagal memulai mikrofon:", err);
           toast.error("Gagal menyalakan mikrofon.");
+          isIntentionallyListening.current = false;
         }
       }
     }
@@ -207,24 +227,38 @@ export function MeetingEditor({
     }
 
     setIsSummarizing(true);
+    toast.loading("AI sedang menganalisis dan merangkum rapat...", {
+      id: "ai-loading",
+    });
+
     try {
-      // TODO: Hubungkan ini ke API AI asli Anda (OpenAI/Gemini)
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const response = await fetch("/api/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: rawTranscript }),
+      });
 
-      const summarizedHtml = `
-        <h3>📌 Poin-poin Penting Rapat</h3>
-        <ul>
-          <li><strong>Pembukaan:</strong> Rapat dibuka dan berjalan dengan baik.</li>
-          <li><strong>Diskusi Utama:</strong> Mengonversi rekaman suara menjadi teks secara otomatis berhasil disimulasikan.</li>
-          <li><strong>Tindak Lanjut:</strong> Memastikan integrasi API AI terpasang di backend.</li>
-        </ul>
-      `;
+      const result = await response.json();
 
-      editor?.commands.setContent(summarizedHtml);
-      toast.success("Berhasil merangkum notulen!");
-    } catch (error) {
+      if (!response.ok) {
+        throw new Error(result.error || "Terjadi kesalahan pada API AI");
+      }
+
+      editor?.commands.setContent(result.data);
+
+      toast.success("Notulen berhasil dirangkum secara cerdas!", {
+        id: "ai-loading",
+      });
+      // PERBAIKAN: Mengganti (error: any) menjadi (error: unknown)
+    } catch (error: unknown) {
       console.error("AI Summarization Error:", error);
-      toast.error("Gagal melakukan rangkuman AI");
+      // PERBAIKAN: Memastikan error adalah objek Error sebelum mengambil pesannya
+      const errorMessage =
+        error instanceof Error ? error.message : "Gagal melakukan rangkuman AI";
+
+      toast.error(errorMessage, {
+        id: "ai-loading",
+      });
     } finally {
       setIsSummarizing(false);
     }
@@ -261,8 +295,9 @@ export function MeetingEditor({
       }
       setPhotos([...photos, ...newPhotoUrls]);
       toast.success("Foto berhasil diunggah");
-    } catch (err) {
-      console.error("Error uploading photo:", err);
+      // PERBAIKAN: Menambahkan `unknown` pada blok catch
+    } catch (error: unknown) {
+      console.error("Error uploading photo:", error);
       toast.error("Gagal mengunggah foto");
     } finally {
       setIsUploading(false);
