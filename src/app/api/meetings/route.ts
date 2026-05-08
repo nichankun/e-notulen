@@ -24,21 +24,31 @@ const createMeetingSchema = z.object({
 // ==========================================
 // 2. HELPER: OTENTIKASI & VALIDASI SESI
 // ==========================================
-// Memisahkan logika pengecekan token agar tidak berulang di GET dan POST
-async function authenticateRequest() {
+// Definisi tipe return agar TypeScript tidak bingung
+type AuthResult =
+  | { user: { id: string; role: string }; error: null }
+  | { user: null; error: string; status: number };
+
+async function authenticateRequest(): Promise<AuthResult> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
 
-  if (!token)
-    return { error: "Sesi habis atau tidak memiliki akses", status: 401 };
+  if (!token) {
+    return {
+      user: null,
+      error: "Sesi habis atau tidak memiliki akses",
+      status: 401,
+    };
+  }
 
   const payload = await verifyAuthToken(token);
-  if (!payload || !payload.id)
-    return { error: "Sesi tidak valid", status: 401 };
+  if (!payload || !payload.id) {
+    return { user: null, error: "Sesi tidak valid", status: 401 };
+  }
 
   const userId = String(payload.id);
   if (!userId || userId.trim() === "" || userId === "undefined") {
-    return { error: "Identitas pengguna tidak valid", status: 400 };
+    return { user: null, error: "Identitas pengguna tidak valid", status: 400 };
   }
 
   return {
@@ -46,6 +56,7 @@ async function authenticateRequest() {
       id: userId,
       role: (payload.role as string) || "pegawai",
     },
+    error: null,
   };
 }
 
@@ -55,14 +66,16 @@ async function authenticateRequest() {
 export async function GET() {
   try {
     const auth = await authenticateRequest();
-    if (auth.error) {
+
+    // Penanganan error tanpa non-null assertion (!)
+    if (auth.error || !auth.user) {
       return NextResponse.json(
         { success: false, message: auth.error },
         { status: auth.status },
       );
     }
 
-    const { id: userId, role } = auth.user!;
+    const { id: userId, role } = auth.user;
 
     // BASE QUERY
     const query = db
@@ -101,14 +114,15 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const auth = await authenticateRequest();
-    if (auth.error) {
+
+    if (auth.error || !auth.user) {
       return NextResponse.json(
         { success: false, message: auth.error },
         { status: auth.status },
       );
     }
 
-    const { id: userId } = auth.user!;
+    const { id: userId } = auth.user;
 
     // VALIDASI BODY MENGGUNAKAN ZOD
     const body: unknown = await request.json();
@@ -119,7 +133,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message: "Validasi data gagal",
-          errors: parse.error.flatten().fieldErrors, // Lebih spesifik mengambil fieldErrors
+          errors: parse.error.flatten().fieldErrors,
         },
         { status: 400 },
       );
@@ -132,9 +146,9 @@ export async function POST(request: Request) {
       .insert(meetings)
       .values({
         title,
-        date: new Date(date),
-        location, // Zod sudah memastikan ini bukan string kosong
-        leader, // Zod sudah memastikan ini bukan string kosong
+        date: new Date(date), // Memastikan string tanggal diconvert ke objek Date
+        location,
+        leader,
         status: "live",
         attendanceCount: 0,
         userId,

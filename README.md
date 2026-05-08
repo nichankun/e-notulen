@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📋 e-Notulen
 
-## Getting Started
+Aplikasi manajemen notulen rapat digital berbasis web. Dibuat dengan Next.js, Drizzle ORM, dan Supabase.
 
-First, run the development server:
+🔗 **Live Demo:** [e-notulen.vercel.app](https://e-notulen.vercel.app)
+
+---
+
+## ✨ Fitur
+
+- 📝 Buat & kelola notulen rapat dengan rich text editor (Tiptap)
+- 📄 Export notulen ke PDF
+- ✍️ Tanda tangan digital
+- 🔒 Autentikasi berbasis JWT
+- 🌙 Dark mode / Light mode
+- 📱 Responsif di semua perangkat
+
+---
+
+## 🛠️ Tech Stack
+
+| Kategori | Library |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Bahasa | TypeScript |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Database | PostgreSQL via Supabase |
+| ORM | Drizzle ORM |
+| Auth | JWT (jose) + bcryptjs |
+| Form | React Hook Form + Zod |
+| Editor | Tiptap |
+| PDF | @react-pdf/renderer |
+
+---
+
+## 🚀 Cara Menjalankan Lokal
+
+### Prasyarat
+
+- Node.js >= 18
+- pnpm >= 9
+- Akun [Supabase](https://supabase.com) (untuk database PostgreSQL)
+
+### 1. Clone repository
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/nichankun/e-notulen.git
+cd e-notulen
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Setup environment variables
 
-## Learn More
+```bash
+cp .env.example .env
+```
 
-To learn more about Next.js, take a look at the following resources:
+Isi file `.env` dengan nilai yang sesuai (lihat bagian [Environment Variables](#-environment-variables)).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Jalankan migrasi database
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+pnpm dlx drizzle-kit generate
+pnpm dlx drizzle-kit migrate
+```
 
-## Deploy on Vercel
+### 5. (Opsional) Seed data awal
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm db:seed
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 6. Jalankan development server
+
+```bash
+pnpm dev
+```
+
+Buka [http://localhost:3000](http://localhost:3000) di browser.
+
+---
+
+## 🔑 Environment Variables
+
+Buat file `.env` berdasarkan `.env.example`:
+
+```env
+# Database
+DATABASE_URL=postgresql://...
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+
+# Auth JWT
+JWT_SECRET=your-secret-key-min-32-chars
+
+# App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+---
+
+## 📁 Struktur Folder
+
+```
+e-notulen/
+├── src/
+│   ├── app/          # Next.js App Router (pages & API routes)
+│   ├── components/   # Komponen UI
+│   ├── db/           # Drizzle schema & koneksi database
+│   └── lib/          # Utilitas & helper
+├── public/           # Aset statis
+├── drizzle/          # Hasil generate migration
+├── drizzle.config.ts
+└── package.json
+```
+
+---
+
+## 🚢 Deploy ke Vercel
+
+1. Push repo ke GitHub
+2. Import project di [vercel.com](https://vercel.com)
+3. Tambahkan semua environment variables di dashboard Vercel
+4. Deploy!
+
+---
+
+## 📄 Lisensi
+
+MIT License. Lihat [LICENSE](./LICENSE) untuk detail.
