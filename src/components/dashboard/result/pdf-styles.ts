@@ -2,7 +2,7 @@ import { StyleSheet } from "@react-pdf/renderer";
 
 export const styles = StyleSheet.create({
   page: {
-    paddingTop: "1.5cm",
+    paddingTop: "0.5cm",
     paddingBottom: "2.54cm",
     paddingLeft: "2.54cm",
     paddingRight: "2.54cm",
@@ -12,33 +12,49 @@ export const styles = StyleSheet.create({
     color: "#000",
   },
   // KOP SURAT
-  headerWrapper: { marginBottom: 8, width: "100%" },
+  headerWrapper: { marginBottom: 5, width: "100%" },
   headerContainer: {
-    flexDirection: "row",
+    flexDirection: "row", // Gunakan row agar logo dan teks berdampingan rapi
     alignItems: "center",
     width: "100%",
   },
-  logoContainer: { width: 75, alignItems: "flex-start" },
-  logo: { width: 55, height: 65, objectFit: "contain" },
-  headerTextContainer: { flex: 1, textAlign: "center" },
-  rightSpacer: { width: 75 },
-  kop1: { fontSize: 13, textTransform: "uppercase", marginBottom: 1 },
-  kop2: {
-    fontSize: 15,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    marginBottom: 1,
+  logoContainer: {
+    width: 75,
+    alignItems: "flex-start",
   },
-  kop3: { fontSize: 8, marginTop: 1 },
+  logo: { width: 70, height: 75, objectFit: "contain" },
+  headerTextContainer: {
+    flex: 1, // Membiarkan teks mengambil SELURUH sisa ruang di kanan logo
+    alignItems: "center",
+  },
+  kop1: {
+    fontSize: 13, // Ukuran ideal agar muat 1 baris
+    fontFamily: "Helvetica",
+    textTransform: "uppercase",
+    lineHeight: 1.1, // Tetap gunakan 1.1 agar jarak antar baris rapat
+  },
+  kop2: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    lineHeight: 1.1,
+    marginTop: 2,
+  },
+  kop3: {
+    fontSize: 9,
+    fontFamily: "Helvetica",
+    lineHeight: 1.2,
+    marginTop: 3,
+  },
   kopDividerThick: {
-    borderBottomWidth: 2.5,
+    borderBottomWidth: 3,
     borderBottomColor: "#000",
-    marginTop: 8,
+    marginTop: 3,
   },
   kopDividerThin: {
     borderBottomWidth: 1,
     borderBottomColor: "#000",
-    marginTop: 1.5,
+    marginTop: 2,
   },
 
   // INFO & TABEL

@@ -7,9 +7,12 @@ export function PdfHeader() {
   return (
     <View style={styles.headerWrapper}>
       <View style={styles.headerContainer}>
+        {/* Logo di sebelah kiri */}
         <View style={styles.logoContainer}>
           <PdfImage src="/logo-sultra.png" style={styles.logo} />
         </View>
+
+        {/* Teks mengisi sisa ruang secara maksimal dan rata tengah */}
         <View style={styles.headerTextContainer}>
           <Text style={styles.kop1}>Pemerintah Provinsi Sulawesi Tenggara</Text>
           <Text style={styles.kop2}>Badan Pendapatan Daerah</Text>
@@ -18,14 +21,13 @@ export function PdfHeader() {
           </Text>
           <Text style={styles.kop3}>Email: bapenda@sultraprov.go.id</Text>
         </View>
-        <View style={styles.rightSpacer} />
       </View>
+
       <View style={styles.kopDividerThick} />
       <View style={styles.kopDividerThin} />
     </View>
   );
 }
-
 // ==========================================
 // 2. KOMPONEN INFO RAPAT (UPDATE PESERTA)
 // ==========================================
