@@ -9,6 +9,8 @@ import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormControl,
@@ -51,11 +53,26 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function SectionLabel({ title }: { title: string }) {
+function SectionTitle({ number, title }: { number: string; title: string }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground pt-2">
-      {title}
-    </p>
+    <div className="flex items-center gap-3 pt-2">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground shrink-0">
+        {number}
+      </span>
+      <span className="text-sm font-semibold text-foreground">{title}</span>
+      <Separator className="flex-1" />
+    </div>
+  );
+}
+
+function OptionalBadge() {
+  return (
+    <Badge
+      variant="secondary"
+      className="ml-1.5 text-[10px] font-normal px-1.5 py-0"
+    >
+      opsional
+    </Badge>
   );
 }
 
@@ -110,30 +127,38 @@ export default function CreateMeetingPage() {
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-0 animate-in fade-in duration-500">
       {/* HEADER */}
-      <div className="border-b pb-5 mb-8">
+      <div className="mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
           E-Notulen
         </p>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">
           Buat Agenda Baru
         </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Kolom bertanda{" "}
+          <span className="text-destructive font-semibold">*</span> wajib diisi.
+        </p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-          {/* ── INFORMASI UTAMA ── */}
-          <SectionLabel title="Informasi Utama" />
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* ── SEKSI 1: INFORMASI UTAMA ── */}
+          <SectionTitle number="1" title="Informasi Utama" />
 
           <FormField
             control={form.control}
             name="title"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Judul Rapat / Kegiatan</FormLabel>
+                <FormLabel>
+                  Judul Rapat / Kegiatan{" "}
+                  <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Evaluasi Pendapatan Daerah Bulanan"
                     disabled={isLoading}
+                    className="h-10"
                     {...field}
                   />
                 </FormControl>
@@ -148,11 +173,14 @@ export default function CreateMeetingPage() {
               name="date"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tanggal</FormLabel>
+                  <FormLabel>
+                    Tanggal <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="datetime-local"
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -166,11 +194,14 @@ export default function CreateMeetingPage() {
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Lokasi / Ruangan</FormLabel>
+                  <FormLabel>
+                    Lokasi / Ruangan <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Ruang Rapat Kepala Badan"
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -186,15 +217,13 @@ export default function CreateMeetingPage() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  Nomor Surat Undangan{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (opsional)
-                  </span>
+                  Nomor Surat Undangan <OptionalBadge />
                 </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="005/123/BAPENDA/2025"
                     disabled={isLoading}
+                    className="h-10"
                     {...field}
                   />
                 </FormControl>
@@ -210,15 +239,13 @@ export default function CreateMeetingPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Waktu Mulai{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (opsional)
-                    </span>
+                    Waktu Mulai <OptionalBadge />
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="09.00"
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -233,15 +260,13 @@ export default function CreateMeetingPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Waktu Selesai{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (opsional)
-                    </span>
+                    Waktu Selesai <OptionalBadge />
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="11.30"
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -251,19 +276,23 @@ export default function CreateMeetingPage() {
             />
           </div>
 
-          {/* ── PIMPINAN & PETUGAS ── */}
-          <SectionLabel title="Pimpinan & Petugas" />
+          {/* ── SEKSI 2: PIMPINAN & PETUGAS ── */}
+          <SectionTitle number="2" title="Pimpinan & Petugas" />
 
           <FormField
             control={form.control}
             name="leader"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nama Pimpinan Rapat</FormLabel>
+                <FormLabel>
+                  Nama Pimpinan Rapat{" "}
+                  <span className="text-destructive">*</span>
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Nama pimpinan..."
                     disabled={isLoading}
+                    className="h-10"
                     {...field}
                   />
                 </FormControl>
@@ -279,15 +308,13 @@ export default function CreateMeetingPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Jabatan{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (opsional)
-                    </span>
+                    Jabatan <OptionalBadge />
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Kepala Badan"
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -302,15 +329,13 @@ export default function CreateMeetingPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Pangkat / Golongan{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (opsional)
-                    </span>
+                    Pangkat / Golongan <OptionalBadge />
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Pembina Utama Madya / IV-c"
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -327,15 +352,13 @@ export default function CreateMeetingPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Sekretaris{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (opsional)
-                    </span>
+                    Sekretaris <OptionalBadge />
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Nama sekretaris..."
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -350,15 +373,13 @@ export default function CreateMeetingPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Pencatat / Notulis{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (opsional)
-                    </span>
+                    Pencatat / Notulis <OptionalBadge />
                   </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Nama pencatat..."
                       disabled={isLoading}
+                      className="h-10"
                       {...field}
                     />
                   </FormControl>
@@ -369,7 +390,7 @@ export default function CreateMeetingPage() {
           </div>
 
           {/* ACTION BUTTONS */}
-          <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-3 pt-6 border-t mt-4">
+          <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-3 pt-4 border-t">
             <Button
               variant="ghost"
               type="button"
