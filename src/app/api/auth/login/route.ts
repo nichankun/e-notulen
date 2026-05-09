@@ -18,20 +18,24 @@ const loginSchema = z.object({
 // ==========================================
 // 2. JWT CONFIGURATION
 // ==========================================
-// Gunakan environment variable untuk secret key di production
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
-  throw new Error("JWT_SECRET environment variable is missing!");
-}
-
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026",
-);
+// PENTING: Dibungkus dalam function agar tidak dieksekusi
+// secara otomatis saat Next.js melakukan "pnpm build".
+const getSecretKey = () => {
+  const secret =
+    process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026";
+  return new TextEncoder().encode(secret);
+};
 
 // ==========================================
 // POST: PROSES LOGIN & SET COOKIE
 // ==========================================
 export async function POST(request: Request) {
   try {
+    // Pengecekan dipindah ke DALAM fungsi runtime
+    if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+      console.warn("WARNING: JWT_SECRET environment variable is missing!");
+    }
+
     // 1. Validasi Input Payload
     const body: unknown = await request.json();
     const parse = loginSchema.safeParse(body);
@@ -82,7 +86,7 @@ export async function POST(request: Request) {
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("24h") // Token aktif selama 1 hari
-      .sign(SECRET_KEY);
+      .sign(getSecretKey()); // Memanggil function secret key di sini
 
     // 5. Set HTTP-Only Cookie
     const cookieStore = await cookies();
