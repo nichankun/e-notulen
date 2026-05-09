@@ -97,8 +97,8 @@ export default function ResultPage({ params }: PageProps) {
     <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* HEADER & ACTIONS */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          {/* Tombol kembali dibiarkan menggunakan variant="outline" bawaan */}
+        {/* PERBAIKAN: Tambahkan flex-1 dan min-w-0 agar area judul bisa mengecil/terpotong */}
+        <div className="flex items-center gap-4 w-full md:flex-1 md:min-w-0">
           <Button
             variant="outline"
             size="icon"
@@ -109,56 +109,58 @@ export default function ResultPage({ params }: PageProps) {
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <div className="min-w-0">
+
+          {/* PERBAIKAN: Tambahkan min-w-0 di sini juga agar truncate bekerja pada flex child */}
+          <div className="min-w-0 flex-1">
             <h1 className="font-bold text-xl md:text-2xl text-foreground truncate tracking-tight">
               {meetingData.title}
             </h1>
             <div className="flex items-center gap-2 mt-1.5">
-              {/* Badge selesai menggunakan warna emerald dengan opacity agar aman di dark mode */}
               <Badge
                 variant="outline"
-                className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[11px] font-semibold tracking-wide px-2.5 py-0.5"
+                className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[11px] font-semibold tracking-wide px-2.5 py-0.5 shrink-0"
               >
                 Selesai Diarsipkan
               </Badge>
-              <span className="text-xs text-muted-foreground font-medium hidden md:inline-block">
+              <span className="text-xs text-muted-foreground font-medium hidden md:inline-block truncate">
                 ID: {id}
               </span>
             </div>
           </div>
         </div>
 
-        <PDFDownloadLink
-          document={
-            <NotulensiPDF
-              meetingData={meetingData}
-              attendees={attendees}
-              photos={photos}
-            />
-          }
-          fileName={`Notulensi_${meetingData.title.replace(/\s+/g, "_")}.pdf`}
-          className="w-full md:w-auto"
-        >
-          {({ loading: pdfLoading }) => (
-            // PERBAIKAN 3: Tombol cetak tidak perlu hardcode warna biru, biarkan Button shadcn mengambil alih
-            <Button
-              disabled={pdfLoading}
-              className="w-full md:w-auto font-bold h-12 px-6 rounded-full transition-colors flex items-center justify-center gap-2 shadow-sm"
-            >
-              {pdfLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Menyiapkan PDF...
-                </>
-              ) : (
-                <>
-                  <Printer className="h-5 w-5" />
-                  Cetak Notulensi
-                </>
-              )}
-            </Button>
-          )}
-        </PDFDownloadLink>
+        {/* PERBAIKAN: Tambahkan shrink-0 agar tombol cetak tidak pernah mengecil atau tergeser keluar area */}
+        <div className="w-full md:w-auto shrink-0">
+          <PDFDownloadLink
+            document={
+              <NotulensiPDF
+                meetingData={meetingData}
+                attendees={attendees}
+                photos={photos}
+              />
+            }
+            fileName={`Notulensi_${meetingData.title.replace(/\s+/g, "_")}.pdf`}
+          >
+            {({ loading: pdfLoading }) => (
+              <Button
+                disabled={pdfLoading}
+                className="w-full md:w-auto font-bold h-12 px-6 rounded-full transition-colors flex items-center justify-center gap-2 shadow-sm"
+              >
+                {pdfLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Menyiapkan PDF...
+                  </>
+                ) : (
+                  <>
+                    <Printer className="h-5 w-5" />
+                    Cetak Notulensi
+                  </>
+                )}
+              </Button>
+            )}
+          </PDFDownloadLink>
+        </div>
       </div>
 
       {/* EXECUTIVE SUMMARY CARDS */}

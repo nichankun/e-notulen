@@ -1,15 +1,13 @@
 "use client";
 
-import { User } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { User, Clock } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { type Attendee } from "@/db/database/schema";
 
 interface MeetingAttendeesProps {
   attendees: Attendee[];
 }
 
-// Formatter tetap di luar untuk efisiensi memori
 const timeFormatter = new Intl.DateTimeFormat("id-ID", {
   hour: "2-digit",
   minute: "2-digit",
@@ -24,73 +22,57 @@ const getInitials = (name: string) => {
 
 export function MeetingAttendees({ attendees }: MeetingAttendeesProps) {
   return (
-    // PERBAIKAN 1: Gunakan bg-card dan border-border agar otomatis dukung Dark Mode
-    <Card className="flex flex-col h-80 lg:h-96 bg-card border shadow-sm overflow-hidden rounded-xl">
-      {/* HEADER: Menggunakan bg-muted/50 agar senada dengan toolbar editor */}
-      <div className="px-4 py-3 border-b bg-muted/50 backdrop-blur-md flex justify-between items-center shrink-0">
-        <h4 className="font-bold text-xs uppercase tracking-widest text-muted-foreground">
-          Peserta Masuk
-        </h4>
-        {/* PERBAIKAN 2: Gunakan variant standar shadcn agar warna serasi dengan preset */}
-        <Badge
-          variant="outline"
-          className="bg-primary/10 text-primary border-primary/20 font-bold px-2 py-0.5"
-        >
-          {attendees.length} Orang
-        </Badge>
-      </div>
-
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 bg-background">
-        {attendees.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <User className="h-6 w-6 text-muted-foreground opacity-50" />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground italic">
-              Belum ada peserta scan...
-            </p>
+    // Menggunakan max-h-[300px] agar bisa di-scroll jika kepanjangan, tapi menciut jika kosong
+    <div className="flex flex-col max-h-75 overflow-y-auto bg-background">
+      {attendees.length === 0 ? (
+        // EMPTY STATE: Sangat minimalis
+        <div className="flex flex-col items-center justify-center py-6 px-4 text-center text-muted-foreground">
+          <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center mb-2">
+            <User className="h-5 w-5 opacity-40" />
           </div>
-        ) : (
-          <div className="flex flex-col divide-y divide-border/50">
-            {attendees.map((person) => {
-              const scanTime = person.scannedAt
-                ? timeFormatter.format(new Date(person.scannedAt))
-                : "--:--";
+          <p className="text-xs font-medium">Belum ada peserta</p>
+        </div>
+      ) : (
+        // LIST PESERTA: Padding lebih rapat (px-4 py-2.5)
+        <div className="flex flex-col divide-y divide-border/40">
+          {attendees.map((person) => {
+            const scanTime = person.scannedAt
+              ? timeFormatter.format(new Date(person.scannedAt))
+              : "--:--";
 
-              return (
-                <div
-                  key={person.id}
-                  className="px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors animate-in slide-in-from-left-2 duration-300"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* AVATAR: Menggunakan warna primary transparan agar lebih "segar" */}
-                    <div className="shrink-0 h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary border border-primary/20 shadow-sm">
+            return (
+              <div
+                key={person.id}
+                className="px-4 py-2.5 flex items-center justify-between hover:bg-muted/30 transition-colors animate-in fade-in duration-300"
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden pr-3">
+                  <Avatar className="h-8 w-8 border shadow-sm shrink-0">
+                    <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-semibold">
                       {getInitials(person.name)}
-                    </div>
+                    </AvatarFallback>
+                  </Avatar>
 
-                    <div className="min-w-0">
-                      {/* PERBAIKAN 3: Gunakan text-foreground dan hapus max-w-35 (tidak valid) */}
-                      <p className="text-sm font-bold text-foreground truncate max-w-35 sm:max-w-50">
-                        {person.name}
-                      </p>
-                      {person.department && (
-                        <p className="text-[10px] text-muted-foreground truncate max-w-35">
-                          {person.department}
-                        </p>
-                      )}
-                    </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-xs font-medium text-foreground truncate">
+                      {person.name}
+                    </span>
+                    {person.department && (
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {person.department}
+                      </span>
+                    )}
                   </div>
-
-                  {/* TIMESTAMP: Dibuat lebih subtle dan bersih */}
-                  <span className="shrink-0 text-[10px] font-mono font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md border">
-                    {scanTime}
-                  </span>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </Card>
+
+                <div className="shrink-0 flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-1 rounded border border-border/50">
+                  <Clock className="w-3 h-3" />
+                  <span>{scanTime}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, useEffect, use, useTransition } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import { toast } from "sonner";
+import {
+  ChevronDown,
+  ChevronRight,
+  QrCode,
+  Users,
+  Image as ImageIcon,
+} from "lucide-react";
+import imageCompression from "browser-image-compression";
+import { supabase } from "@/lib/supabaseClient";
 
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { MeetingHeader } from "@/components/dashboard/live/meeting-header";
 import { MeetingQRCode } from "@/components/dashboard/live/meeting-qr";
 import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees";
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
+import { PhotoDocumentation } from "@/components/dashboard/live/photo-documentation";
 
 import { LoadingScreen } from "./loading-screen";
 import { MobileSaveStatus } from "./mobile-save-status";
@@ -21,63 +36,52 @@ interface PageProps {
 export default function LiveMeetingPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
-  // Data State
+  // --- DATA STATES ---
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
-  const [notulen, setNotulen] = useState("");
+  const [notulen, setNotulen] = useState<string>("");
   const [photos, setPhotos] = useState<string[]>([]);
-  const [origin, setOrigin] = useState("");
 
-  // UI State
-  const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [progress, setProgress] = useState(13);
-
-  // Status khusus Auto-Save
+  // --- UI & UPLOAD STATES ---
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
+  const [progress, setProgress] = useState<number>(13);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
 
-  const isRouting = isSaving || isPending;
+  // State Collapsible
+  const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isAttendeesOpen, setIsAttendeesOpen] = useState(false);
+  const [isPhotosOpen, setIsPhotosOpen] = useState(false);
 
-  // 1. Progress Bar Logic
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  // 1. Fetch & Sync Logic
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (loading) {
-      timer = setTimeout(() => setProgress(66), 500);
-    }
-    return () => clearTimeout(timer);
-  }, [loading]);
-
-  // 2. Fetch Initial Data
-  useEffect(() => {
-    setOrigin(window.location.origin);
-
     const initData = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}`);
         const json = await res.json();
-
         if (json.success) {
           setMeetingData(json.data);
           setNotulen(json.data.content || "");
-          if (json.data.photos) {
+          if (json.data.photos && typeof json.data.photos === "string") {
             try {
-              const parsedPhotos = JSON.parse(json.data.photos);
-              if (Array.isArray(parsedPhotos)) setPhotos(parsedPhotos);
+              const parsed = JSON.parse(json.data.photos);
+              if (Array.isArray(parsed)) setPhotos(parsed);
             } catch {
               setPhotos([]);
             }
           }
         } else {
-          toast.error("Rapat tidak ditemukan");
           router.push("/dashboard");
         }
       } catch {
-        console.error("Gagal inisialisasi data rapat.");
+        toast.error("Gagal memuat data");
       } finally {
         setProgress(100);
         setTimeout(() => setLoading(false), 300);
@@ -86,176 +90,217 @@ export default function LiveMeetingPage({ params }: PageProps) {
     initData();
   }, [id, router]);
 
-  // 3. Polling Attendees
+  // Logika Polling Peserta
   useEffect(() => {
-    const controller = new AbortController();
     const fetchAttendees = async () => {
       try {
-        const res = await fetch(`/api/meetings/${id}/attendees`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(`/api/meetings/${id}/attendees`);
         const json = await res.json();
         if (json.success) setAttendees(json.data);
-      } catch (_error) {
-        if (_error instanceof Error && _error.name !== "AbortError") {
-          console.error("Polling error:", _error.message);
-        }
+      } catch {
+        // Silent error for polling
       }
     };
-
     fetchAttendees();
     const interval = setInterval(fetchAttendees, 3000);
-    return () => {
-      clearInterval(interval);
-      controller.abort();
-    };
+    return () => clearInterval(interval);
   }, [id]);
 
-  // ========================================================
-  // 3.5. FITUR SINKRONISASI STATUS (Auto-Kick)
-  // ========================================================
-  useEffect(() => {
-    const checkMeetingStatus = async () => {
-      try {
-        const res = await fetch(`/api/meetings/${id}`);
-        const json = await res.json();
-
-        if (json.success) {
-          if (json.data.status !== "live") {
-            toast.info("Rapat Telah Berakhir", {
-              description:
-                "Rapat ini telah difinalisasi melalui perangkat lain.",
-            });
-            router.push("/dashboard/archive");
-            router.refresh();
-          }
-        }
-      } catch (err) {
-        console.error("Gagal sinkronisasi status rapat:", err);
+  // Logika Unggah Foto
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    const newUrls: string[] = [];
+    try {
+      for (const file of Array.from(files)) {
+        const compressed = await imageCompression(file, {
+          maxSizeMB: 0.8,
+          maxWidthOrHeight: 1600,
+          useWebWorker: true,
+        });
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("notulen")
+          .upload(fileName, compressed);
+        if (uploadError) throw uploadError;
+        const { data } = supabase.storage
+          .from("notulen")
+          .getPublicUrl(fileName);
+        if (data.publicUrl) newUrls.push(data.publicUrl);
       }
-    };
+      setPhotos([...photos, ...newUrls]);
+      toast.success("Foto ditambahkan");
+    } catch {
+      toast.error("Gagal unggah foto");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
-    const statusInterval = setInterval(checkMeetingStatus, 5000);
-    return () => clearInterval(statusInterval);
-  }, [id, router]);
-
-  // 4. AUTO-SAVE LOGIC
+  // Auto-Save Logic
   useEffect(() => {
-    const hasContentChanged = notulen !== (meetingData?.content ?? "");
-    const currentPhotosJson = JSON.stringify(photos);
-    const savedPhotosJson = meetingData?.photos ?? "[]";
-    const hasPhotosChanged = currentPhotosJson !== savedPhotosJson;
-
-    if (loading || isSaving || (!hasContentChanged && !hasPhotosChanged))
-      return;
-
-    const timer = setTimeout(async () => {
+    if (loading) return;
+    const saveTimer = setTimeout(async () => {
       setSaveStatus("saving");
       try {
-        const res = await fetch(`/api/meetings/${id}`, {
+        await fetch(`/api/meetings/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: notulen, photos: photos }),
+          body: JSON.stringify({ content: notulen, photos }),
         });
-
-        if (res.ok) {
-          setSaveStatus("saved");
-          setMeetingData((prev) =>
-            prev
-              ? { ...prev, content: notulen, photos: JSON.stringify(photos) }
-              : null,
-          );
-          setTimeout(() => setSaveStatus("idle"), 2000);
-        } else {
-          setSaveStatus("error");
-        }
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus("idle"), 2000);
       } catch {
         setSaveStatus("error");
       }
     }, 3000);
+    return () => clearTimeout(saveTimer);
+  }, [notulen, photos, id, loading]);
 
-    return () => clearTimeout(timer);
-  }, [notulen, photos, id, loading, isSaving, meetingData]);
-
-  // 5. Finalize Meeting
+  // Finalize Meeting
   const handleFinish = async () => {
-    setIsSaving(true);
     try {
       const res = await fetch(`/api/meetings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: notulen,
-          photos: photos,
-          status: "archived",
-        }),
+        body: JSON.stringify({ content: notulen, photos, status: "archived" }),
       });
-
       if (res.ok) {
-        toast.success("Rapat Selesai", {
-          description: "Notulen telah diarsipkan.",
-        });
+        toast.success("Rapat Selesai");
         setIsDialogOpen(false);
-        startTransition(() => {
-          router.push("/dashboard/archive");
-          router.refresh();
-        });
-      } else {
-        toast.error("Gagal Menyimpan");
-        setIsSaving(false);
+        router.push("/dashboard/archive");
+        router.refresh();
       }
     } catch {
-      toast.error("Terjadi kesalahan jaringan.");
-      setIsSaving(false);
+      toast.error("Gagal menyelesaikan rapat");
     }
   };
 
-  if (loading) {
-    return <LoadingScreen progress={progress} />;
-  }
+  if (loading) return <LoadingScreen progress={progress} />;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 p-4 md:p-6 bg-background">
-      {/* HEADER SECTION: Desktop & Mobile Save Status */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="min-h-screen bg-muted/10 flex flex-col">
+      {/* HEADER: Menggunakan w-full tanpa batasan max-width */}
+      <header className="bg-background border-b sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between shadow-sm transition-all w-full">
         <MeetingHeader
           date={meetingData?.date ? new Date(meetingData.date) : undefined}
         />
-
-        {/* Indikator Status Auto-Save Mobile */}
         <MobileSaveStatus saveStatus={saveStatus} />
-      </div>
+      </header>
 
-      {/* MAIN CONTENT GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* KOLOM KIRI: QR Code & Attendees */}
-        <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-24 h-fit">
-          <MeetingQRCode meetingId={id} origin={origin} />
-          <MeetingAttendees attendees={attendees} />
+      {/* MAIN CONTENT: max-w-full agar mentok kiri-kanan */}
+      <main className="flex-1 w-full max-w-full  py-6 transition-all">
+        {/* Grid lebar dengan porsi kolom yang dioptimalkan untuk layar lebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* SIDEBAR: Porsi kecil di sisi kiri */}
+          <div className="lg:col-span-3 xl:col-span-2 space-y-4 lg:sticky lg:top-20">
+            <Collapsible
+              open={isQrOpen}
+              onOpenChange={setIsQrOpen}
+              className="bg-background border rounded-xl shadow-sm overflow-hidden"
+            >
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3 text-sm font-semibold">
+                    <QrCode className="h-4 w-4 text-muted-foreground" /> QR Code
+                  </div>
+                  {isQrOpen ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="border-t p-2">
+                <MeetingQRCode meetingId={id} origin={origin} />
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Collapsible
+              open={isAttendeesOpen}
+              onOpenChange={setIsAttendeesOpen}
+              className="bg-background border rounded-xl shadow-sm overflow-hidden"
+            >
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3 text-sm font-semibold">
+                    <Users className="h-4 w-4 text-muted-foreground" /> Peserta
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold">
+                      {attendees.length}
+                    </span>
+                    {isAttendeesOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="border-t">
+                <MeetingAttendees attendees={attendees} />
+              </CollapsibleContent>
+            </Collapsible>
+
+            <Collapsible
+              open={isPhotosOpen}
+              onOpenChange={setIsPhotosOpen}
+              className="bg-background border rounded-xl shadow-sm overflow-hidden"
+            >
+              <CollapsibleTrigger asChild>
+                <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3 text-sm font-semibold">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" /> Foto
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold">
+                      {photos.length}
+                    </span>
+                    {isPhotosOpen ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="border-t">
+                <PhotoDocumentation
+                  photos={photos}
+                  isUploading={isUploading}
+                  fileInputRef={fileInputRef}
+                  onUpload={handlePhotoUpload}
+                  onRemove={(idx) =>
+                    setPhotos(photos.filter((_, i) => i !== idx))
+                  }
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+
+          {/* EDITOR AREA: Porsi paling besar, menghabiskan sisa ruang layar */}
+          <div className="lg:col-span-9 xl:col-span-10">
+            <MeetingEditor
+              title={meetingData?.title || ""}
+              leader={meetingData?.leader || ""}
+              content={notulen}
+              setContent={setNotulen}
+              onFinish={() => setIsDialogOpen(true)}
+              isSaving={false}
+              saveStatus={saveStatus}
+            />
+          </div>
         </div>
+      </main>
 
-        {/* KOLOM KANAN: Text Editor & Foto */}
-        <div className="lg:col-span-2">
-          <MeetingEditor
-            title={meetingData?.title || ""}
-            leader={meetingData?.leader || ""}
-            content={notulen}
-            setContent={setNotulen}
-            photos={photos}
-            setPhotos={setPhotos}
-            onFinish={() => setIsDialogOpen(true)}
-            isSaving={isRouting}
-            saveStatus={saveStatus}
-          />
-        </div>
-      </div>
-
-      {/* Dialog Konfirmasi Selesai */}
       <FinishMeetingDialog
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onFinish={handleFinish}
-        isRouting={isRouting}
+        isRouting={false}
       />
     </div>
   );

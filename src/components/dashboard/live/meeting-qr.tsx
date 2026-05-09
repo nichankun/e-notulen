@@ -3,7 +3,6 @@
 import { QRCodeCanvas } from "qrcode.react";
 import { Download, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
 interface MeetingQRCodeProps {
@@ -30,70 +29,55 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
         downloadLink.click();
         document.body.removeChild(downloadLink);
 
-        toast.success("QR Code Diunduh", {
-          description: "Gambar QR telah disimpan ke perangkat Anda.",
-        });
+        toast.success("QR Code Diunduh");
       } catch (error: unknown) {
-        console.error("Gagal memproses kanvas QR:", error);
-        toast.error("Gagal Mengunduh", {
-          description: "Terjadi kesalahan sistem saat menyimpan gambar.",
-        });
+        console.error("Gagal memproses QR:", error);
+        toast.error("Gagal Mengunduh QR Code");
       }
-    } else {
-      toast.error("QR Code Belum Siap", {
-        description: "Tunggu hingga gambar selesai dimuat.",
-      });
     }
   };
 
   return (
-    // PERBAIKAN 1: Menggunakan bg-card dan border standar shadcn
-    <Card className="p-5 sm:p-6 text-center border shadow-sm flex flex-col items-center justify-center h-fit bg-card">
-      {/* Header Kecil */}
-      <div className="mb-4 space-y-2 w-full">
-        <h4 className="font-bold text-foreground flex items-center justify-center gap-2 text-sm sm:text-base">
-          {/* Ikon menggunakan warna primary tema Anda */}
-          <QrCode className="h-4 w-4 text-primary" />
-          Scan Absensi
-        </h4>
-        {/* Badge ID Rapat: Menggunakan bg-muted agar lebih soft */}
-        <div className="text-[10px] sm:text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full font-mono inline-block border border-border">
-          ID: <span className="font-bold text-foreground">{meetingId}</span>
-        </div>
+    <div className="flex flex-col items-center text-center p-4">
+      {/* BADGE ID RAPAT */}
+      <div className="mb-4 px-2.5 py-1 bg-muted/50 rounded-md inline-flex items-center gap-1.5 border border-border/50 text-xs">
+        <span className="text-muted-foreground">ID:</span>
+        <span className="font-mono font-bold text-foreground tracking-wider">
+          {meetingId}
+        </span>
       </div>
 
-      {/* Container QR Code */}
-      {/* QR Code tetap butuh latar putih agar mudah di-scan kamera, 
-          tapi pembungkusnya kita sesuaikan dengan border shadcn */}
-      <div className="bg-white p-4 border border-border rounded-2xl shadow-inner mb-6 transition-all duration-300">
+      {/* CONTAINER QR CODE (Diperkecil sedikit) */}
+      <div className="bg-white border rounded-xl shadow-sm mb-4 flex items-center justify-center min-h-40 min-w-40">
         {origin ? (
           <QRCodeCanvas
             id={canvasId}
             value={`${origin}/attend/${meetingId}`}
-            size={160}
-            fgColor="#0f172a" // Slate-900: Warna sangat gelap untuk kontras maksimal saat scan
+            size={140}
+            fgColor="#0f172a"
             bgColor="#ffffff"
-            level={"H"}
-            marginSize={4}
-            style={{ width: "100%", height: "auto", maxWidth: "160px" }}
+            level="H"
+            marginSize={2}
+            style={{ width: "140px", height: "140px" }}
           />
         ) : (
-          <div className="h-40 w-40 bg-muted animate-pulse rounded-xl flex items-center justify-center">
-            <QrCode className="h-10 w-10 text-muted-foreground/30" />
+          <div className="h-35 w-35 bg-muted/30 animate-pulse rounded-lg flex items-center justify-center">
+            <QrCode className="h-8 w-8 text-muted-foreground/30" />
           </div>
         )}
       </div>
 
-      {/* Tombol Download */}
+      {/* TOMBOL DOWNLOAD (Dibuat Full Width & Small) */}
       <Button
         variant="outline"
+        size="sm"
         onClick={downloadQRCode}
         disabled={!origin}
-        // PERBAIKAN 2: Membersihkan class manual, mengandalkan standar Button shadcn
-        className="w-full text-xs font-bold h-10 transition-all rounded-xl"
+        className="w-30 text-xs h-8"
       >
-        <Download className="mr-2 h-4 w-4" /> Simpan Gambar
+        <Download className="mr-1.5 h-3.5 w-3.5" />
+        Unduh QR
       </Button>
-    </Card>
+    </div>
   );
 }

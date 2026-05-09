@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  Image as ImageIcon,
-  Loader2,
-  Plus,
-  UploadCloud,
-  X,
-} from "lucide-react";
+import { Image as ImageIcon, Loader2, Plus, X } from "lucide-react";
 import Image from "next/image";
 
 interface PhotoProps {
@@ -24,86 +18,93 @@ export function PhotoDocumentation({
   onRemove,
 }: PhotoProps) {
   return (
-    <div className="border-t bg-background">
-      {/* HEADER: Sticky dengan Blur */}
-      <div className="px-6 py-3 bg-muted/30 border-b flex justify-between items-center sticky top-0 z-10 backdrop-blur-md">
-        <h4 className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-          <ImageIcon className="h-3.5 w-3.5 text-primary" />
-          II. Dokumentasi Foto
-        </h4>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          className="h-8 text-xs font-semibold rounded-lg"
+    <div className="p-3">
+      {/* Input File (Disembunyikan) */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={onUpload}
+        accept="image/*"
+        multiple
+        className="hidden"
+      />
+
+      {/* BODY / AREA KONTEN */}
+      {photos.length === 0 ? (
+        // EMPTY STATE (Tampilan saat kosong - Sangat Compact)
+        <div
+          onClick={() => !isUploading && fileInputRef.current?.click()}
+          className={`flex flex-col items-center justify-center py-6 px-4 border-2 border-dashed rounded-lg text-center transition-colors cursor-pointer ${
+            isUploading
+              ? "bg-muted/50 border-border"
+              : "bg-transparent border-muted-foreground/30 hover:bg-muted/40"
+          }`}
         >
           {isUploading ? (
-            <Loader2 className="h-3 w-3 animate-spin mr-2" />
+            <Loader2 className="h-5 w-5 text-muted-foreground animate-spin mb-2" />
           ) : (
-            <Plus className="h-3 w-3 mr-2" />
+            <ImageIcon className="h-5 w-5 text-muted-foreground/50 mb-2" />
           )}
-          Tambah Foto
-        </Button>
-        <input
-          type="file"
-          multiple
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={onUpload}
-        />
-      </div>
+          <p className="text-xs font-medium text-muted-foreground">
+            {isUploading ? "Mengunggah..." : "Tambah Foto"}
+          </p>
+        </div>
+      ) : (
+        // GRID FOTO (Tampilan saat ada foto - 2 Kolom khusus Sidebar)
+        <div className="grid grid-cols-2 gap-2.5">
+          {photos.map((url, idx) => (
+            <div
+              key={idx}
+              className="relative group aspect-square rounded-lg overflow-hidden border bg-muted"
+            >
+              <Image
+                src={url}
+                alt={`Lampiran ${idx + 1}`}
+                fill
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                sizes="(max-width: 768px) 50vw, 33vw"
+              />
 
-      <div className="p-6">
-        {photos.length === 0 ? (
-          /* EMPTY STATE: Upload Zone */
+              {/* OVERLAY: Tombol Hapus (Muncul saat hover) */}
+              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(idx);
+                  }}
+                  className="h-6 w-6 rounded-md shadow-sm"
+                  title="Hapus Foto"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {/* TILE TAMBAH FOTO (Menyatu di dalam grid agar hemat tempat) */}
           <div
             onClick={() => !isUploading && fileInputRef.current?.click()}
-            className="border-2 border-dashed border-border rounded-xl p-10 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 hover:border-primary/50 transition-all cursor-pointer group"
+            className={`flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+              isUploading
+                ? "bg-muted/50 border-border"
+                : "bg-transparent border-muted-foreground/30 hover:bg-muted/40"
+            }`}
           >
-            <div className="p-4 bg-muted rounded-full mb-3 group-hover:scale-110 group-hover:bg-primary/10 transition-all duration-300">
-              <UploadCloud className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-            </div>
-            <p className="text-sm font-semibold text-foreground">
-              Belum ada foto dokumentasi
-            </p>
-            <p className="text-xs mt-1 text-muted-foreground">
-              Klik untuk mengunggah gambar (Maks. 5MB)
-            </p>
+            {isUploading ? (
+              <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
+            ) : (
+              <>
+                <Plus className="h-5 w-5 text-muted-foreground/50 mb-1" />
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  Tambah
+                </span>
+              </>
+            )}
           </div>
-        ) : (
-          /* GRID FOTO */
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((url, idx) => (
-              <div
-                key={idx}
-                className="relative group aspect-4/3 rounded-xl overflow-hidden border bg-muted shadow-sm transition-all"
-              >
-                <Image
-                  src={url}
-                  alt={`Dokumentasi ${idx + 1}`}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
-                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                />
-
-                {/* OVERLAY: Action on Hover */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-[2px]">
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => onRemove(idx)}
-                    className="h-9 w-9 rounded-full shadow-2xl translate-y-2 group-hover:translate-y-0 transition-all duration-300"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

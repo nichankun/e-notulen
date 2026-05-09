@@ -27,7 +27,6 @@ export function FinishMeetingDialog({
 }: FinishMeetingDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
-      {/* PERBAIKAN 1: Menghapus bg-white dan border-gray-100 agar otomatis mendukung Dark Mode */}
       <AlertDialogContent className="rounded-2xl p-6 md:p-8 border-border">
         <AlertDialogHeader>
           <AlertDialogTitle className="font-bold text-foreground text-xl tracking-tight">
@@ -46,7 +45,6 @@ export function FinishMeetingDialog({
           >
             Batal
           </AlertDialogCancel>
-          {/* PERBAIKAN 3: Menggunakan bg-primary (warna tema) alih-alih biru kaku */}
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
