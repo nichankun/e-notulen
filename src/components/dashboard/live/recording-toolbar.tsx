@@ -49,7 +49,7 @@ export function RecordingToolbar({
           ) : (
             <Sparkles className="w-3.5 h-3.5" />
           )}
-          Rangkum Teks
+          Rangkum
         </Button>
       )}
 
