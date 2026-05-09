@@ -4,13 +4,12 @@ import {
   timestamp,
   integer,
   unique,
-  uuid, // Ditambahkan untuk tipe UUID
-  pgEnum, // Ditambahkan untuk tipe Enum
+  uuid,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
 
 // --- ENUMS ---
-// Inovasi: Mengunci nilai yang diizinkan di level database untuk mencegah typo atau data tidak valid
 export const userRoleEnum = pgEnum("user_role", ["admin", "pegawai"]);
 export const meetingStatusEnum = pgEnum("meeting_status", [
   "draft",
@@ -23,39 +22,50 @@ export const attendeeRoleEnum = pgEnum("attendee_role", [
   "pejabat",
   "peserta",
 ]);
+
 // 1. Tabel Users
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(), // Inovasi: Menggunakan UUID
+  id: uuid("id").primaryKey().defaultRandom(),
   nip: text("nip").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
   agency: text("agency"),
-  role: userRoleEnum("role").default("pegawai"), // Inovasi: Menggunakan Enum
+  role: userRoleEnum("role").default("pegawai"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
-    .$onUpdate(() => new Date()), // Inovasi: Otomatis ter-update saat ada modifikasi data
+    .$onUpdate(() => new Date()),
 });
 
 // 2. Tabel Rapat
 export const meetings = pgTable("meetings", {
-  id: uuid("id").primaryKey().defaultRandom(), // Inovasi: Link rapat menjadi /dashboard/live/uuid yang tidak bisa ditebak
+  id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
   date: timestamp("date").notNull(),
   location: text("location"),
   leader: text("leader"),
-  status: meetingStatusEnum("status").default("live"), // Inovasi: Menggunakan Enum
+
+  // ── Kolom baru ──────────────────────────────────────────────────
+  invitationNumber: text("invitation_number"), // Nomor Surat Undangan
+  startTime: text("start_time"), // Waktu mulai, contoh: "09.00"
+  endTime: text("end_time"), // Waktu selesai, contoh: "11.30"
+  secretary: text("secretary"), // Nama Sekretaris
+  recorder: text("recorder"), // Nama Pencatat/Notulis
+  leaderTitle: text("leader_title"), // Jabatan Pimpinan Sidang
+  leaderRank: text("leader_rank"), // Pangkat/Golongan Pimpinan
+  // ────────────────────────────────────────────────────────────────
+
+  status: meetingStatusEnum("status").default("live"),
   content: text("content"),
   photos: text("photos"),
   attendanceCount: integer("attendance_count").default(0),
   userId: uuid("user_id").references(() => users.id, {
-    // Diubah dari integer ke uuid menyesuaikan relasi
     onDelete: "cascade",
   }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
-    .$onUpdate(() => new Date()), // Inovasi: Berguna untuk melacak kapan notulen terakhir diedit
+    .$onUpdate(() => new Date()),
 });
 
 // 3. Tabel Peserta Absensi
@@ -67,10 +77,9 @@ export const attendees = pgTable(
       onDelete: "cascade",
     }),
     name: text("name").notNull(),
-    // Kolom nip telah dihapus dari sini
     department: text("department"),
     signature: text("signature"),
-    role: attendeeRoleEnum("role").default("peserta"), // Inovasi: Menggunakan Enum
+    role: attendeeRoleEnum("role").default("peserta"),
     deviceId: text("device_id"),
     scannedAt: timestamp("scanned_at").defaultNow(),
     updatedAt: timestamp("updated_at")
@@ -79,7 +88,6 @@ export const attendees = pgTable(
   },
   (table) => {
     return {
-      // Constraint disesuaikan dengan logika Device ID di route.ts
       uniqueDevicePerMeeting: unique().on(table.meetingId, table.deviceId),
     };
   },

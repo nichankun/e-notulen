@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
-
+import { Eye, EyeOff, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -48,7 +47,6 @@ export function LoginForm() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     let timeoutId: NodeJS.Timeout;
-
     if (isLoading) {
       timeoutId = setTimeout(() => setProgress(15), 0);
       timer = setInterval(() => {
@@ -59,10 +57,9 @@ export function LoginForm() {
     } else {
       timeoutId = setTimeout(() => setProgress(0), 0);
     }
-
     return () => {
-      if (timer) clearInterval(timer);
-      if (timeoutId) clearTimeout(timeoutId);
+      clearInterval(timer);
+      clearTimeout(timeoutId);
     };
   }, [isLoading]);
 
@@ -75,7 +72,6 @@ export function LoginForm() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-
       if (json.success) {
         setProgress(100);
         toast.success("Login Berhasil", {
@@ -91,7 +87,6 @@ export function LoginForm() {
         );
       }
     } catch (err) {
-      // PERBAIKAN: Gunakan variabel 'err' untuk mencetak log di console browser
       console.error("Terjadi masalah saat login:", err);
       setGlobalError("Terjadi kesalahan jaringan, coba lagi nanti.");
     }
@@ -101,14 +96,14 @@ export function LoginForm() {
     <>
       {isLoading && (
         <div className="fixed top-0 left-0 w-full z-50">
-          <Progress value={progress} className="h-1.5 rounded-none" />
+          <Progress value={progress} className="h-0.5 rounded-none" />
         </div>
       )}
 
       {globalError && (
-        <div className="mb-6 p-3 bg-destructive/10 text-destructive rounded-xl text-sm flex items-center gap-3 animate-in fade-in">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p className="font-medium">{globalError}</p>
+        <div className="mb-5 p-3 bg-destructive/10 text-destructive rounded-lg text-sm flex items-center gap-2.5 animate-in fade-in">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <p className="text-sm">{globalError}</p>
         </div>
       )}
 
@@ -119,10 +114,13 @@ export function LoginForm() {
             name="nip"
             render={({ field }) => (
               <FormItem>
+                <label className="text-[11px] uppercase tracking-widest font-medium text-muted-foreground block mb-1.5">
+                  NIP
+                </label>
                 <FormControl>
                   <Input
-                    placeholder="Masukan NIP"
-                    className="h-14 rounded-xl bg-muted/50 border-transparent focus-visible:ring-primary px-4 text-base font-medium"
+                    placeholder="Nomor Induk Pegawai"
+                    className="h-11 rounded-lg text-sm"
                     disabled={isLoading}
                     {...field}
                   />
@@ -137,12 +135,15 @@ export function LoginForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
+                <label className="text-[11px] uppercase tracking-widest font-medium text-muted-foreground block mb-1.5">
+                  Kata sandi
+                </label>
                 <div className="relative">
                   <FormControl>
                     <Input
                       type={showPassword ? "text" : "password"}
-                      placeholder="Kata Sandi"
-                      className="h-14 rounded-xl bg-muted/50 border-transparent focus-visible:ring-primary px-4 text-base font-medium pr-12"
+                      placeholder="••••••••"
+                      className="h-11 rounded-lg text-sm pr-11"
                       disabled={isLoading}
                       {...field}
                     />
@@ -150,13 +151,14 @@ export function LoginForm() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     tabIndex={-1}
+                    aria-label="Tampilkan kata sandi"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </button>
                 </div>
@@ -165,19 +167,20 @@ export function LoginForm() {
             )}
           />
 
-          <div className="pt-2">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-14 bg-primary hover:opacity-90 text-primary-foreground font-bold text-lg rounded-full transition-all shadow-lg shadow-primary/20 active:scale-95"
-            >
-              {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                "Masuk"
-              )}
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="w-full h-11 rounded-lg text-sm font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <span>Masuk</span>
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
+          </Button>
         </form>
       </Form>
     </>

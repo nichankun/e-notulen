@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronsUpDown, LogOut, User, KeyRound, Loader2 } from "lucide-react";
+import { ChevronsUpDown, LogOut, KeyRound, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -21,7 +20,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
 import { ChangePasswordDialog } from "./change-password-dialog";
 
 interface NavUserProps {
@@ -40,17 +38,15 @@ export function NavUser({ user }: NavUserProps) {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      const result = await response.json();
-
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      const result = await res.json();
       if (result.success) {
         startTransition(() => {
           router.push("/");
           router.refresh();
         });
       }
-    } catch (err: unknown) {
-      console.error("Logout error:", err);
+    } catch {
       toast.error("Gagal logout, periksa koneksi Anda.");
     }
   };
@@ -61,81 +57,65 @@ export function NavUser({ user }: NavUserProps) {
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              {/* PERBAIKAN 1: Menggunakan variabel semantik sidebar-accent. 
-                  Ini akan otomatis memberikan efek hover yang elegan sesuai warna dasar sidebar Anda. */}
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 rounded-xl"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 disabled={isPending}
               >
-                {/* Avatar Border menggunakan opacity dari foreground agar selalu terlihat pas */}
-                <Avatar className="h-8 w-8 rounded-full border border-sidebar-foreground/10 shadow-sm">
+                <Avatar className="h-8 w-8 rounded-full">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  {/* Fallback menggunakan warna primary dari sidebar */}
-                  <AvatarFallback className="rounded-full bg-sidebar-primary text-sidebar-primary-foreground font-bold text-xs">
+                  <AvatarFallback className="rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
                     {user.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden ml-1">
-                  <span className="truncate font-semibold tracking-tight">
-                    {user.name}
-                  </span>
-                  <span className="truncate text-[10px] opacity-70 font-medium uppercase tracking-wider">
+                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate text-[10px] opacity-60">
                     {user.nip}
                   </span>
                 </div>
-                <ChevronsUpDown className="ml-auto size-3.5 opacity-50 group-data-[collapsible=icon]:hidden" />
+
+                <ChevronsUpDown className="ml-auto size-3.5 opacity-40 group-data-[collapsible=icon]:hidden" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
 
-            {/* DROPDOWN CONTENT: Dibersihkan dari warna manual */}
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl p-2 shadow-lg border-border/50"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-52 rounded-xl"
               side={isMobile ? "bottom" : "right"}
               align="end"
-              sideOffset={12}
+              sideOffset={8}
             >
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-3 px-2 py-2 text-left text-sm">
-                  <Avatar className="h-9 w-9 rounded-full border border-border/50">
-                    <AvatarFallback className="rounded-full bg-primary/10 text-primary">
-                      <User className="size-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-bold text-foreground">
-                      {user.name}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground font-medium">
-                      {user.nip}
-                    </span>
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator className="my-1.5" />
+              <div className="px-3 py-2 border-b mb-1">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {user.name}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user.nip}
+                </p>
+              </div>
 
               <DropdownMenuItem
                 onClick={() => setIsPasswordOpen(true)}
-                className="cursor-pointer py-2.5 font-medium mb-1 transition-colors"
+                className="cursor-pointer"
               >
-                <KeyRound className="mr-2 size-4 text-muted-foreground" />
+                <KeyRound className="mr-2 size-4" />
                 Ubah Password
               </DropdownMenuItem>
 
-              {/* PERBAIKAN 2: Menggunakan variant destructive semantik untuk Logout */}
+              <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={handleLogout}
                 disabled={isPending}
-                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer py-2.5 font-medium transition-colors"
+                className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 {isPending ? (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 ) : (
                   <LogOut className="mr-2 size-4" />
                 )}
-                {isPending ? "Keluar..." : "Keluar Aplikasi"}
+                {isPending ? "Keluar..." : "Keluar"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

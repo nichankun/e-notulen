@@ -24,7 +24,6 @@ import { MeetingQRCode } from "@/components/dashboard/live/meeting-qr";
 import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees";
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
 import { PhotoDocumentation } from "@/components/dashboard/live/photo-documentation";
-
 import { LoadingScreen } from "./loading-screen";
 import { MobileSaveStatus } from "./mobile-save-status";
 import { FinishMeetingDialog } from "./finish-meeting-dialog";
@@ -37,13 +36,11 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
 
-  // --- DATA STATES ---
   const [meetingData, setMeetingData] = useState<Meeting | null>(null);
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [notulen, setNotulen] = useState<string>("");
   const [photos, setPhotos] = useState<string[]>([]);
 
-  // --- UI & UPLOAD STATES ---
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -53,14 +50,12 @@ export default function LiveMeetingPage({ params }: PageProps) {
     "idle" | "saving" | "saved" | "error"
   >("idle");
 
-  // State Collapsible
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isAttendeesOpen, setIsAttendeesOpen] = useState(false);
   const [isPhotosOpen, setIsPhotosOpen] = useState(false);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  // 1. Fetch & Sync Logic
   useEffect(() => {
     const initData = async () => {
       try {
@@ -90,23 +85,19 @@ export default function LiveMeetingPage({ params }: PageProps) {
     initData();
   }, [id, router]);
 
-  // Logika Polling Peserta
   useEffect(() => {
     const fetchAttendees = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}/attendees`);
         const json = await res.json();
         if (json.success) setAttendees(json.data);
-      } catch {
-        // Silent error for polling
-      }
+      } catch {}
     };
     fetchAttendees();
     const interval = setInterval(fetchAttendees, 3000);
     return () => clearInterval(interval);
   }, [id]);
 
-  // Logika Unggah Foto
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -139,7 +130,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
     }
   };
 
-  // Auto-Save Logic
   useEffect(() => {
     if (loading) return;
     const saveTimer = setTimeout(async () => {
@@ -159,7 +149,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
     return () => clearTimeout(saveTimer);
   }, [notulen, photos, id, loading]);
 
-  // Finalize Meeting
   const handleFinish = async () => {
     try {
       const res = await fetch(`/api/meetings/${id}`, {
@@ -182,34 +171,35 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-muted/10 flex flex-col">
-      {/* HEADER: Menggunakan w-full tanpa batasan max-width */}
-      <header className="bg-background border-b sticky top-0 z-30 px-4 md:px-6 py-3 flex items-center justify-between shadow-sm transition-all w-full">
+      {/* HEADER */}
+      <header className="bg-background border-b sticky top-0 z-30 px-4 py-2 flex items-center justify-between w-full">
         <MeetingHeader
           date={meetingData?.date ? new Date(meetingData.date) : undefined}
         />
         <MobileSaveStatus saveStatus={saveStatus} />
       </header>
 
-      {/* MAIN CONTENT: max-w-full agar mentok kiri-kanan */}
-      <main className="flex-1 w-full max-w-full  py-6 transition-all">
-        {/* Grid lebar dengan porsi kolom yang dioptimalkan untuk layar lebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* SIDEBAR: Porsi kecil di sisi kiri */}
-          <div className="lg:col-span-3 xl:col-span-2 space-y-4 lg:sticky lg:top-20">
+      {/* MAIN */}
+      <main className="flex-1 w-full px-3 py-3">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+          {/* SIDEBAR */}
+          <div className="lg:col-span-3 xl:col-span-2 space-y-1.5 lg:sticky lg:top-14">
+            {/* QR Code */}
             <Collapsible
               open={isQrOpen}
               onOpenChange={setIsQrOpen}
-              className="bg-background border rounded-xl shadow-sm overflow-hidden"
+              className="bg-background border rounded-lg overflow-hidden"
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 text-sm font-semibold">
-                    <QrCode className="h-4 w-4 text-muted-foreground" /> QR Code
+                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <QrCode className="h-3.5 w-3.5" />
+                    QR Code
                   </div>
                   {isQrOpen ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
                 </button>
               </CollapsibleTrigger>
@@ -218,24 +208,26 @@ export default function LiveMeetingPage({ params }: PageProps) {
               </CollapsibleContent>
             </Collapsible>
 
+            {/* Peserta */}
             <Collapsible
               open={isAttendeesOpen}
               onOpenChange={setIsAttendeesOpen}
-              className="bg-background border rounded-xl shadow-sm overflow-hidden"
+              className="bg-background border rounded-lg overflow-hidden"
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 text-sm font-semibold">
-                    <Users className="h-4 w-4 text-muted-foreground" /> Peserta
+                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
+                    Peserta
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full font-semibold text-muted-foreground">
                       {attendees.length}
                     </span>
                     {isAttendeesOpen ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                   </div>
                 </button>
@@ -245,24 +237,26 @@ export default function LiveMeetingPage({ params }: PageProps) {
               </CollapsibleContent>
             </Collapsible>
 
+            {/* Foto */}
             <Collapsible
               open={isPhotosOpen}
               onOpenChange={setIsPhotosOpen}
-              className="bg-background border rounded-xl shadow-sm overflow-hidden"
+              className="bg-background border rounded-lg overflow-hidden"
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 text-sm font-semibold">
-                    <ImageIcon className="h-4 w-4 text-muted-foreground" /> Foto
+                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Foto
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full font-semibold text-muted-foreground">
                       {photos.length}
                     </span>
                     {isPhotosOpen ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                     ) : (
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                   </div>
                 </button>
@@ -281,7 +275,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
             </Collapsible>
           </div>
 
-          {/* EDITOR AREA: Porsi paling besar, menghabiskan sisa ruang layar */}
+          {/* EDITOR */}
           <div className="lg:col-span-9 xl:col-span-10">
             <MeetingEditor
               title={meetingData?.title || ""}

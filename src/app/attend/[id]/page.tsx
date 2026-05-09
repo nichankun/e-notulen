@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { type Attendee } from "@/db/database/schema";
 import { AttendanceForm } from "./attendance-form";
 import { AttendanceList } from "./attendance-list";
-import { Fingerprint, Users, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AttendancePage({
@@ -19,7 +19,6 @@ export default function AttendancePage({
 
   useEffect(() => {
     if (!id) return;
-
     const fetchAttendees = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}/attendees`);
@@ -40,33 +39,44 @@ export default function AttendancePage({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-muted-foreground font-medium italic">
-          Menyiapkan Papan Presensi...
-        </p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-linear-to-b from-muted/50 to-background">
-        <div className="max-w-sm w-full text-center p-10 bg-card rounded-[2rem] border shadow-2xl animate-in zoom-in-95 duration-500">
-          <div className="h-20 w-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Fingerprint className="size-10 text-emerald-500" />
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="max-w-sm w-full text-center space-y-4 animate-in fade-in duration-500">
+          <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+            <svg
+              className="w-6 h-6 text-emerald-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
           </div>
-          <h2 className="text-2xl font-black mb-2 text-foreground">
-            Presensi Berhasil!
-          </h2>
-          <p className="text-sm text-muted-foreground mb-8">
-            Data Anda telah diamankan dan masuk ke dalam riwayat rapat.
-          </p>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">
+              Presensi Berhasil
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Data Anda telah tercatat dalam riwayat rapat.
+            </p>
+          </div>
           <button
             onClick={() => setSuccess(false)}
-            className="text-xs font-bold text-primary hover:underline bg-primary/10 px-4 py-2 rounded-full"
+            className="text-sm text-primary hover:underline"
           >
-            Absen Ulang / Revisi
+            Absen ulang / revisi
           </button>
         </div>
       </div>
@@ -74,77 +84,45 @@ export default function AttendancePage({
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-muted/50 via-background to-primary/5 p-4 md:p-8 font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* HEADER */}
-        <div className="text-center pt-4 md:pt-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full text-primary mb-4 border border-primary/20 shadow-sm">
-            <Fingerprint className="size-3.5 animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">
-              Sistem Presensi
-            </span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground mb-2">
-            e-<span className="text-primary">Notulen</span>
-          </h1>
-          <p className="text-muted-foreground text-sm font-medium">
+        <div className="text-center pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
             Badan Pendapatan Daerah Prov. Sulawesi Tenggara
           </p>
-
-          {/* Real-time Counter Badge */}
-          <div className="mt-6 inline-flex items-center gap-3 text-foreground font-bold bg-card/80 backdrop-blur-md shadow-lg py-2 px-6 rounded-full border border-border/50">
-            <div className="flex -space-x-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="size-6 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10"
-                >
-                  <Users className="size-3 text-muted-foreground" />
-                </div>
-              ))}
-            </div>
-            <span className="text-sm">
-              <span className="text-primary text-lg">{attendees.length}</span>{" "}
-              Hadir
-            </span>
-          </div>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">
+            Presensi Digital
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            {attendees.length} peserta telah hadir
+          </p>
         </div>
 
-        {/* GRID LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-10 items-start pb-10">
+        {/* GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start pb-10">
           <div className="lg:col-span-3 order-2 lg:order-1">
             <AttendanceForm
               onSubmit={async (values) => {
                 try {
                   const fingerprint = `${navigator.userAgent}-${window.screen.width}x${window.screen.height}`;
-                  const generatedDeviceId = btoa(fingerprint);
-
-                  const payloadData = {
-                    ...values,
-                    deviceId: generatedDeviceId,
-                  };
-
                   const res = await fetch(`/api/meetings/${id}/attendees`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payloadData),
+                    body: JSON.stringify({
+                      ...values,
+                      deviceId: btoa(fingerprint),
+                    }),
                   });
-
                   const json = await res.json();
-
                   if (json.success) {
                     setSuccess(true);
-                    toast.success("Presensi Berhasil", {
-                      description: "Data berhasil divalidasi.",
-                    });
+                    toast.success("Presensi berhasil dicatat");
                   } else {
-                    toast.error("Gagal", { description: json.message });
+                    toast.error(json.message);
                   }
-                } catch (err) {
-                  console.error("Submit Error:", err);
-                  toast.error("Kesalahan Jaringan", {
-                    description: "Pastikan internet Anda stabil.",
-                  });
+                } catch {
+                  toast.error("Pastikan internet Anda stabil.");
                 }
               }}
             />

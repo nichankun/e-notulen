@@ -17,7 +17,6 @@ import { type Meeting, type Attendee } from "@/db/database/schema";
 import { PDFDownloadLink, PDFViewer } from "@react-pdf/renderer";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-
 import NotulensiPDF from "@/components/dashboard/result/notulensipdf";
 
 interface PageProps {
@@ -34,9 +33,7 @@ export default function ResultPage({ params }: PageProps) {
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (loading) {
-      timer = setTimeout(() => setProgress(66), 500);
-    }
+    if (loading) timer = setTimeout(() => setProgress(66), 500);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -47,14 +44,11 @@ export default function ResultPage({ params }: PageProps) {
           fetch(`/api/meetings/${id}`),
           fetch(`/api/meetings/${id}/attendees`),
         ]);
-
         const jsonMeeting = await resMeeting.json();
         const jsonAttendees = await resAttendees.json();
-
         if (jsonMeeting.success) {
           setMeetingData(jsonMeeting.data);
           setAttendees(jsonAttendees.data || []);
-
           if (jsonMeeting.data.photos) {
             try {
               const parsed = JSON.parse(jsonMeeting.data.photos);
@@ -76,17 +70,10 @@ export default function ResultPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      // PERBAIKAN 1: Hapus font-sans. Ganti warna loading dengan text-primary
-      <div className="flex flex-col justify-center items-center h-[60vh] space-y-4 max-w-sm mx-auto p-4 text-center">
-        <Loader2 className="animate-spin h-10 w-10 text-primary mb-2" />
-        <p className="font-semibold text-foreground tracking-wide text-sm">
-          Membangun Arsip Digital...
-        </p>
-        <Progress
-          value={progress}
-          // PERBAIKAN 2: Progress bar otomatis menggunakan warna primary shadcn
-          className="w-full h-1.5"
-        />
+      <div className="flex flex-col justify-center items-center h-[60vh] space-y-3 max-w-xs mx-auto p-4 text-center">
+        <Loader2 className="animate-spin h-8 w-8 text-primary" />
+        <p className="text-sm text-muted-foreground">Memuat arsip...</p>
+        <Progress value={progress} className="w-full h-1" />
       </div>
     );
   }
@@ -94,42 +81,38 @@ export default function ResultPage({ params }: PageProps) {
   if (!meetingData) return null;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* HEADER & ACTIONS */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        {/* PERBAIKAN: Tambahkan flex-1 dan min-w-0 agar area judul bisa mengecil/terpotong */}
-        <div className="flex items-center gap-4 w-full md:flex-1 md:min-w-0">
+    <div className="space-y-4 max-w-5xl mx-auto p-4">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 w-full md:flex-1 min-w-0">
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             asChild
-            className="rounded-full h-10 w-10 shrink-0 transition-colors"
+            className="rounded-full h-8 w-8 shrink-0"
           >
             <Link href="/dashboard/archive">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-
-          {/* PERBAIKAN: Tambahkan min-w-0 di sini juga agar truncate bekerja pada flex child */}
           <div className="min-w-0 flex-1">
-            <h1 className="font-bold text-xl md:text-2xl text-foreground truncate tracking-tight">
+            <h1 className="font-semibold text-lg text-foreground truncate">
               {meetingData.title}
             </h1>
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-0.5">
               <Badge
                 variant="outline"
-                className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[11px] font-semibold tracking-wide px-2.5 py-0.5 shrink-0"
+                className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-medium px-2 py-0"
               >
-                Selesai Diarsipkan
+                Selesai
               </Badge>
-              <span className="text-xs text-muted-foreground font-medium hidden md:inline-block truncate">
+              <span className="text-xs text-muted-foreground hidden md:block truncate">
                 ID: {id}
               </span>
             </div>
           </div>
         </div>
 
-        {/* PERBAIKAN: Tambahkan shrink-0 agar tombol cetak tidak pernah mengecil atau tergeser keluar area */}
         <div className="w-full md:w-auto shrink-0">
           <PDFDownloadLink
             document={
@@ -144,17 +127,16 @@ export default function ResultPage({ params }: PageProps) {
             {({ loading: pdfLoading }) => (
               <Button
                 disabled={pdfLoading}
-                className="w-full md:w-auto font-bold h-12 px-6 rounded-full transition-colors flex items-center justify-center gap-2 shadow-sm"
+                size="sm"
+                className="w-full md:w-auto gap-2"
               >
                 {pdfLoading ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Menyiapkan PDF...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Menyiapkan...
                   </>
                 ) : (
                   <>
-                    <Printer className="h-5 w-5" />
-                    Cetak Notulensi
+                    <Printer className="h-4 w-4" /> Cetak PDF
                   </>
                 )}
               </Button>
@@ -163,97 +145,75 @@ export default function ResultPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* EXECUTIVE SUMMARY CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* PERBAIKAN 4: Card otomatis bg-card. Ikon menggunakan opacity /10 agar tidak mencolok di dark mode */}
-        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <Users className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-              Hadir
-            </p>
-            <p className="text-xl font-bold text-foreground leading-none">
-              {attendees.length}{" "}
-              <span className="text-sm font-medium text-muted-foreground">
-                Orang
-              </span>
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
-          <div className="h-12 w-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
-            <Camera className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-              Dokumentasi
-            </p>
-            <p className="text-xl font-bold text-foreground leading-none">
-              {photos.length}{" "}
-              <span className="text-sm font-medium text-muted-foreground">
-                Foto
-              </span>
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
-          <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500 shrink-0">
-            <Calendar className="h-6 w-6" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-              Tanggal
-            </p>
-            <p className="text-[15px] font-bold text-foreground truncate leading-none mt-1">
-              {new Date(meetingData.date).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "short",
-              })}
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 rounded-xl border">
-          <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
-            <FileCheck className="h-6 w-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">
-              Integritas
-            </p>
-            <p className="text-[15px] font-bold text-foreground uppercase leading-none mt-1">
-              Valid
-            </p>
-          </div>
-        </Card>
+      {/* SUMMARY STATS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {[
+          {
+            icon: <Users className="h-4 w-4" />,
+            color: "text-primary bg-primary/10",
+            label: "Hadir",
+            value: `${attendees.length} Orang`,
+          },
+          {
+            icon: <Camera className="h-4 w-4" />,
+            color: "text-indigo-500 bg-indigo-500/10",
+            label: "Dokumentasi",
+            value: `${photos.length} Foto`,
+          },
+          {
+            icon: <Calendar className="h-4 w-4" />,
+            color: "text-orange-500 bg-orange-500/10",
+            label: "Tanggal",
+            value: new Date(meetingData.date).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+            }),
+          },
+          {
+            icon: <FileCheck className="h-4 w-4" />,
+            color: "text-emerald-500 bg-emerald-500/10",
+            label: "Integritas",
+            value: "Valid",
+          },
+        ].map((item) => (
+          <Card
+            key={item.label}
+            className="p-3 flex items-center gap-3 rounded-lg border shadow-none"
+          >
+            <div
+              className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${item.color}`}
+            >
+              {item.icon}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                {item.label}
+              </p>
+              <p className="text-sm font-semibold text-foreground truncate">
+                {item.value}
+              </p>
+            </div>
+          </Card>
+        ))}
       </div>
 
-      {/* PDF VIEWER SECTION */}
-      {/* PERBAIKAN 5: Mengganti bg-gray-50 menjadi bg-muted/30 */}
-      <Card className="shadow-sm bg-muted/30 overflow-hidden rounded-xl border">
-        {/* Fake Window Toolbar macOS Style */}
-        <div className="bg-muted px-4 py-3 flex items-center border-b">
-          <div className="flex gap-1.5 w-16">
-            <div className="h-3 w-3 rounded-full bg-destructive/80" />
-            <div className="h-3 w-3 rounded-full bg-amber-400/80" />
-            <div className="h-3 w-3 rounded-full bg-emerald-400/80" />
+      {/* PDF VIEWER */}
+      <Card className="overflow-hidden rounded-lg border shadow-none">
+        <div className="bg-muted/50 px-4 py-2 flex items-center border-b">
+          <div className="flex gap-1.5 w-12">
+            <div className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
+            <div className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400/70" />
           </div>
-          <span className="flex-1 text-center text-xs font-semibold text-muted-foreground">
+          <span className="flex-1 text-center text-xs text-muted-foreground font-medium">
             Pratinjau Dokumen
           </span>
-          <div className="w-16" />
+          <div className="w-12" />
         </div>
 
-        {/* Responsive Container for PDF Viewer */}
-        {/* PERBAIKAN 6: Latar belakang PDF viewer menggunakan bg-muted/50 agar netral */}
-        <div className="w-full bg-muted/50 flex justify-center p-0 md:p-6 overflow-hidden">
-          <div className="w-full max-w-4xl shadow-xl overflow-hidden bg-background">
-            {/* FIX: min-h-150 diubah jadi min-h-[600px] karena 150 bukan standar tailwind */}
-            <PDFViewer className="w-full h-[80vh] min-h-150 border-none">
+        <div className="w-full bg-muted/30 flex justify-center p-0 md:p-4">
+          <div className="w-full max-w-4xl bg-background">
+            <PDFViewer className="w-full h-[80vh] border-none">
               <NotulensiPDF
                 meetingData={meetingData}
                 attendees={attendees}
@@ -263,10 +223,10 @@ export default function ResultPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="bg-background p-3 text-center border-t">
-          <p className="text-[11px] text-muted-foreground font-medium">
-            Dokumen ini dihasilkan secara otomatis oleh Sistem E-NOTULEN Bapenda
-            Prov. Sultra
+        <div className="px-4 py-2 border-t">
+          <p className="text-[10px] text-muted-foreground text-center">
+            Dokumen dihasilkan otomatis oleh Sistem E-NOTULEN Bapenda Prov.
+            Sultra
           </p>
         </div>
       </Card>

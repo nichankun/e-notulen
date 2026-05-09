@@ -7,48 +7,43 @@ import { HelpDropdown } from "./help-dropdown";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4 sm:p-8">
-      <div className="max-w-5xl w-full flex flex-col lg:flex-row items-center justify-between gap-10 pb-10 md:pb-0">
-        {/* KIRI: Branding Section */}
-        <BrandingSection />
+    <div className="min-h-screen flex">
+      <BrandingSection />
+      <div className="flex-1 flex items-center justify-center bg-muted/20 px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
+              Portal Masuk
+            </span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
 
-        {/* KANAN: Form Section */}
-        <div className="w-full lg:w-1/2 flex flex-col items-center lg:items-end">
-          <div className="w-full max-w-md">
-            <div className="bg-card rounded-[2rem] shadow-xl border p-6 sm:p-8">
-              <h3 className="text-xl font-bold text-foreground mb-6 text-center lg:text-left">
-                Masuk Ke Akun Anda
-              </h3>
+          <h2 className="text-xl font-medium text-foreground mb-1">
+            Masuk ke akun Anda
+          </h2>
+          <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+            Gunakan NIP dan kata sandi yang telah diberikan oleh Admin IT.
+          </p>
 
-              <LoginForm />
+          <LoginForm />
 
-              <div className="text-center mt-6">
-                <ForgotPasswordDialog />
-              </div>
+          <div className="text-center mt-5">
+            <ForgotPasswordDialog />
+          </div>
 
-              <div className="flex items-center gap-4 my-6">
-                <div className="h-px bg-border flex-1"></div>
-                <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">
-                  Atau
-                </span>
-                <div className="h-px bg-border flex-1"></div>
-              </div>
+          <div className="flex items-center gap-3 my-6">
+            <div className="h-px bg-border flex-1" />
+            <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
+              atau
+            </span>
+            <div className="h-px bg-border flex-1" />
+          </div>
 
-              <div className="flex justify-center pb-2">
-                <RequestAccountDialog />
-              </div>
-            </div>
+          <RequestAccountDialog />
 
-            {/* Footer */}
-            <div className="mt-8 flex flex-col items-center gap-3">
-              <HelpDropdown />
-              <p className="text-xs text-muted-foreground font-medium tracking-wide">
-                <span className="font-bold text-foreground">
-                  Bapenda Prov. Sultra
-                </span>{" "}
-                &copy; {new Date().getFullYear()}
-              </p>
-            </div>
+          <div className="flex items-center justify-center gap-4 mt-7">
+            <HelpDropdown />
           </div>
         </div>
       </div>

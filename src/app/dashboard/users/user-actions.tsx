@@ -2,24 +2,23 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Pencil, Trash, Loader2, Save } from "lucide-react";
+import { MoreHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -41,11 +40,7 @@ import {
 } from "@/components/ui/select";
 import { User } from "./columns";
 
-interface UserActionsProps {
-  user: User;
-}
-
-export function UserActions({ user }: UserActionsProps) {
+export function UserActions({ user }: { user: User }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [openEdit, setOpenEdit] = useState(false);
@@ -70,14 +65,11 @@ export function UserActions({ user }: UserActionsProps) {
       if (json.success) {
         toast.success("User berhasil dihapus");
         setOpenDelete(false);
-        startTransition(() => {
-          router.refresh();
-        });
+        startTransition(() => router.refresh());
       } else {
         toast.error(json.message);
       }
-    } catch (err: unknown) {
-      console.error(err);
+    } catch {
       toast.error("Gagal menghapus user");
     } finally {
       setLoading(false);
@@ -86,32 +78,25 @@ export function UserActions({ user }: UserActionsProps) {
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.name || !formData.nip) {
-      return toast.error("Nama dan NIP wajib diisi!");
-    }
-
+    if (!formData.name || !formData.nip)
+      return toast.error("Nama dan NIP wajib diisi");
     setLoading(true);
     try {
-      const res = await fetch(`/api/users`, {
+      const res = await fetch("/api/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user.id, ...formData }),
       });
-
       const json = await res.json();
-
       if (res.ok && json.success) {
         toast.success("Data berhasil diperbarui");
         setOpenEdit(false);
-        startTransition(() => {
-          router.refresh();
-        });
+        startTransition(() => router.refresh());
       } else {
         toast.error(json.message || "Gagal memperbarui data");
       }
     } catch {
-      toast.error("Kesalahan Jaringan: Cek koneksi server Anda.");
+      toast.error("Kesalahan jaringan");
     } finally {
       setLoading(false);
     }
@@ -121,93 +106,70 @@ export function UserActions({ user }: UserActionsProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          {/* PERBAIKAN: Menghapus text-slate-500 dan hover manual, mengandalkan variant="ghost" */}
-          <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg">
+          <Button variant="ghost" className="h-8 w-8 p-0">
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40 rounded-xl">
-          <DropdownMenuLabel>Aksi Pegawai</DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="w-36">
           <DropdownMenuItem
             onClick={() => navigator.clipboard.writeText(user.nip)}
-            className="cursor-pointer font-medium"
           >
             Salin NIP
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => setOpenEdit(true)}
-            className="cursor-pointer font-medium"
-          >
-            <Pencil className="mr-2 h-3.5 w-3.5" /> Edit Data
+          <DropdownMenuItem onClick={() => setOpenEdit(true)}>
+            Edit
           </DropdownMenuItem>
-          {/* PERBAIKAN: Menggunakan semantik warna peringatan (destructive) shadcn */}
           <DropdownMenuItem
             onClick={() => setOpenDelete(true)}
-            className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer font-medium"
+            className="text-destructive focus:text-destructive focus:bg-destructive/10"
           >
-            <Trash className="mr-2 h-3.5 w-3.5" /> Hapus User
+            Hapus
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* FORM EDIT DIALOG */}
+      {/* EDIT DIALOG */}
       <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-        {/* PERBAIKAN: Menghapus bg-white agar mendukung Dark Mode otomatis */}
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-bold">Edit Data Pegawai</DialogTitle>
-            <DialogDescription>
-              Kosongkan password jika tidak ingin menggantinya.
-            </DialogDescription>
+            <DialogTitle>Edit Data Pegawai</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4 py-2">
+          <form onSubmit={handleEdit} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">
-                Nama Lengkap
-              </Label>
-              {/* PERBAIKAN: Menghapus bg-slate-50 dan membiarkan border standar */}
+              <Label>Nama Lengkap</Label>
               <Input
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
                 disabled={isProcessing}
-                className="bg-background rounded-xl h-11"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase text-muted-foreground">
-                  NIP
-                </Label>
+                <Label>NIP</Label>
                 <Input
                   value={formData.nip}
                   onChange={(e) =>
                     setFormData({ ...formData, nip: e.target.value })
                   }
                   disabled={isProcessing}
-                  className="bg-background rounded-xl h-11"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase text-muted-foreground">
-                  Instansi
-                </Label>
+                <Label>Instansi</Label>
                 <Input
                   value={formData.agency}
                   onChange={(e) =>
                     setFormData({ ...formData, agency: e.target.value })
                   }
                   disabled={isProcessing}
-                  className="bg-background rounded-xl h-11"
                 />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">
-                Role
-              </Label>
+              <Label>Role</Label>
               <Select
                 value={formData.role}
                 onValueChange={(val) =>
@@ -215,18 +177,21 @@ export function UserActions({ user }: UserActionsProps) {
                 }
                 disabled={isProcessing}
               >
-                <SelectTrigger className="bg-background rounded-xl h-11">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pegawai">Staff Pegawai</SelectItem>
-                  <SelectItem value="admin">Administrator IT</SelectItem>
+                  <SelectItem value="admin">Administrator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">
-                Password Baru (Opsional)
+              <Label>
+                Password Baru{" "}
+                <span className="text-muted-foreground font-normal">
+                  (opsional)
+                </span>
               </Label>
               <Input
                 type="password"
@@ -236,22 +201,14 @@ export function UserActions({ user }: UserActionsProps) {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 disabled={isProcessing}
-                className="bg-background rounded-xl h-11"
               />
             </div>
-            <DialogFooter className="pt-4">
-              {/* PERBAIKAN: Menggunakan default variant dari Button */}
-              <Button
-                type="submit"
-                disabled={isProcessing}
-                className="w-full font-bold rounded-xl h-12 transition-all"
-              >
+            <DialogFooter className="pt-2">
+              <Button type="submit" disabled={isProcessing} className="w-full">
                 {isProcessing ? (
-                  <Loader2 className="animate-spin h-4 w-4" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" /> Simpan Perubahan
-                  </>
+                  "Simpan"
                 )}
               </Button>
             </DialogFooter>
@@ -259,25 +216,18 @@ export function UserActions({ user }: UserActionsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* ALERT DELETE DIALOG */}
+      {/* DELETE DIALOG */}
       <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-bold">
-              Hapus Pengguna?
-            </AlertDialogTitle>
+            <AlertDialogTitle>Hapus pengguna?</AlertDialogTitle>
             <AlertDialogDescription>
-              User <b>{user.name}</b> akan dihapus permanen. Tindakan ini tidak
-              bisa dibatalkan.
+              <b>{user.name}</b> akan dihapus permanen dan tidak bisa
+              dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            {/* PERBAIKAN: Menghapus border manual, biarkan bawaan shadcn */}
-            <AlertDialogCancel disabled={isProcessing} className="rounded-xl">
-              Batal
-            </AlertDialogCancel>
-
-            {/* PERBAIKAN: Menggunakan variant="destructive" untuk tombol bahaya */}
+            <AlertDialogCancel disabled={isProcessing}>Batal</AlertDialogCancel>
             <Button
               variant="destructive"
               onClick={(e) => {
@@ -285,9 +235,8 @@ export function UserActions({ user }: UserActionsProps) {
                 handleDelete();
               }}
               disabled={isProcessing}
-              className="rounded-xl font-bold"
             >
-              {isProcessing ? "Menghapus..." : "Ya, Hapus Permanen"}
+              {isProcessing ? "Menghapus..." : "Hapus"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

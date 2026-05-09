@@ -40,7 +40,6 @@ export default async function ArchivePage() {
   } catch (error) {
     console.error("Gagal memuat data arsip:", error);
     return (
-      // PERBAIKAN UI 1: Error state menggunakan variabel 'destructive' shadcn
       <div className="p-8 text-center bg-destructive/10 text-destructive rounded-xl border border-destructive/20 m-4 md:m-0">
         <p className="font-semibold">Gagal memuat data arsip</p>
         <p className="text-sm opacity-90">Silakan muat ulang halaman.</p>
@@ -49,34 +48,24 @@ export default async function ArchivePage() {
   }
 
   return (
-    // PERBAIKAN UI 2: Menghapus 'font-sans' (sudah di-handle globals.css)
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 p-4 md:p-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 md:gap-4">
-          {/* PERBAIKAN UI 3: Ikon menggunakan warna primary + opacity */}
-
-          <div>
-            {/* PERBAIKAN UI 4: text-gray-900 diubah ke text-foreground */}
-            <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2.5">
-              Arsip Digital
-              {role === "admin" && (
-                // Label admin disesuaikan warnanya dengan tema utama (primary)
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  Admin
-                </span>
-              )}
-            </h2>
-            {/* PERBAIKAN UI 5: text-gray-500 diubah ke text-muted-foreground */}
-            <p className="text-sm text-muted-foreground mt-1 font-medium">
-              {role === "admin"
-                ? "Kelola seluruh data notulen instansi"
-                : "Riwayat notulen yang Anda buat"}
-            </p>
-          </div>
+    <div className="p-4 md:p-0 space-y-8 animate-in fade-in duration-500">
+      {/* HEADER — minimalis, tanpa ikon dekoratif */}
+      <div className="flex items-end justify-between border-b pb-5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
+            {role === "admin" ? "Semua Data · Admin" : "Riwayat Notulen"}
+          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+            Arsip Digital
+          </h1>
         </div>
+
+        <p className="text-sm text-muted-foreground font-medium pb-0.5">
+          {allMeetings.length} notulen
+        </p>
       </div>
 
-      {/* DataTable dibiarkan utuh karena logikanya sudah terpisah dengan baik */}
+      {/* TABEL */}
       <DataTable columns={columns} data={allMeetings} />
     </div>
   );
