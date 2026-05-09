@@ -41,7 +41,7 @@ export function NavUser({ user }: NavUserProps) {
       if (result.success) {
         // Menggunakan hard redirect lebih aman untuk logout di Next.js App Router
         // Ini memastikan Client Router Cache dibersihkan sepenuhnya.
-        window.location.href = "/";
+        window.location.assign("/");
       } else {
         toast.error("Gagal keluar dari sesi.");
       }

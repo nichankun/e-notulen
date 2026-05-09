@@ -28,7 +28,7 @@ const loginSchema = z.object({
 
 export function LoginForm() {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending] = useTransition();
   const [globalError, setGlobalError] = useState("");
   const [progress, setProgress] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
@@ -72,15 +72,15 @@ export function LoginForm() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
+
       if (json.success) {
         setProgress(100);
         toast.success("Login Berhasil", {
           description: "Selamat datang di E-NOTULEN.",
         });
-        startTransition(() => {
-          // Hanya gunakan push, refresh biasanya tidak diperlukan lagi jika layout diurus dengan baik
-          router.push("/dashboard");
-        });
+
+        // FIX: Hard Redirect agar sesi baru terbaca 100% (tidak perlu refresh manual)
+        window.location.assign("/dashboard");
       } else {
         setGlobalError(
           json.message || "Login gagal, periksa NIP dan Password.",
