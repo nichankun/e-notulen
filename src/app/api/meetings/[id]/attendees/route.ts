@@ -4,7 +4,6 @@ import { meetings, attendees } from "@/db/database/schema";
 import { eq, sql, asc, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
 
-// 1. ZOD SCHEMA
 const attendanceSchema = z.object({
   name: z.string().min(1, "Nama lengkap wajib diisi"),
   department: z.string().optional(),
@@ -13,9 +12,6 @@ const attendanceSchema = z.object({
   deviceId: z.string().min(1, "Gagal mengidentifikasi perangkat"),
 });
 
-// ==========================================
-// GET: MENGAMBIL DAFTAR HADIR
-// ==========================================
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -50,11 +46,7 @@ export async function GET(
       .from(attendees)
       .where(eq(attendees.meetingId, meetingId))
       .orderBy(
-        sql`CASE 
-          WHEN ${attendees.role} = 'pimpinan' THEN 1 
-          WHEN ${attendees.role} = 'pejabat' THEN 2 
-          ELSE 3 
-        END`,
+        sql`CASE WHEN ${attendees.role} = 'pimpinan' THEN 1 WHEN ${attendees.role} = 'pejabat' THEN 2 ELSE 3 END`,
         asc(attendees.scannedAt),
       );
 
@@ -65,9 +57,6 @@ export async function GET(
   }
 }
 
-// ==========================================
-// POST: MENGIRIM DATA ABSENSI DARI HP PESERTA
-// ==========================================
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -82,7 +71,6 @@ export async function POST(
       );
     }
 
-    // VALIDASI ZOD
     const body: unknown = await request.json();
     const parse = attendanceSchema.safeParse(body);
 
@@ -97,7 +85,6 @@ export async function POST(
       );
     }
 
-    // Ekstrak data tanpa nip
     const { name, department, role, signature, deviceId } = parse.data;
 
     const meeting = await db.query.meetings.findFirst({
@@ -114,7 +101,6 @@ export async function POST(
       );
     }
 
-    // FITUR ANTI-FRAUD
     const deviceUsedByOthers = await db.query.attendees.findFirst({
       where: and(
         eq(attendees.meetingId, meetingId),
@@ -134,7 +120,6 @@ export async function POST(
       );
     }
 
-    // UPSERT LOGIC
     const existing = await db.query.attendees.findFirst({
       where: and(
         eq(attendees.meetingId, meetingId),
@@ -154,7 +139,6 @@ export async function POST(
         })
         .where(eq(attendees.id, existing.id));
     } else {
-      // INSERT tanpa nip
       await db.insert(attendees).values({
         meetingId,
         name,
@@ -166,12 +150,10 @@ export async function POST(
       });
     }
 
-    // UPDATE TOTAL HADIR
     const [stats] = await db
       .select({ count: count() })
       .from(attendees)
       .where(eq(attendees.meetingId, meetingId));
-
     await db
       .update(meetings)
       .set({ attendanceCount: stats.count })

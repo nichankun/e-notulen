@@ -22,6 +22,10 @@ export default function AttendancePage({
     const fetchAttendees = async () => {
       try {
         const res = await fetch(`/api/meetings/${id}/attendees`);
+        if (res.status === 403) {
+          toast.error("Sesi Rapat telah ditutup.");
+          return;
+        }
         if (res.ok) {
           const json = await res.json();
           if (json.success) setAttendees(json.data);
@@ -86,7 +90,6 @@ export default function AttendancePage({
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* HEADER */}
         <div className="text-center pt-4">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
             Badan Pendapatan Daerah Prov. Sulawesi Tenggara
@@ -99,19 +102,26 @@ export default function AttendancePage({
           </p>
         </div>
 
-        {/* GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start pb-10">
           <div className="lg:col-span-3 order-2 lg:order-1">
             <AttendanceForm
               onSubmit={async (values) => {
                 try {
-                  const fingerprint = `${navigator.userAgent}-${window.screen.width}x${window.screen.height}`;
+                  // FIX BUG KRITIS: Generate Unique Device ID menggunakan localStorage
+                  let deviceId = localStorage.getItem("bapenda_device_id");
+                  if (!deviceId) {
+                    deviceId = crypto.randomUUID
+                      ? crypto.randomUUID()
+                      : `device-${Date.now()}-${Math.random().toString(36).substring(2)}`;
+                    localStorage.setItem("bapenda_device_id", deviceId);
+                  }
+
                   const res = await fetch(`/api/meetings/${id}/attendees`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       ...values,
-                      deviceId: btoa(fingerprint),
+                      deviceId: deviceId, // Kirim ID unik yang sesungguhnya
                     }),
                   });
                   const json = await res.json();
