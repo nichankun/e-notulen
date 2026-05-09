@@ -3,9 +3,10 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 // Pastikan secret key SAMA PERSIS dengan yang ada di endpoint Login
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026",
-);
+const getSecretKey = () =>
+  new TextEncoder().encode(
+    process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026",
+  );
 
 // Tambahkan 'async' karena jwtVerify menggunakan Promise
 export async function proxy(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function proxy(request: NextRequest) {
   // 2. Jika ADA token, kita VERIFIKASI keasliannya
   try {
     // jwtVerify akan gagal (masuk ke catch) jika token palsu, diubah, atau expired
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, getSecretKey());
 
     // Ambil role langsung dari dalam JWT yang sudah terenkripsi dengan aman
     const role = payload.role as string;
