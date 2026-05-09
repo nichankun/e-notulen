@@ -1,9 +1,7 @@
-// file: components/dashboard/nav-user.tsx
 "use client";
 
 import { useState, useTransition } from "react";
 import { ChevronsUpDown, LogOut, KeyRound, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
@@ -32,7 +30,6 @@ interface NavUserProps {
 
 export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
 
@@ -40,11 +37,13 @@ export function NavUser({ user }: NavUserProps) {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       const result = await res.json();
+
       if (result.success) {
-        startTransition(() => {
-          router.push("/");
-          router.refresh();
-        });
+        // Menggunakan hard redirect lebih aman untuk logout di Next.js App Router
+        // Ini memastikan Client Router Cache dibersihkan sepenuhnya.
+        window.location.href = "/";
+      } else {
+        toast.error("Gagal keluar dari sesi.");
       }
     } catch {
       toast.error("Gagal logout, periksa koneksi Anda.");
@@ -96,7 +95,7 @@ export function NavUser({ user }: NavUserProps) {
               </div>
 
               <DropdownMenuItem
-                onClick={() => setIsPasswordOpen(true)}
+                onSelect={() => setIsPasswordOpen(true)}
                 className="cursor-pointer"
               >
                 <KeyRound className="mr-2 size-4" />
@@ -106,8 +105,14 @@ export function NavUser({ user }: NavUserProps) {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={handleLogout}
                 disabled={isPending}
+                onSelect={(e) => {
+                  // Mencegah dropdown tertutup otomatis agar user bisa melihat loading state
+                  e.preventDefault();
+                  startTransition(() => {
+                    handleLogout();
+                  });
+                }}
                 className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
               >
                 {isPending ? (

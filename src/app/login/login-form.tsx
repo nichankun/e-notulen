@@ -78,8 +78,8 @@ export function LoginForm() {
           description: "Selamat datang di E-NOTULEN.",
         });
         startTransition(() => {
+          // Hanya gunakan push, refresh biasanya tidak diperlukan lagi jika layout diurus dengan baik
           router.push("/dashboard");
-          router.refresh();
         });
       } else {
         setGlobalError(

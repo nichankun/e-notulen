@@ -25,7 +25,7 @@ import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees"
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
 import { PhotoDocumentation } from "@/components/dashboard/live/photo-documentation";
 import { LoadingScreen } from "./loading-screen";
-import { MobileSaveStatus } from "./mobile-save-status";
+
 import { FinishMeetingDialog } from "./finish-meeting-dialog";
 
 interface PageProps {
@@ -176,7 +176,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
         <MeetingHeader
           date={meetingData?.date ? new Date(meetingData.date) : undefined}
         />
-        <MobileSaveStatus saveStatus={saveStatus} />
       </header>
 
       {/* MAIN */}

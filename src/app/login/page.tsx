@@ -1,5 +1,3 @@
-"use client";
-
 import { BrandingSection } from "./branding-section";
 import { LoginForm } from "./login-form";
 import { ForgotPasswordDialog, RequestAccountDialog } from "./auth-dialogs";

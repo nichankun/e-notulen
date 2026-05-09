@@ -19,6 +19,10 @@ const loginSchema = z.object({
 // 2. JWT CONFIGURATION
 // ==========================================
 // Gunakan environment variable untuk secret key di production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET environment variable is missing!");
+}
+
 const SECRET_KEY = new TextEncoder().encode(
   process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026",
 );
