@@ -24,7 +24,7 @@ export function RecordingToolbar({
       <Button
         onClick={onToggleRecording}
         size="sm"
-        variant={isListening ? "destructive" : "secondary"}
+        variant={isListening ? "destructive" : "default"}
         className={`h-8 gap-2 rounded-md transition-all ${
           isListening ? "animate-pulse ring-2 ring-destructive/20" : ""
         }`}

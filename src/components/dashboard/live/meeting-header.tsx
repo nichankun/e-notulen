@@ -23,7 +23,7 @@ export function MeetingHeader({ date }: MeetingHeaderProps) {
         {/* Status Indicator Badge */}
         <Badge
           variant="outline"
-          className="flex items-center gap-2.5 bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50 px-3 py-1 shadow-none"
+          className="flex items-center gap-2.5 bg-green-50 text-green-600 border-green-200 dark:bg-rose-950/30 dark:text-green-400 dark:border-rose-900/50 px-3 py-1 shadow-none"
         >
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
