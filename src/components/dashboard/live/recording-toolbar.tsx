@@ -20,12 +20,12 @@ export function RecordingToolbar({
   onReset,
 }: RecordingToolbarProps) {
   return (
-    <div className="px-4 py-2 border-b flex items-center gap-2">
+    <div className="px-3 py-2 border-b flex items-center gap-1.5 overflow-hidden">
       <Button
         onClick={onToggleRecording}
         size="sm"
         variant={isListening ? "destructive" : "default"}
-        className={`h-8 gap-2 rounded-md transition-all ${
+        className={`h-8 gap-1.5 rounded-md transition-all shrink-0 ${
           isListening ? "animate-pulse ring-2 ring-destructive/20" : ""
         }`}
       >
@@ -34,7 +34,7 @@ export function RecordingToolbar({
         ) : (
           <Mic className="w-3.5 h-3.5" />
         )}
-        {isListening ? "Berhenti" : "Rekam Suara"}
+        <span className="text-xs">{isListening ? "Berhenti" : "Rekam"}</span>
       </Button>
 
       {hasTranscript && !isListening && (
@@ -42,14 +42,14 @@ export function RecordingToolbar({
           onClick={onSummarize}
           disabled={isSummarizing}
           size="sm"
-          className="h-8 gap-2 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
+          className="h-8 gap-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-all shrink-0"
         >
           {isSummarizing ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Sparkles className="w-3.5 h-3.5" />
           )}
-          Rangkum
+          <span className="text-xs">Rangkum</span>
         </Button>
       )}
 
@@ -57,8 +57,8 @@ export function RecordingToolbar({
         <Button
           onClick={onReset}
           variant="ghost"
-          size="sm"
-          className="h-8 px-2 text-muted-foreground hover:text-destructive transition-colors"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
           title="Hapus semua"
         >
           <RefreshCcw className="w-3.5 h-3.5" />
@@ -66,10 +66,10 @@ export function RecordingToolbar({
       )}
 
       {isListening && (
-        <div className="ml-auto flex items-center gap-2 px-3 py-1 bg-muted rounded-md">
+        <div className="ml-auto flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md min-w-0">
           <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-          <p className="text-xs text-muted-foreground font-medium">
-            Jangan tutup browser
+          <p className="text-xs text-muted-foreground font-medium truncate">
+            Jangan tutup
           </p>
         </div>
       )}
