@@ -121,59 +121,101 @@ export function MeetingEditor({
 
     if (SpeechRecognitionAPI) {
       const recognition = new SpeechRecognitionAPI();
-      recognition.continuous = true;
-      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.interimResults = false;
       recognition.lang = "id-ID";
 
-      let isRestarting = false; // ← flag baru
+      let lastProcessedIndex = -1;
+      let isRecognitionActive = false; // ← track apakah recognition sedang jalan
+      let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+      const startRecognition = () => {
+        if (!isMounted.current || !isIntentionallyListening.current) return;
+        try {
+          recognition.start();
+          isRecognitionActive = true;
+        } catch {
+          isRecognitionActive = false;
+        }
+      };
+
+      const stopHeartbeat = () => {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+      };
+
+      const startHeartbeat = () => {
+        stopHeartbeat();
+        heartbeatTimer = setInterval(() => {
+          // Kalau harusnya listening tapi recognition mati, restart
+          if (
+            isIntentionallyListening.current &&
+            isMounted.current &&
+            !isRecognitionActive
+          ) {
+            startRecognition();
+          }
+          // Kalau sudah tidak listening, stop heartbeat
+          if (!isIntentionallyListening.current) {
+            stopHeartbeat();
+          }
+        }, 2000); // cek setiap 2 detik
+      };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         let finalTranscripts = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (i <= lastProcessedIndex) continue;
           const result = event.results[i];
           if (result && result.isFinal) {
             finalTranscripts += result[0]?.transcript + " ";
+            lastProcessedIndex = i;
           }
         }
         if (finalTranscripts) {
-          isRestarting = false; // reset flag saat ada hasil baru
           setRawTranscript((prev) => prev + finalTranscripts);
         }
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        isRecognitionActive = false;
         if (event.error === "not-allowed") {
           isIntentionallyListening.current = false;
           setIsListening(false);
+          stopHeartbeat();
           toast.error("Akses mikrofon ditolak.");
         } else if (event.error === "network") {
           toast.error("Koneksi internet terputus.");
         }
+        // error lain (aborted, no-speech) dibiarkan — heartbeat akan restart
       };
 
       recognition.onend = () => {
+        isRecognitionActive = false;
+        lastProcessedIndex = -1;
         if (isIntentionallyListening.current && isMounted.current) {
-          if (isRestarting) return; // ← cegah restart ganda
-          isRestarting = true;
-          setTimeout(() => {
-            if (isIntentionallyListening.current && isMounted.current) {
-              try {
-                recognition.start();
-              } catch {
-                setIsListening(false);
-                isRestarting = false;
-              }
-            } else {
-              isRestarting = false;
-            }
-          }, 150); // ← jeda 150ms sebelum restart, cukup untuk flush hasil final
+          setTimeout(startRecognition, 300);
         } else {
           setIsListening(false);
-          isRestarting = false;
+          stopHeartbeat();
         }
       };
 
       recognitionRef.current = recognition;
+
+      // Override toggleRecording agar heartbeat ikut start/stop
+      // Simpan start/stop helper ke ref agar bisa diakses di toggleRecording
+      (
+        recognitionRef as unknown as { _startHeartbeat: () => void }
+      )._startHeartbeat = startHeartbeat;
+      (
+        recognitionRef as unknown as { _stopHeartbeat: () => void }
+      )._stopHeartbeat = stopHeartbeat;
+      (
+        recognitionRef as unknown as { _startRecognition: () => void }
+      )._startRecognition = startRecognition;
     }
 
     return () => {
@@ -187,8 +229,16 @@ export function MeetingEditor({
       toast.error("Browser tidak mendukung perekaman suara");
       return;
     }
+
+    const ref = recognitionRef as unknown as {
+      _startHeartbeat: () => void;
+      _stopHeartbeat: () => void;
+      _startRecognition: () => void;
+    };
+
     if (isListening || isIntentionallyListening.current) {
       isIntentionallyListening.current = false;
+      ref._stopHeartbeat?.();
       try {
         recognitionRef.current.stop();
       } catch {
@@ -198,18 +248,9 @@ export function MeetingEditor({
       toast.info("Perekaman dihentikan");
     } else {
       isIntentionallyListening.current = true;
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (err: unknown) {
-        const error = err as Error;
-        if (error.name === "InvalidStateError") {
-          setIsListening(true);
-        } else {
-          toast.error("Gagal menyalakan mikrofon.");
-          isIntentionallyListening.current = false;
-        }
-      }
+      setIsListening(true);
+      ref._startRecognition?.();
+      ref._startHeartbeat?.();
     }
   };
 
