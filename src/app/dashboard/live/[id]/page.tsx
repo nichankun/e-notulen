@@ -25,7 +25,6 @@ import { MeetingAttendees } from "@/components/dashboard/live/meeting-attendees"
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
 import { PhotoDocumentation } from "@/components/dashboard/live/photo-documentation";
 import { LoadingScreen } from "./loading-screen";
-
 import { FinishMeetingDialog } from "./finish-meeting-dialog";
 
 interface PageProps {
@@ -157,6 +156,8 @@ export default function LiveMeetingPage({ params }: PageProps) {
         body: JSON.stringify({ content: notulen, photos, status: "archived" }),
       });
       if (res.ok) {
+        // Bersihkan localStorage transkrip saat rapat selesai
+        localStorage.removeItem(`transcript-${id}`);
         toast.success("Rapat Selesai");
         setIsDialogOpen(false);
         router.push("/dashboard/archive");
@@ -171,19 +172,15 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-muted/10 flex flex-col">
-      {/* HEADER */}
       <header className="bg-background border-b sticky top-0 z-30 px-4 py-2 flex items-center justify-between w-full">
         <MeetingHeader
           date={meetingData?.date ? new Date(meetingData.date) : undefined}
         />
       </header>
 
-      {/* MAIN */}
       <main className="flex-1 w-full px-3 py-3">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-          {/* SIDEBAR */}
           <div className="lg:col-span-3 xl:col-span-2 space-y-1.5 lg:sticky lg:top-14">
-            {/* QR Code */}
             <Collapsible
               open={isQrOpen}
               onOpenChange={setIsQrOpen}
@@ -207,7 +204,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Peserta */}
             <Collapsible
               open={isAttendeesOpen}
               onOpenChange={setIsAttendeesOpen}
@@ -236,7 +232,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Foto */}
             <Collapsible
               open={isPhotosOpen}
               onOpenChange={setIsPhotosOpen}
@@ -274,9 +269,9 @@ export default function LiveMeetingPage({ params }: PageProps) {
             </Collapsible>
           </div>
 
-          {/* EDITOR */}
           <div className="lg:col-span-9 xl:col-span-10">
             <MeetingEditor
+              id={id}
               title={meetingData?.title || ""}
               leader={meetingData?.leader || ""}
               content={notulen}

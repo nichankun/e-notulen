@@ -7,57 +7,52 @@ interface EditorHeaderProps {
   saveStatus: "idle" | "saving" | "saved" | "error";
 }
 
+const statusConfig = {
+  saving: {
+    className: "bg-primary/10 text-primary border-transparent",
+    icon: <Loader2 className="h-3 w-3 animate-spin" />,
+    label: "Menyimpan...",
+  },
+  saved: {
+    className:
+      "text-emerald-600 border-emerald-200 bg-emerald-50 dark:text-emerald-400 dark:border-emerald-900 dark:bg-emerald-950/30",
+    icon: <CheckCircle2 className="h-3 w-3" />,
+    label: "Tersimpan",
+  },
+  error: {
+    className:
+      "bg-destructive/10 text-destructive border-destructive/20 animate-pulse",
+    icon: <CloudOff className="h-3 w-3" />,
+    label: "Gagal Simpan",
+  },
+  idle: {
+    className: "text-muted-foreground border-border/50 bg-muted/30",
+    icon: <Save className="h-3 w-3 opacity-60" />,
+    label: "Standby",
+  },
+};
+
 export function EditorHeader({ title, leader, saveStatus }: EditorHeaderProps) {
+  const status = statusConfig[saveStatus];
+
   return (
-    <div className="px-6 py-4 border-b bg-background flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
-      <div className="min-w-0 space-y-1">
-        <h3 className="font-semibold text-lg text-foreground truncate">
+    <div className="px-4 py-3 border-b bg-background flex items-center justify-between gap-3 shrink-0">
+      <div className="min-w-0 flex-1">
+        <h3 className="font-semibold text-sm text-foreground truncate">
           {title || "Judul Rapat"}
         </h3>
-        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+        <p className="text-xs text-muted-foreground truncate">
           Pimpinan: <span className="text-foreground">{leader || "-"}</span>
         </p>
       </div>
 
-      {/* Bagian Status Saving menggunakan Badge agar lebih konsisten dan rapi */}
-      <div className="flex items-center shrink-0">
-        {saveStatus === "saving" && (
-          <Badge
-            variant="secondary"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/10 border-transparent"
-          >
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span className="font-medium text-xs">Menyimpan...</span>
-          </Badge>
-        )}
-        {saveStatus === "saved" && (
-          <Badge
-            variant="outline"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span className="font-medium text-xs">Tersimpan</span>
-          </Badge>
-        )}
-        {saveStatus === "error" && (
-          <Badge
-            variant="destructive"
-            className="flex items-center gap-1.5 px-3 py-1.5 animate-pulse"
-          >
-            <CloudOff className="h-3.5 w-3.5" />
-            <span className="font-medium text-xs">Gagal Simpan</span>
-          </Badge>
-        )}
-        {saveStatus === "idle" && (
-          <Badge
-            variant="outline"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground border-border/50 bg-muted/30"
-          >
-            <Save className="h-3.5 w-3.5 opacity-70" />
-            <span className="font-medium text-xs">Standby</span>
-          </Badge>
-        )}
-      </div>
+      <Badge
+        variant="outline"
+        className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium ${status.className}`}
+      >
+        {status.icon}
+        {status.label}
+      </Badge>
     </div>
   );
 }

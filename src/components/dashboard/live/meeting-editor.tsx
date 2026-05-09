@@ -57,6 +57,7 @@ interface WindowWithSpeech extends Window {
 // ------------------------------------------------------------
 
 interface MeetingEditorProps {
+  id: string;
   title?: string;
   leader?: string;
   content: string;
@@ -69,6 +70,7 @@ interface MeetingEditorProps {
 type ActiveTab = "transcript" | "summary";
 
 export function MeetingEditor({
+  id, // ← fix: sekarang di-destructure
   title,
   leader,
   content,
@@ -81,7 +83,9 @@ export function MeetingEditor({
 
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
-  const [rawTranscript, setRawTranscript] = useState<string>("");
+  const [rawTranscript, setRawTranscript] = useState<string>(
+    () => localStorage.getItem(`transcript-${id}`) ?? "",
+  );
   const [summaryHtml, setSummaryHtml] = useState<string>("");
   const [activeTab, setActiveTab] = useState<ActiveTab>("transcript");
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -99,6 +103,16 @@ export function MeetingEditor({
     immediatelyRender: false,
   });
 
+  // Simpan transkrip ke localStorage setiap kali berubah
+  useEffect(() => {
+    if (rawTranscript) {
+      localStorage.setItem(`transcript-${id}`, rawTranscript);
+    } else {
+      localStorage.removeItem(`transcript-${id}`);
+    }
+  }, [rawTranscript, id]);
+
+  // Inisialisasi Web Speech API
   useEffect(() => {
     isMounted.current = true;
     const win = window as unknown as WindowWithSpeech;
@@ -111,6 +125,8 @@ export function MeetingEditor({
       recognition.interimResults = true;
       recognition.lang = "id-ID";
 
+      let isRestarting = false; // ← flag baru
+
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         let finalTranscripts = "";
         for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -120,6 +136,7 @@ export function MeetingEditor({
           }
         }
         if (finalTranscripts) {
+          isRestarting = false; // reset flag saat ada hasil baru
           setRawTranscript((prev) => prev + finalTranscripts);
         }
       };
@@ -136,13 +153,23 @@ export function MeetingEditor({
 
       recognition.onend = () => {
         if (isIntentionallyListening.current && isMounted.current) {
-          try {
-            recognition.start();
-          } catch {
-            setIsListening(false);
-          }
+          if (isRestarting) return; // ← cegah restart ganda
+          isRestarting = true;
+          setTimeout(() => {
+            if (isIntentionallyListening.current && isMounted.current) {
+              try {
+                recognition.start();
+              } catch {
+                setIsListening(false);
+                isRestarting = false;
+              }
+            } else {
+              isRestarting = false;
+            }
+          }, 150); // ← jeda 150ms sebelum restart, cukup untuk flush hasil final
         } else {
           setIsListening(false);
+          isRestarting = false;
         }
       };
 
@@ -200,7 +227,7 @@ export function MeetingEditor({
       if (!response.ok) throw new Error(result.error);
       editor?.commands.setContent(result.data);
       setSummaryHtml(result.data);
-      setActiveTab("summary"); // otomatis pindah ke tab rangkuman
+      setActiveTab("summary");
       toast.success("Rangkuman berhasil dibuat!", { id: toastId });
     } catch (error: unknown) {
       toast.error(
@@ -217,6 +244,7 @@ export function MeetingEditor({
     setSummaryHtml("");
     setActiveTab("transcript");
     editor?.commands.setContent("");
+    localStorage.removeItem(`transcript-${id}`);
   };
 
   if (!editor) return null;
@@ -282,7 +310,7 @@ export function MeetingEditor({
           )}
         </div>
 
-        {/* TABS — hanya tampil jika sudah ada rangkuman */}
+        {/* TABS */}
         {summaryHtml && (
           <div className="flex border-b px-4 gap-0">
             <button
@@ -316,7 +344,7 @@ export function MeetingEditor({
                 value={rawTranscript}
                 onChange={(e) => setRawTranscript(e.target.value)}
                 disabled={isListening}
-                className={`w-full h-full min-h-100 max-h-full text-sm leading-relaxed bg-transparent border-none outline-none resize-none text-foreground overflow-y-auto ${
+                className={`w-full h-full min-h-100 text-sm leading-relaxed bg-transparent border-none outline-none resize-none text-foreground overflow-y-auto ${
                   isListening ? "cursor-not-allowed opacity-60" : ""
                 }`}
               />
