@@ -69,30 +69,19 @@ export function useSpeechRecognition({
 
     if (!SpeechRecognitionAPI) return;
 
-    navigator.mediaDevices
-      .getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          channelCount: 1,
-          sampleRate: 16000,
-        },
-      })
-      .catch(() => {});
-
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true; // langsung deteksi saat bicara
     recognition.lang = "id-ID";
 
     let lastProcessedIndex = -1;
     let isRecognitionActive = false;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
-    const startRecognition = () => {
+    const startRecognition = async () => {
       if (!isMounted.current || !isIntentionallyListening.current) return;
       try {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
         recognition.start();
         isRecognitionActive = true;
       } catch {
