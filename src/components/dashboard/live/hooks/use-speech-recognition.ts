@@ -80,6 +80,7 @@ export function useSpeechRecognition({
 
     const startRecognition = () => {
       if (!isMounted.current || !isIntentionallyListening.current) return;
+      if (isRecognitionActive) return; // Cegah double start
       try {
         recognition.start();
         isRecognitionActive = true;
@@ -97,6 +98,7 @@ export function useSpeechRecognition({
 
     const startHeartbeat = () => {
       stopHeartbeat();
+      // Heartbeat lebih cepat (1 detik) untuk memastikan status tetap aktif
       heartbeatTimer = setInterval(() => {
         if (
           isIntentionallyListening.current &&
@@ -112,15 +114,22 @@ export function useSpeechRecognition({
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let finalTranscripts = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (i <= lastProcessedIndex) continue;
         const result = event.results[i];
-        if (result?.isFinal) {
-          finalTranscripts += result[0]?.transcript + " ";
-          lastProcessedIndex = i;
+
+        // Hanya ambil hasil yang bersifat Final dan belum pernah diproses
+        // Tambahkan pengecekan index yang lebih ketat untuk menghindari duplikasi
+        if (result?.isFinal && i > lastProcessedIndex) {
+          const text = result[0]?.transcript.trim();
+          if (text) {
+            finalTranscripts += text + " ";
+            lastProcessedIndex = i;
+          }
         }
-        // Abaikan interim result — tidak disimpan ke transkrip
       }
-      if (finalTranscripts) onTranscript(finalTranscripts);
+
+      if (finalTranscripts.trim()) {
+        onTranscript(finalTranscripts);
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -143,10 +152,11 @@ export function useSpeechRecognition({
 
     recognition.onend = () => {
       isRecognitionActive = false;
-      // lastProcessedIndex tidak di-reset agar tidak dobel saat restart
       if (isIntentionallyListening.current && isMounted.current) {
-        setTimeout(startRecognition, 500);
+        // Langsung nyalakan kembali jika memang masih dalam mode merekam
+        startRecognition();
       } else {
+        lastProcessedIndex = -1; // Reset hanya jika benar-benar berhenti total
         stopHeartbeat();
         releaseWakeLock();
         onStop();
