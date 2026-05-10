@@ -61,20 +61,19 @@ export function useSpeechRecognition({
   const isIntentionallyListening = useRef<boolean>(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isRecognitionActive = useRef<boolean>(false);
-
-  // Deteksi iOS
-  const isIOS =
+  const isIOSRef = useRef<boolean>(
     typeof navigator !== "undefined" &&
-    /iPad|iPhone|iPod/.test(navigator.userAgent);
+      /iPad|iPhone|iPod/.test(navigator.userAgent),
+  );
 
   useEffect(() => {
     isMounted.current = true;
+    const isIOS = isIOSRef.current;
     const win = window as unknown as WindowWithSpeech;
     const SpeechRecognitionAPI =
       win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
-      // Tampilkan pesan jika browser tidak support
       if (isIOS) {
         toast.error("Gunakan Safari untuk fitur rekam suara di iPhone/iPad.");
       }
@@ -82,12 +81,11 @@ export function useSpeechRecognition({
     }
 
     const recognition = new SpeechRecognitionAPI();
-
-    // iOS Safari tidak support continuous: true
-    // Selalu false agar stabil di semua platform
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = false; // false lebih stabil di semua platform
+    recognition.interimResults = false; // false agar tidak dobel
     recognition.lang = "id-ID";
+
+    const restartDelay = isIOS ? 500 : 100;
 
     const startRecognition = () => {
       if (
@@ -118,9 +116,8 @@ export function useSpeechRecognition({
       isRecognitionActive.current = false;
 
       if (event.error === "no-speech") {
-        // iOS sering lempar no-speech — restart saja
         if (isIntentionallyListening.current && isMounted.current) {
-          setTimeout(startRecognition, isIOS ? 300 : 100);
+          setTimeout(startRecognition, restartDelay);
         }
         return;
       }
@@ -129,11 +126,11 @@ export function useSpeechRecognition({
         isIntentionallyListening.current = false;
         releaseWakeLock();
         onError();
-        if (isIOS) {
-          toast.error("Izinkan mikrofon di Settings → Safari → Microphone.");
-        } else {
-          toast.error("Akses mikrofon ditolak.");
-        }
+        toast.error(
+          isIOS
+            ? "Izinkan mikrofon di Settings → Safari → Microphone."
+            : "Akses mikrofon ditolak.",
+        );
         return;
       }
 
@@ -145,8 +142,7 @@ export function useSpeechRecognition({
     recognition.onend = () => {
       isRecognitionActive.current = false;
       if (isIntentionallyListening.current && isMounted.current) {
-        // iOS butuh delay sedikit sebelum restart
-        setTimeout(startRecognition, isIOS ? 300 : 0);
+        setTimeout(startRecognition, restartDelay);
       } else {
         releaseWakeLock();
         onStop();
@@ -154,11 +150,6 @@ export function useSpeechRecognition({
     };
 
     recognitionRef.current = recognition;
-
-    const ext = recognitionRef as unknown as {
-      _start: () => void;
-    };
-    ext._start = startRecognition;
 
     return () => {
       isMounted.current = false;
@@ -168,20 +159,27 @@ export function useSpeechRecognition({
       } catch {}
       releaseWakeLock();
     };
-  }, [releaseWakeLock, onTranscript, onStop, onError, isIOS]);
+  }, [releaseWakeLock, onTranscript, onStop, onError]);
 
   const start = () => {
     if (!recognitionRef.current) {
-      if (isIOS) {
-        toast.error("Gunakan Safari untuk fitur rekam suara di iPhone/iPad.");
-      } else {
-        toast.error("Browser tidak mendukung perekaman suara.");
-      }
+      toast.error(
+        isIOSRef.current
+          ? "Gunakan Safari untuk fitur rekam suara di iPhone/iPad."
+          : "Browser tidak mendukung perekaman suara.",
+      );
       return false;
     }
     isIntentionallyListening.current = true;
-    const ext = recognitionRef as unknown as { _start: () => void };
-    ext._start?.();
+    // Panggil via recognition langsung, bukan start() manual
+    if (!isRecognitionActive.current) {
+      try {
+        recognitionRef.current.start();
+        isRecognitionActive.current = true;
+      } catch {
+        isRecognitionActive.current = false;
+      }
+    }
     return true;
   };
 
