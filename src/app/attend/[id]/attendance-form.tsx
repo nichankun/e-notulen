@@ -59,7 +59,7 @@ export function AttendanceForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-5 border rounded-xl p-6 bg-card"
+        className="space-y-5 border border-border rounded-xl p-6 bg-card text-card-foreground shadow-sm"
       >
         <FormField
           control={form.control}
@@ -104,7 +104,7 @@ export function AttendanceForm({
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     <SelectItem value="pimpinan">Pimpinan</SelectItem>
                     <SelectItem value="pejabat">Pejabat</SelectItem>
                     <SelectItem value="peserta">Staff / Peserta</SelectItem>
@@ -128,7 +128,7 @@ export function AttendanceForm({
                     sigCanvas.current?.clear();
                     form.setValue("signature", "");
                   }}
-                  className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  className="text-xs font-semibold text-muted-foreground hover:text-destructive transition-colors"
                 >
                   Hapus
                 </button>
@@ -136,7 +136,8 @@ export function AttendanceForm({
               <FormControl>
                 <div
                   ref={containerRef}
-                  className="w-full border rounded-lg bg-muted/20 overflow-hidden"
+                  // Memaksa bg-white agar tinta #000 selalu terlihat meski di Dark Mode
+                  className="w-full border border-border rounded-lg bg-white overflow-hidden"
                 >
                   <SignatureCanvas
                     ref={sigCanvas}
@@ -152,7 +153,7 @@ export function AttendanceForm({
                     }
                     canvasProps={{
                       width: canvasWidth,
-                      height: 120,
+                      height: 160, // Sedikit dinaikkan agar area TTD lebih nyaman di HP
                       className: "cursor-crosshair w-full",
                     }}
                   />
@@ -171,10 +172,10 @@ export function AttendanceForm({
         <Button
           type="submit"
           disabled={form.formState.isSubmitting}
-          className="w-full"
+          className="w-full h-11 rounded-xl font-bold"
         >
           {form.formState.isSubmitting ? (
-            <Loader2 className="animate-spin h-4 w-4" />
+            <Loader2 className="animate-spin h-5 w-5" />
           ) : (
             "Kirim Presensi"
           )}

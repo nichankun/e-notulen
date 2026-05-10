@@ -44,7 +44,14 @@ import {
   Inbox,
   Loader2,
   SlidersHorizontal,
+  Eye,
+  Clock,
+  CheckCircle2,
+  FileEdit,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Meeting } from "@/db/database/schema";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -60,6 +67,75 @@ const columnLabels: Record<string, string> = {
   status: "Status",
 };
 
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+function MobileCard({ item }: { item: Meeting }) {
+  const destination =
+    item.status === "archived"
+      ? `/dashboard/result/${item.id}`
+      : `/dashboard/live/${item.id}`;
+
+  return (
+    <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+      {/* Top row: tanggal + status */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground font-medium">
+          {item.date ? dateFormatter.format(new Date(item.date)) : "-"}
+        </span>
+        <div>
+          {item.status === "live" && (
+            <Badge
+              variant="outline"
+              className="bg-primary/10 text-primary border-primary/20 gap-1.5 px-2 text-[10px]"
+            >
+              <Clock className="h-3 w-3 animate-pulse" /> Live Aktif
+            </Badge>
+          )}
+          {item.status === "archived" && (
+            <Badge
+              variant="outline"
+              className="text-muted-foreground gap-1.5 px-2 bg-transparent text-[10px]"
+            >
+              <CheckCircle2 className="h-3 w-3" /> Selesai
+            </Badge>
+          )}
+          {item.status === "draft" && (
+            <Badge
+              variant="secondary"
+              className="text-muted-foreground gap-1.5 px-2 text-[10px]"
+            >
+              <FileEdit className="h-3 w-3" /> Draft
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Judul */}
+      <p className="text-sm font-bold text-foreground leading-snug">
+        {item.title}
+      </p>
+
+      {/* Bottom row: kehadiran + aksi */}
+      <div className="flex items-center justify-between pt-1 border-t border-border">
+        <span className="text-xs bg-muted text-muted-foreground font-medium px-2.5 py-1 rounded-full">
+          {item.attendanceCount ?? 0} Hadir
+        </span>
+        <Link
+          href={destination}
+          className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-xl hover:bg-primary/20 transition-colors"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Lihat
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -72,7 +148,6 @@ export function DataTable<TData, TValue>({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-
   const [searchValue, setSearchValue] = React.useState("");
   const [isPending, startTransition] = React.useTransition();
 
@@ -86,14 +161,8 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-    },
-    initialState: {
-      pagination: { pageSize: 10 },
-    },
+    state: { sorting, columnFilters, columnVisibility },
+    initialState: { pagination: { pageSize: 10 } },
   });
 
   React.useEffect(() => {
@@ -102,15 +171,17 @@ export function DataTable<TData, TValue>({
     });
   }, [searchValue, filterKey, table]);
 
+  // Data yang sudah difilter untuk mobile card list
+  const filteredData = table
+    .getFilteredRowModel()
+    .rows.map((row) => row.original as Meeting);
+
   return (
     <div className="space-y-4 w-full animate-in fade-in duration-500">
-      {/* BAGIAN ATAS: Search & Filter */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Search & Filter — sama untuk desktop dan mobile */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:max-w-sm">
-          {/* Ikon menggunakan text-muted-foreground */}
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-
-          {/* Input dibersihkan. Biarkan shadcn yang mengurus ring dan border */}
           <Input
             placeholder={placeholder}
             value={searchValue}
@@ -122,23 +193,23 @@ export function DataTable<TData, TValue>({
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="h-10 w-full sm:w-auto rounded-xl ml-auto flex items-center gap-2"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Tampilan Kolom
-            </Button>
-          </DropdownMenuTrigger>
-          {/* w-50 diubah jadi w-[200px] karena w-50 tidak valid di Tailwind default */}
-          <DropdownMenuContent align="end" className="w-50 rounded-xl">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
+        {/* Kolom visibility hanya relevan di desktop */}
+        <div className="hidden sm:block">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl flex items-center gap-2"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                Tampilan Kolom
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-xl">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
                   <DropdownMenuCheckboxItem
                     key={column.id}
                     className="capitalize font-medium text-sm"
@@ -149,15 +220,26 @@ export function DataTable<TData, TValue>({
                   >
                     {columnLabels[column.id] || column.id}
                   </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
-      {/* BAGIAN TABEL */}
-      {/* Menggunakan bg-card dan border standar */}
-      <div className="rounded-xl border bg-card text-card-foreground overflow-hidden shadow-sm">
+      {/* ── MOBILE: Card list ── */}
+      <div className="sm:hidden space-y-3">
+        {filteredData.length > 0 ? (
+          filteredData.map((item) => <MobileCard key={item.id} item={item} />)
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Inbox className="h-10 w-10 mb-2 stroke-[1.5px] opacity-50" />
+            <p className="text-sm font-medium">Data tidak ditemukan</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── DESKTOP: Tabel ── */}
+      <div className="hidden sm:block rounded-xl border bg-card text-card-foreground overflow-hidden shadow-sm">
         <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted">
           <Table className="min-w-full">
             <TableHeader className="bg-muted/50">
@@ -182,7 +264,6 @@ export function DataTable<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  // Menghapus hover kustom karena TableRow bawaan shadcn sudah memilikinya!
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
@@ -220,7 +301,7 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {/* BAGIAN PAGINASI */}
+      {/* ── Paginasi ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-2 gap-4">
         <div className="text-xs text-muted-foreground font-medium whitespace-nowrap">
           Menampilkan total {table.getFilteredRowModel().rows.length} entitas
@@ -236,8 +317,7 @@ export function DataTable<TData, TValue>({
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(value) => table.setPageSize(Number(value))}
             >
-              {/* w-17.5 diganti menjadi w-[70px] */}
-              <SelectTrigger className="h-8 w-17.5 bg-background rounded-lg text-xs font-bold">
+              <SelectTrigger className="h-8 w-[70px] bg-background rounded-lg text-xs font-bold">
                 <SelectValue
                   placeholder={`${table.getState().pagination.pageSize}`}
                 />
@@ -261,7 +341,6 @@ export function DataTable<TData, TValue>({
               Hal. {table.getState().pagination.pageIndex + 1} /{" "}
               {table.getPageCount() || 1}
             </div>
-            {/* Class dihapus sebagian, mengandalkan variant="outline" bawaan shadcn */}
             <Button
               variant="outline"
               size="icon"

@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 
 const formSchema = z.object({
@@ -107,9 +107,7 @@ export default function CreateMeetingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       const json = await res.json();
-
       if (json.success) {
         toast.success("Agenda berhasil dibuat");
         startTransition(() => {
@@ -125,9 +123,38 @@ export default function CreateMeetingPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-0 animate-in fade-in duration-500">
-      {/* HEADER */}
-      <div className="mb-8">
+    <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
+      {/* ── MOBILE Header ── */}
+      <div className="sm:hidden px-4 pt-4 pb-2">
+        <div className="flex items-center gap-3 mb-4">
+          <Link
+            href="/dashboard"
+            className="p-1.5 rounded-full hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </Link>
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              E-Notulen
+            </p>
+            <h1 className="text-lg font-bold text-foreground leading-tight">
+              Buat Agenda Baru
+            </h1>
+          </div>
+        </div>
+
+        {/* Info banner — selaras dengan live page */}
+        <div className="bg-primary/10 rounded-xl px-4 py-3 flex items-start gap-2.5 mb-4">
+          <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-primary font-medium leading-relaxed">
+            Kolom bertanda <span className="text-destructive font-bold">*</span>{" "}
+            wajib diisi.
+          </p>
+        </div>
+      </div>
+
+      {/* ── DESKTOP Header ── */}
+      <div className="hidden sm:block p-0 mb-8">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
           E-Notulen
         </p>
@@ -141,7 +168,10 @@ export default function CreateMeetingPage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6 px-4 sm:px-0 pb-8"
+        >
           {/* ── SEKSI 1: INFORMASI UTAMA ── */}
           <SectionTitle number="1" title="Informasi Utama" />
 
@@ -158,7 +188,7 @@ export default function CreateMeetingPage() {
                   <Input
                     placeholder="Evaluasi Pendapatan Daerah Bulanan"
                     disabled={isLoading}
-                    className="h-10"
+                    className="h-10 rounded-xl"
                     {...field}
                   />
                 </FormControl>
@@ -180,7 +210,7 @@ export default function CreateMeetingPage() {
                     <Input
                       type="datetime-local"
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -201,7 +231,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="Ruang Rapat Kepala Badan"
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -223,7 +253,7 @@ export default function CreateMeetingPage() {
                   <Input
                     placeholder="005/123/BAPENDA/2025"
                     disabled={isLoading}
-                    className="h-10"
+                    className="h-10 rounded-xl"
                     {...field}
                   />
                 </FormControl>
@@ -245,7 +275,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="09.00"
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -266,7 +296,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="11.30"
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -292,7 +322,7 @@ export default function CreateMeetingPage() {
                   <Input
                     placeholder="Nama pimpinan..."
                     disabled={isLoading}
-                    className="h-10"
+                    className="h-10 rounded-xl"
                     {...field}
                   />
                 </FormControl>
@@ -314,7 +344,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="Kepala Badan"
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -335,7 +365,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="Pembina Utama Madya / IV-c"
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -358,7 +388,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="Nama sekretaris..."
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -379,7 +409,7 @@ export default function CreateMeetingPage() {
                     <Input
                       placeholder="Nama pencatat..."
                       disabled={isLoading}
-                      className="h-10"
+                      className="h-10 rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -389,13 +419,39 @@ export default function CreateMeetingPage() {
             />
           </div>
 
-          {/* ACTION BUTTONS */}
-          <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-3 pt-4 border-t">
+          {/* ── ACTION BUTTONS ── */}
+          {/* Mobile: tombol submit full width + back link */}
+          <div className="sm:hidden pt-4 border-t border-border space-y-3">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 rounded-xl font-semibold text-sm"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Menyiapkan...
+                </>
+              ) : (
+                "Buat & Buka Absensi"
+              )}
+            </Button>
+            <Link
+              href="/dashboard"
+              className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Kembali ke Dashboard
+            </Link>
+          </div>
+
+          {/* Desktop: layout lama */}
+          <div className="hidden sm:flex flex-row items-center justify-between gap-3 pt-4 border-t border-border">
             <Button
               variant="ghost"
               type="button"
               asChild
-              className={`w-full md:w-auto text-muted-foreground ${
+              className={`w-auto text-muted-foreground ${
                 isLoading ? "pointer-events-none opacity-50" : ""
               }`}
             >
@@ -405,11 +461,7 @@ export default function CreateMeetingPage() {
               </Link>
             </Button>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full md:w-auto px-8"
-            >
+            <Button type="submit" disabled={isLoading} className="w-auto px-8">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />

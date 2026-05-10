@@ -10,6 +10,9 @@ import {
   QrCode,
   Users,
   Image as ImageIcon,
+  ArrowLeft,
+  Info,
+  FileText,
 } from "lucide-react";
 import imageCompression from "browser-image-compression";
 import { supabase } from "@/lib/supabaseClient";
@@ -30,6 +33,8 @@ import { FinishMeetingDialog } from "./finish-meeting-dialog";
 interface PageProps {
   params: Promise<{ id: string }>;
 }
+
+type MobileTab = "editor" | "qr" | "attendees" | "photos";
 
 export default function LiveMeetingPage({ params }: PageProps) {
   const { id } = use(params);
@@ -52,6 +57,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isAttendeesOpen, setIsAttendeesOpen] = useState(false);
   const [isPhotosOpen, setIsPhotosOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -109,7 +115,9 @@ export default function LiveMeetingPage({ params }: PageProps) {
           maxWidthOrHeight: 1600,
           useWebWorker: true,
         });
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.jpg`;
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .substring(2, 9)}.jpg`;
         const { error: uploadError } = await supabase.storage
           .from("notulen")
           .upload(fileName, compressed);
@@ -156,7 +164,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
         body: JSON.stringify({ content: notulen, photos, status: "archived" }),
       });
       if (res.ok) {
-        // Bersihkan localStorage transkrip saat rapat selesai
         localStorage.removeItem(`transcript-${id}`);
         toast.success("Rapat Selesai");
         setIsDialogOpen(false);
@@ -170,24 +177,49 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
   if (loading) return <LoadingScreen progress={progress} />;
 
-  return (
-    <div className="min-h-screen bg-muted/10 flex flex-col">
-      <header className="bg-background border-b sticky top-0 z-30 px-4 py-2 flex items-center justify-between w-full">
-        <MeetingHeader
-          date={meetingData?.date ? new Date(meetingData.date) : undefined}
-        />
-      </header>
+  const mobileTabs: {
+    key: MobileTab;
+    label: string;
+    icon: React.ReactNode;
+    badge?: number;
+  }[] = [
+    { key: "editor", label: "Notulen", icon: <FileText className="h-5 w-5" /> },
+    { key: "qr", label: "QR Code", icon: <QrCode className="h-5 w-5" /> },
+    {
+      key: "attendees",
+      label: "Peserta",
+      icon: <Users className="h-5 w-5" />,
+      badge: attendees.length,
+    },
+    {
+      key: "photos",
+      label: "Foto",
+      icon: <ImageIcon className="h-5 w-5" />,
+      badge: photos.length > 0 ? photos.length : undefined,
+    },
+  ];
 
-      <main className="flex-1 w-full px-3 py-3">
+  return (
+    <>
+      {/* ══════════════════════════════════════════
+          DESKTOP (lg ke atas)
+      ══════════════════════════════════════════ */}
+      <div className="hidden lg:block w-full">
+        <div className="mb-3">
+          <MeetingHeader
+            date={meetingData?.date ? new Date(meetingData.date) : undefined}
+          />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
           <div className="lg:col-span-3 xl:col-span-2 space-y-1.5 lg:sticky lg:top-14">
             <Collapsible
               open={isQrOpen}
               onOpenChange={setIsQrOpen}
-              className="bg-background border rounded-lg overflow-hidden"
+              className="bg-background border border-border rounded-lg overflow-hidden"
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors">
+                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <QrCode className="h-3.5 w-3.5" />
                     QR Code
@@ -199,7 +231,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
                   )}
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="border-t p-2">
+              <CollapsibleContent className="border-t border-border p-2">
                 <MeetingQRCode meetingId={id} origin={origin} />
               </CollapsibleContent>
             </Collapsible>
@@ -207,10 +239,10 @@ export default function LiveMeetingPage({ params }: PageProps) {
             <Collapsible
               open={isAttendeesOpen}
               onOpenChange={setIsAttendeesOpen}
-              className="bg-background border rounded-lg overflow-hidden"
+              className="bg-background border border-border rounded-lg overflow-hidden"
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors">
+                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <Users className="h-3.5 w-3.5" />
                     Peserta
@@ -227,7 +259,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
                   </div>
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="border-t">
+              <CollapsibleContent className="border-t border-border">
                 <MeetingAttendees attendees={attendees} />
               </CollapsibleContent>
             </Collapsible>
@@ -235,10 +267,10 @@ export default function LiveMeetingPage({ params }: PageProps) {
             <Collapsible
               open={isPhotosOpen}
               onOpenChange={setIsPhotosOpen}
-              className="bg-background border rounded-lg overflow-hidden"
+              className="bg-background border border-border rounded-lg overflow-hidden"
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/40 transition-colors">
+                <button className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                     <ImageIcon className="h-3.5 w-3.5" />
                     Foto
@@ -255,7 +287,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
                   </div>
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="border-t">
+              <CollapsibleContent className="border-t border-border">
                 <PhotoDocumentation
                   photos={photos}
                   isUploading={isUploading}
@@ -282,7 +314,185 @@ export default function LiveMeetingPage({ params }: PageProps) {
             />
           </div>
         </div>
-      </main>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          MOBILE (di bawah lg)
+      ══════════════════════════════════════════ */}
+      <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-background">
+        {/* Mobile Header */}
+        <header className="sticky top-0 z-30 bg-background border-b border-border px-4 py-3 flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => router.back()}
+            className="p-1.5 rounded-full hover:bg-muted transition-colors shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-semibold text-foreground truncate">
+              {meetingData?.title || "Rapat Berlangsung"}
+            </h1>
+            {meetingData?.date && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {new Date(meetingData.date).toLocaleDateString("id-ID", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            )}
+          </div>
+
+          {/* Save status */}
+          {saveStatus === "saving" && (
+            <span className="text-xs text-muted-foreground font-medium shrink-0">
+              Menyimpan…
+            </span>
+          )}
+          {saveStatus === "saved" && (
+            <span className="text-xs text-emerald-500 font-medium shrink-0">
+              Tersimpan
+            </span>
+          )}
+
+          {/* Icon tab buttons — QR, Peserta, Foto */}
+          <div className="flex items-center gap-1 shrink-0">
+            {mobileTabs
+              .filter((t) => t.key !== "editor")
+              .map((tab) => {
+                const isActive = mobileTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() =>
+                      setMobileTab(tab.key === mobileTab ? "editor" : tab.key)
+                    }
+                    title={tab.label}
+                    className={`relative p-2 rounded-xl transition-all duration-150 active:scale-95
+                      ${
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                  >
+                    {tab.badge !== undefined && tab.badge > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {tab.badge}
+                      </span>
+                    )}
+                    {tab.icon}
+                  </button>
+                );
+              })}
+          </div>
+        </header>
+
+        {/* Info banner */}
+        <div className="mx-4 mt-3 mb-1 bg-primary/10 rounded-xl px-4 py-3 flex items-start gap-2.5 shrink-0">
+          <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-primary font-medium leading-relaxed">
+            Rapat sedang berlangsung. Notulen disimpan otomatis setiap
+            perubahan.
+          </p>
+        </div>
+
+        {/* Sub-header saat tab non-editor aktif */}
+        {mobileTab !== "editor" && (
+          <div className="mx-4 mt-2 mb-1 flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setMobileTab("editor")}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Kembali ke Notulen</span>
+            </button>
+            <span className="text-muted">·</span>
+            <span className="text-xs font-semibold text-foreground">
+              {mobileTab === "qr" && "QR Code"}
+              {mobileTab === "attendees" && "Peserta"}
+              {mobileTab === "photos" && "Foto Dokumentasi"}
+            </span>
+          </div>
+        )}
+
+        {/* Konten tab */}
+        <div className="flex-1 overflow-y-auto pb-4">
+          {mobileTab === "editor" && (
+            <div className="px-4 py-3">
+              <MeetingEditor
+                id={id}
+                title={meetingData?.title || ""}
+                leader={meetingData?.leader || ""}
+                content={notulen}
+                setContent={setNotulen}
+                onFinish={() => setIsDialogOpen(true)}
+                isSaving={false}
+                saveStatus={saveStatus}
+              />
+            </div>
+          )}
+
+          {mobileTab === "qr" && (
+            <div className="px-4 py-6 flex flex-col items-center gap-5">
+              <div className="w-full bg-background border border-border rounded-2xl shadow-sm p-5 flex flex-col items-center gap-4">
+                <p className="text-sm font-semibold text-foreground">
+                  Scan untuk Bergabung
+                </p>
+                <MeetingQRCode meetingId={id} origin={origin} />
+                <p className="text-xs text-muted-foreground text-center">
+                  Arahkan kamera ke QR Code di atas
+                </p>
+              </div>
+            </div>
+          )}
+
+          {mobileTab === "attendees" && (
+            <div className="px-4 py-4">
+              <div className="bg-background border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">
+                    Peserta
+                  </p>
+                  <span className="text-xs bg-primary/10 text-primary font-semibold px-2.5 py-0.5 rounded-full">
+                    {attendees.length} orang
+                  </span>
+                </div>
+                <MeetingAttendees attendees={attendees} />
+              </div>
+            </div>
+          )}
+
+          {mobileTab === "photos" && (
+            <div className="px-4 py-4">
+              <div className="bg-background border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">
+                    Foto Dokumentasi
+                  </p>
+                  {photos.length > 0 && (
+                    <span className="text-xs bg-primary/10 text-primary font-semibold px-2.5 py-0.5 rounded-full">
+                      {photos.length} foto
+                    </span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <PhotoDocumentation
+                    photos={photos}
+                    isUploading={isUploading}
+                    fileInputRef={fileInputRef}
+                    onUpload={handlePhotoUpload}
+                    onRemove={(idx) =>
+                      setPhotos(photos.filter((_, i) => i !== idx))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <FinishMeetingDialog
         isOpen={isDialogOpen}
@@ -290,6 +500,6 @@ export default function LiveMeetingPage({ params }: PageProps) {
         onFinish={handleFinish}
         isRouting={false}
       />
-    </div>
+    </>
   );
 }

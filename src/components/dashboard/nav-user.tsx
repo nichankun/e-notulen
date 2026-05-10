@@ -20,6 +20,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChangePasswordDialog } from "./change-password-dialog";
 
+// 1. IMPORT TOMBOL TEMA KITA DI SINI
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+
 interface NavUserProps {
   user: {
     name: string;
@@ -39,8 +42,7 @@ export function NavUser({ user }: NavUserProps) {
       const result = await res.json();
 
       if (result.success) {
-        // Menggunakan hard redirect lebih aman untuk logout di Next.js App Router
-        // Ini memastikan Client Router Cache dibersihkan sepenuhnya.
+        // Menggunakan hard redirect untuk memastikan Client Cache bersih
         window.location.assign("/");
       } else {
         toast.error("Gagal keluar dari sesi.");
@@ -58,69 +60,78 @@ export function NavUser({ user }: NavUserProps) {
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground transition-all duration-200"
                 disabled={isPending}
               >
-                <Avatar className="h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8 rounded-full border border-border">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-xs font-semibold">
+                  <AvatarFallback className="rounded-full bg-primary/10 text-primary text-xs font-semibold">
                     {user.name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden ml-1">
-                  <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-[10px] opacity-60">
+                  <span className="truncate font-semibold text-foreground">
+                    {user.name}
+                  </span>
+                  <span className="truncate text-[10px] text-muted-foreground">
                     {user.nip}
                   </span>
                 </div>
 
-                <ChevronsUpDown className="ml-auto size-3.5 opacity-40 group-data-[collapsible=icon]:hidden" />
+                <ChevronsUpDown className="ml-auto size-3.5 text-muted-foreground group-data-[collapsible=icon]:hidden" />
               </SidebarMenuButton>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-52 rounded-xl"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border"
               side={isMobile ? "bottom" : "right"}
               align="end"
               sideOffset={8}
             >
-              <div className="px-3 py-2 border-b mb-1">
-                <p className="text-sm font-semibold text-foreground truncate">
-                  {user.name}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user.nip}
-                </p>
+              {/* HEADER DROPDOWN: Info User & Theme Toggle bersebelahan */}
+              <div className="px-3 py-2 border-b border-border mb-1 flex items-center justify-between gap-3">
+                <div className="flex flex-col min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate leading-tight">
+                    {user.name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground truncate font-medium">
+                    {user.nip}
+                  </p>
+                </div>
+
+                {/* 2. TOMBOL TEMA DITEMPATKAN DI SINI */}
+                <div className="shrink-0 bg-muted/50 rounded-full">
+                  <ThemeToggle />
+                </div>
               </div>
 
               <DropdownMenuItem
                 onSelect={() => setIsPasswordOpen(true)}
-                className="cursor-pointer"
+                className="cursor-pointer font-medium py-2"
               >
-                <KeyRound className="mr-2 size-4" />
+                <KeyRound className="mr-2 size-4 text-muted-foreground" />
                 Ubah Password
               </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-border" />
 
               <DropdownMenuItem
                 disabled={isPending}
                 onSelect={(e) => {
-                  // Mencegah dropdown tertutup otomatis agar user bisa melihat loading state
                   e.preventDefault();
                   startTransition(() => {
                     handleLogout();
                   });
                 }}
-                className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                className="cursor-pointer font-medium text-destructive focus:text-destructive focus:bg-destructive/10 py-2"
               >
                 {isPending ? (
                   <Loader2 className="mr-2 size-4 animate-spin" />
                 ) : (
                   <LogOut className="mr-2 size-4" />
                 )}
-                {isPending ? "Keluar..." : "Keluar"}
+                {isPending ? "Keluar..." : "Keluar dari E-Notulen"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import { type Attendee } from "@/db/database/schema";
 import { AttendanceForm } from "./attendance-form";
 import { AttendanceList } from "./attendance-list";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AttendancePage({
@@ -44,7 +44,7 @@ export default function AttendancePage({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -52,35 +52,24 @@ export default function AttendancePage({
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <div className="max-w-sm w-full text-center space-y-4 animate-in fade-in duration-500">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
-            <svg
-              className="w-6 h-6 text-emerald-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+        <div className="max-w-sm w-full text-center space-y-5 animate-in zoom-in-95 duration-500">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-foreground">
+            <h2 className="text-2xl font-bold text-foreground">
               Presensi Berhasil
             </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Data Anda telah tercatat dalam riwayat rapat.
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Data Anda telah tercatat dalam riwayat rapat. Silakan tutup
+              halaman ini.
             </p>
           </div>
           <button
             onClick={() => setSuccess(false)}
-            className="text-sm text-primary hover:underline"
+            className="text-xs font-bold text-primary hover:text-primary/80 transition-colors mt-4"
           >
-            Absen ulang / revisi
+            Absen ulang / revisi data
           </button>
         </div>
       </div>
@@ -89,15 +78,15 @@ export default function AttendancePage({
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div className="text-center pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">
-            Badan Pendapatan Daerah Prov. Sulawesi Tenggara
+      <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="text-center pt-4 md:pt-8">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-2">
+            Badan Pendapatan Daerah Prov. Sultra
           </p>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
+          <h1 className="text-3xl font-black text-foreground tracking-tight">
             Presensi Digital
           </h1>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm font-medium text-muted-foreground mt-2 bg-muted inline-block px-3 py-1 rounded-full">
             {attendees.length} peserta telah hadir
           </p>
         </div>
@@ -107,7 +96,7 @@ export default function AttendancePage({
             <AttendanceForm
               onSubmit={async (values) => {
                 try {
-                  // FIX BUG KRITIS: Generate Unique Device ID menggunakan localStorage
+                  // Generate Unique Device ID menggunakan localStorage
                   let deviceId = localStorage.getItem("bapenda_device_id");
                   if (!deviceId) {
                     deviceId = crypto.randomUUID
@@ -121,7 +110,7 @@ export default function AttendancePage({
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       ...values,
-                      deviceId: deviceId, // Kirim ID unik yang sesungguhnya
+                      deviceId: deviceId,
                     }),
                   });
                   const json = await res.json();
