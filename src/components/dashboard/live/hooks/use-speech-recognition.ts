@@ -60,6 +60,7 @@ export function useSpeechRecognition({
   const isMounted = useRef<boolean>(true);
   const isIntentionallyListening = useRef<boolean>(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isRecognitionActive = useRef<boolean>(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -70,78 +71,40 @@ export function useSpeechRecognition({
     if (!SpeechRecognitionAPI) return;
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false; // false = lebih stabil, tidak dobel
+    recognition.interimResults = false; // false = hanya simpan hasil final
     recognition.lang = "id-ID";
 
-    let lastProcessedIndex = -1;
-    let isRecognitionActive = false;
-    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-
     const startRecognition = () => {
-      if (!isMounted.current || !isIntentionallyListening.current) return;
-      if (isRecognitionActive) return; // Cegah double start
+      if (
+        !isMounted.current ||
+        !isIntentionallyListening.current ||
+        isRecognitionActive.current
+      )
+        return;
       try {
         recognition.start();
-        isRecognitionActive = true;
+        isRecognitionActive.current = true;
       } catch {
-        isRecognitionActive = false;
+        isRecognitionActive.current = false;
       }
-    };
-
-    const stopHeartbeat = () => {
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-        heartbeatTimer = null;
-      }
-    };
-
-    const startHeartbeat = () => {
-      stopHeartbeat();
-      // Heartbeat lebih cepat (1 detik) untuk memastikan status tetap aktif
-      heartbeatTimer = setInterval(() => {
-        if (
-          isIntentionallyListening.current &&
-          isMounted.current &&
-          !isRecognitionActive
-        ) {
-          startRecognition();
-        }
-        if (!isIntentionallyListening.current) stopHeartbeat();
-      }, 2000);
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      let finalTranscripts = "";
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const result = event.results[i];
-
-        // Hanya ambil hasil yang bersifat Final dan belum pernah diproses
-        // Tambahkan pengecekan index yang lebih ketat untuk menghindari duplikasi
-        if (result?.isFinal && i > lastProcessedIndex) {
+        if (result?.isFinal) {
           const text = result[0]?.transcript.trim();
-          if (text) {
-            finalTranscripts += text + " ";
-            lastProcessedIndex = i;
-          }
+          if (text) onTranscript(text + " ");
         }
-      }
-
-      if (finalTranscripts.trim()) {
-        onTranscript(finalTranscripts);
       }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      isRecognitionActive = false;
-
-      // Error "no-speech" sangat sering terjadi di mobile jika hening sebentar.
-      // Jangan hentikan proses jika hanya karena no-speech.
-      if (event.error === "no-speech") return;
-
+      isRecognitionActive.current = false;
+      if (event.error === "no-speech") return; // abaikan, restart di onend
       if (event.error === "not-allowed") {
         isIntentionallyListening.current = false;
-        stopHeartbeat();
         releaseWakeLock();
         onError();
         toast.error("Akses mikrofon ditolak.");
@@ -151,13 +114,11 @@ export function useSpeechRecognition({
     };
 
     recognition.onend = () => {
-      isRecognitionActive = false;
+      isRecognitionActive.current = false;
       if (isIntentionallyListening.current && isMounted.current) {
-        // Langsung nyalakan kembali jika memang masih dalam mode merekam
+        // Restart cepat tanpa delay agar tidak ada jeda
         startRecognition();
       } else {
-        lastProcessedIndex = -1; // Reset hanya jika benar-benar berhenti total
-        stopHeartbeat();
         releaseWakeLock();
         onStop();
       }
@@ -167,17 +128,15 @@ export function useSpeechRecognition({
 
     const ext = recognitionRef as unknown as {
       _start: () => void;
-      _startHeartbeat: () => void;
-      _stopHeartbeat: () => void;
     };
     ext._start = startRecognition;
-    ext._startHeartbeat = startHeartbeat;
-    ext._stopHeartbeat = stopHeartbeat;
 
     return () => {
       isMounted.current = false;
-      stopHeartbeat();
-      recognition.stop();
+      isRecognitionActive.current = false;
+      try {
+        recognition.stop();
+      } catch {}
       releaseWakeLock();
     };
   }, [releaseWakeLock, onTranscript, onStop, onError]);
@@ -188,19 +147,13 @@ export function useSpeechRecognition({
       return false;
     }
     isIntentionallyListening.current = true;
-    const ext = recognitionRef as unknown as {
-      _start: () => void;
-      _startHeartbeat: () => void;
-    };
+    const ext = recognitionRef as unknown as { _start: () => void };
     ext._start?.();
-    ext._startHeartbeat?.();
     return true;
   };
 
   const stop = () => {
     isIntentionallyListening.current = false;
-    const ext = recognitionRef as unknown as { _stopHeartbeat: () => void };
-    ext._stopHeartbeat?.();
     try {
       recognitionRef.current?.stop();
     } catch {}
