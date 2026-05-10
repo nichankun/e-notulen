@@ -81,11 +81,12 @@ export function useSpeechRecognition({
     }
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = false; // false lebih stabil di semua platform
-    recognition.interimResults = false; // false agar tidak dobel
+    recognition.continuous = false;
+    recognition.interimResults = true; // ← true agar responsif, teks langsung muncul
     recognition.lang = "id-ID";
 
-    const restartDelay = isIOS ? 500 : 100;
+    // Restart secepat mungkin — 0ms di Android, 300ms di iOS
+    const restartDelay = isIOS ? 300 : 0;
 
     const startRecognition = () => {
       if (
@@ -105,6 +106,7 @@ export function useSpeechRecognition({
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const result = event.results[i];
+        // Hanya simpan hasil FINAL — interim diabaikan agar tidak dobel
         if (result?.isFinal) {
           const text = result[0]?.transcript.trim();
           if (text) onTranscript(text + " ");
@@ -115,6 +117,7 @@ export function useSpeechRecognition({
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       isRecognitionActive.current = false;
 
+      // no-speech = hening sebentar, restart saja
       if (event.error === "no-speech") {
         if (isIntentionallyListening.current && isMounted.current) {
           setTimeout(startRecognition, restartDelay);
@@ -142,7 +145,12 @@ export function useSpeechRecognition({
     recognition.onend = () => {
       isRecognitionActive.current = false;
       if (isIntentionallyListening.current && isMounted.current) {
-        setTimeout(startRecognition, restartDelay);
+        // Restart secepat mungkin tanpa delay di Android
+        if (restartDelay === 0) {
+          startRecognition();
+        } else {
+          setTimeout(startRecognition, restartDelay);
+        }
       } else {
         releaseWakeLock();
         onStop();
@@ -171,7 +179,6 @@ export function useSpeechRecognition({
       return false;
     }
     isIntentionallyListening.current = true;
-    // Panggil via recognition langsung, bukan start() manual
     if (!isRecognitionActive.current) {
       try {
         recognitionRef.current.start();
