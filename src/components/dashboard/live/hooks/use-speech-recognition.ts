@@ -70,7 +70,7 @@ export function useSpeechRecognition({
     if (!SpeechRecognitionAPI) return;
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = false;
+    recognition.continuous = true; // Lebih stabil untuk mobile agar tidak sering mati-nyala
     recognition.interimResults = true; // langsung deteksi saat bicara
     recognition.lang = "id-ID";
 
@@ -78,10 +78,9 @@ export function useSpeechRecognition({
     let isRecognitionActive = false;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
-    const startRecognition = async () => {
+    const startRecognition = () => {
       if (!isMounted.current || !isIntentionallyListening.current) return;
       try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
         recognition.start();
         isRecognitionActive = true;
       } catch {
@@ -125,6 +124,11 @@ export function useSpeechRecognition({
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       isRecognitionActive = false;
+
+      // Error "no-speech" sangat sering terjadi di mobile jika hening sebentar.
+      // Jangan hentikan proses jika hanya karena no-speech.
+      if (event.error === "no-speech") return;
+
       if (event.error === "not-allowed") {
         isIntentionallyListening.current = false;
         stopHeartbeat();
@@ -140,7 +144,8 @@ export function useSpeechRecognition({
       isRecognitionActive = false;
       lastProcessedIndex = -1;
       if (isIntentionallyListening.current && isMounted.current) {
-        setTimeout(startRecognition, 300);
+        // Gunakan timeout lebih lama sedikit untuk mobile agar hardware mic sempat 'istirahat'
+        setTimeout(startRecognition, 500);
       } else {
         stopHeartbeat();
         releaseWakeLock();
