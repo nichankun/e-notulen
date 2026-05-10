@@ -70,8 +70,8 @@ export function useSpeechRecognition({
     if (!SpeechRecognitionAPI) return;
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = true; // Lebih stabil untuk mobile agar tidak sering mati-nyala
-    recognition.interimResults = true; // langsung deteksi saat bicara
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.lang = "id-ID";
 
     let lastProcessedIndex = -1;
@@ -118,6 +118,7 @@ export function useSpeechRecognition({
           finalTranscripts += result[0]?.transcript + " ";
           lastProcessedIndex = i;
         }
+        // Abaikan interim result — tidak disimpan ke transkrip
       }
       if (finalTranscripts) onTranscript(finalTranscripts);
     };
@@ -142,9 +143,8 @@ export function useSpeechRecognition({
 
     recognition.onend = () => {
       isRecognitionActive = false;
-      lastProcessedIndex = -1;
+      // lastProcessedIndex tidak di-reset agar tidak dobel saat restart
       if (isIntentionallyListening.current && isMounted.current) {
-        // Gunakan timeout lebih lama sedikit untuk mobile agar hardware mic sempat 'istirahat'
         setTimeout(startRecognition, 500);
       } else {
         stopHeartbeat();
