@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 export async function POST() {
   try {
     const cookieStore = await cookies();
-    const isProd = process.env.NODE_ENV === "production";
+    const isProd = false;
 
     // Menghapus cookie dengan parameter keamanan yang persis sama
     // dengan saat diciptakan. Ini menjamin browser (terutama Safari/iOS)
