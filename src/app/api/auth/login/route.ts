@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
     // 5. Set HTTP-Only Cookie
     const cookieStore = await cookies();
-    const isProd = false;
+    const isProd = process.env.NODE_ENV === "production";
 
     cookieStore.set("auth_token", token, {
       httpOnly: true,
