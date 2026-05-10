@@ -62,17 +62,31 @@ export function useSpeechRecognition({
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isRecognitionActive = useRef<boolean>(false);
 
+  // Deteksi iOS
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent);
+
   useEffect(() => {
     isMounted.current = true;
     const win = window as unknown as WindowWithSpeech;
     const SpeechRecognitionAPI =
       win.SpeechRecognition || win.webkitSpeechRecognition;
 
-    if (!SpeechRecognitionAPI) return;
+    if (!SpeechRecognitionAPI) {
+      // Tampilkan pesan jika browser tidak support
+      if (isIOS) {
+        toast.error("Gunakan Safari untuk fitur rekam suara di iPhone/iPad.");
+      }
+      return;
+    }
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = false; // false = lebih stabil, tidak dobel
-    recognition.interimResults = false; // false = hanya simpan hasil final
+
+    // iOS Safari tidak support continuous: true
+    // Selalu false agar stabil di semua platform
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.lang = "id-ID";
 
     const startRecognition = () => {
@@ -102,13 +116,28 @@ export function useSpeechRecognition({
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       isRecognitionActive.current = false;
-      if (event.error === "no-speech") return; // abaikan, restart di onend
+
+      if (event.error === "no-speech") {
+        // iOS sering lempar no-speech — restart saja
+        if (isIntentionallyListening.current && isMounted.current) {
+          setTimeout(startRecognition, isIOS ? 300 : 100);
+        }
+        return;
+      }
+
       if (event.error === "not-allowed") {
         isIntentionallyListening.current = false;
         releaseWakeLock();
         onError();
-        toast.error("Akses mikrofon ditolak.");
-      } else if (event.error === "network") {
+        if (isIOS) {
+          toast.error("Izinkan mikrofon di Settings → Safari → Microphone.");
+        } else {
+          toast.error("Akses mikrofon ditolak.");
+        }
+        return;
+      }
+
+      if (event.error === "network") {
         toast.error("Koneksi internet terputus.");
       }
     };
@@ -116,8 +145,8 @@ export function useSpeechRecognition({
     recognition.onend = () => {
       isRecognitionActive.current = false;
       if (isIntentionallyListening.current && isMounted.current) {
-        // Restart cepat tanpa delay agar tidak ada jeda
-        startRecognition();
+        // iOS butuh delay sedikit sebelum restart
+        setTimeout(startRecognition, isIOS ? 300 : 0);
       } else {
         releaseWakeLock();
         onStop();
@@ -139,11 +168,15 @@ export function useSpeechRecognition({
       } catch {}
       releaseWakeLock();
     };
-  }, [releaseWakeLock, onTranscript, onStop, onError]);
+  }, [releaseWakeLock, onTranscript, onStop, onError, isIOS]);
 
   const start = () => {
     if (!recognitionRef.current) {
-      toast.error("Browser tidak mendukung perekaman suara");
+      if (isIOS) {
+        toast.error("Gunakan Safari untuk fitur rekam suara di iPhone/iPad.");
+      } else {
+        toast.error("Browser tidak mendukung perekaman suara.");
+      }
       return false;
     }
     isIntentionallyListening.current = true;
