@@ -31,7 +31,7 @@ export default async function UsersPage() {
   const data = await getUsers();
 
   return (
-    <div className="p-4 md:p-0 space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500">
       {/* HEADER */}
       <div className="flex items-end justify-between border-b pb-5">
         <div>
@@ -42,7 +42,6 @@ export default async function UsersPage() {
             Manajemen Pengguna
           </h1>
         </div>
-
         <div className="pb-0.5">
           <CreateUserDialog />
         </div>

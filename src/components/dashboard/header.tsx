@@ -5,8 +5,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Building2, CalendarDays } from "lucide-react";
 
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-
 // Formatter di luar untuk efisiensi
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   weekday: "long",
@@ -34,15 +32,13 @@ export function Header({ userAgency }: { userAgency?: string }) {
       {/* KIRI: Judul Halaman & Menu Trigger */}
       <div className="flex items-center gap-4 min-w-0">
         <SidebarTrigger className="-ml-2 text-muted-foreground hover:text-primary transition-colors" />
-
         <Separator orientation="vertical" className="h-4" />
-
         <h1 className="text-base font-bold text-foreground tracking-tight truncate">
           {getPageTitle()}
         </h1>
       </div>
 
-      {/* KANAN: Tanggal, Identitas Instansi & Ganti Tema */}
+      {/* KANAN: Tanggal & Identitas Instansi */}
       <div className="flex items-center gap-4 shrink-0">
         {/* Tanggal */}
         <div className="flex items-center gap-3 text-right">
@@ -59,8 +55,7 @@ export function Header({ userAgency }: { userAgency?: string }) {
           </div>
         </div>
 
-        {/* Separator Vertikal */}
-        <div className="h-6 w-px bg-border"></div>
+        <div className="h-6 w-px bg-border" />
 
         {/* Badge Instansi */}
         <div className="flex items-center gap-2.5 bg-muted/50 pl-1.5 pr-4 py-1.5 rounded-full border border-border max-w-40 transition-colors hover:bg-muted">
@@ -76,9 +71,6 @@ export function Header({ userAgency }: { userAgency?: string }) {
             </span>
           </div>
         </div>
-
-        {/* TOMBOL TEMA KHUSUS DESKTOP */}
-        <ThemeToggle />
       </div>
     </header>
   );

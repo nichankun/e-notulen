@@ -120,6 +120,7 @@ export function CreateUserDialog() {
             <DialogHeader>
               <DialogTitle>Akun Berhasil Dibuat</DialogTitle>
             </DialogHeader>
+
             <p className="text-sm text-muted-foreground">
               NIP{" "}
               <span className="font-mono font-semibold text-foreground">
@@ -127,14 +128,18 @@ export function CreateUserDialog() {
               </span>{" "}
               telah terdaftar di sistem.
             </p>
+
             <div className="space-y-2 pt-2">
-              <Button
+              {/* WhatsApp — pakai style inline karena ini brand color eksternal */}
+              <button
                 onClick={handleSendWhatsApp}
-                className="w-full bg-[#25D366] hover:bg-[#20b858] text-white"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors"
+                style={{ backgroundColor: "#25D366" }}
               >
-                <MessageCircle className="mr-2 h-4 w-4" />
+                <MessageCircle className="h-4 w-4" />
                 Kirim via WhatsApp
-              </Button>
+              </button>
+
               <Button
                 variant="ghost"
                 className="w-full text-muted-foreground"

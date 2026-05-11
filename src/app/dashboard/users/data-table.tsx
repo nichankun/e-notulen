@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Search,
   ChevronLeft,
@@ -37,12 +38,51 @@ import {
   Inbox,
   Loader2,
 } from "lucide-react";
+import { type User } from "./columns";
+import { UserActions } from "./user-actions";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   filterKey?: string;
   placeholder?: string;
+}
+
+function MobileCard({ user }: { user: User }) {
+  const isAdmin = user.role === "admin";
+  return (
+    <div className="bg-card border rounded-2xl shadow-sm p-4 flex flex-col gap-3">
+      {/* Top: nama + role badge */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-semibold text-foreground text-sm truncate">
+            {user.name}
+          </p>
+          <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+            {user.nip}
+          </p>
+        </div>
+        <Badge
+          variant={isAdmin ? "outline" : "secondary"}
+          className={
+            isAdmin
+              ? "text-primary border-primary/30 bg-primary/10 shrink-0"
+              : "shrink-0"
+          }
+        >
+          {isAdmin ? "Admin" : "Pegawai"}
+        </Badge>
+      </div>
+
+      {/* Bottom: instansi + aksi */}
+      <div className="flex items-center justify-between pt-1 border-t">
+        <p className="text-xs text-muted-foreground">
+          {user.agency || "Bapenda"}
+        </p>
+        <UserActions user={user} />
+      </div>
+    </div>
+  );
 }
 
 export function DataTable<TData, TValue>({
@@ -77,14 +117,15 @@ export function DataTable<TData, TValue>({
     });
   }, [searchValue, filterKey, table]);
 
+  const filteredUsers = table
+    .getFilteredRowModel()
+    .rows.map((row) => row.original as User);
+
   return (
     <div className="space-y-4 w-full animate-in fade-in duration-500">
-      {/* SEARCH BAR */}
+      {/* Search */}
       <div className="relative w-full md:max-w-sm">
-        {/* Warna ikon disesuaikan dengan semantik shadcn */}
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-
-        {/* Menghapus border manual dan focus-ring manual, biarkan Input bawaan yang bekerja */}
         <Input
           placeholder={placeholder}
           value={searchValue}
@@ -96,9 +137,20 @@ export function DataTable<TData, TValue>({
         )}
       </div>
 
-      {/* TABLE CONTAINER */}
-      {/* Menggunakan bg-card dan border semantik */}
-      <div className="rounded-xl border bg-card text-card-foreground overflow-hidden shadow-sm">
+      {/* ── MOBILE: Card list ── */}
+      <div className="sm:hidden space-y-3">
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map((user) => <MobileCard key={user.id} user={user} />)
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Inbox className="h-10 w-10 mb-2 stroke-[1.5px] opacity-50" />
+            <p className="text-sm font-medium">Data tidak ditemukan</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── DESKTOP: Tabel ── */}
+      <div className="hidden sm:block rounded-xl border bg-card text-card-foreground overflow-hidden shadow-sm">
         <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted">
           <Table className="min-w-full">
             <TableHeader className="bg-muted/50">
@@ -123,7 +175,6 @@ export function DataTable<TData, TValue>({
             <TableBody>
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  // Menghapus hover kustom karena TableRow bawaan shadcn sudah memilikinya secara optimal
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
@@ -147,9 +198,11 @@ export function DataTable<TData, TValue>({
                     colSpan={columns.length}
                     className="h-48 text-center"
                   >
-                    <div className="flex flex-col items-center justify-center text-muted-foreground italic text-sm">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <Inbox className="h-10 w-10 mb-2 stroke-[1.5px] opacity-50" />
-                      Data tidak ditemukan
+                      <p className="text-sm font-medium">
+                        Data tidak ditemukan
+                      </p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -159,10 +212,10 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {/* FOOTER: PAGINATION */}
+      {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-2 gap-4">
         <div
-          className="text-xs text-muted-foreground font-medium italic"
+          className="text-xs text-muted-foreground font-medium"
           suppressHydrationWarning
         >
           Menampilkan {table.getFilteredRowModel().rows.length} entitas data.
@@ -177,7 +230,6 @@ export function DataTable<TData, TValue>({
               value={`${table.getState().pagination.pageSize}`}
               onValueChange={(val) => table.setPageSize(Number(val))}
             >
-              {/* FIX CLASS: w-17.5 diganti menjadi w-[70px] dan menggunakan bg-background */}
               <SelectTrigger className="h-8 w-17.5 bg-background rounded-lg text-xs font-bold">
                 <SelectValue
                   placeholder={table.getState().pagination.pageSize}
@@ -198,7 +250,6 @@ export function DataTable<TData, TValue>({
               Hal. {table.getState().pagination.pageIndex + 1} /{" "}
               {table.getPageCount() || 1}
             </div>
-            {/* Tombol navigasi dibersihkan, mengandalkan variant outline dari Button shadcn */}
             <Button
               variant="outline"
               size="icon"

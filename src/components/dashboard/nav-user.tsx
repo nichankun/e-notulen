@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { ChevronsUpDown, LogOut, KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,8 +19,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChangePasswordDialog } from "./change-password-dialog";
-
-// 1. IMPORT TOMBOL TEMA KITA DI SINI
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface NavUserProps {
@@ -35,14 +33,20 @@ export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar();
   const [isPending, startTransition] = useTransition();
   const [isPasswordOpen, setIsPasswordOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile) {
+      const timer = setTimeout(() => setDropdownOpen(false), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   const handleLogout = async () => {
     try {
       const res = await fetch("/api/auth/logout", { method: "POST" });
       const result = await res.json();
-
       if (result.success) {
-        // Menggunakan hard redirect untuk memastikan Client Cache bersih
         window.location.assign("/");
       } else {
         toast.error("Gagal keluar dari sesi.");
@@ -56,7 +60,7 @@ export function NavUser({ user }: NavUserProps) {
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
@@ -84,13 +88,12 @@ export function NavUser({ user }: NavUserProps) {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent
-              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl border-border"
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-xl"
               side={isMobile ? "bottom" : "right"}
               align="end"
               sideOffset={8}
             >
-              {/* HEADER DROPDOWN: Info User & Theme Toggle bersebelahan */}
-              <div className="px-3 py-2 border-b border-border mb-1 flex items-center justify-between gap-3">
+              <div className="px-3 py-2 border-b mb-1 flex items-center justify-between gap-3">
                 <div className="flex flex-col min-w-0">
                   <p className="text-sm font-bold text-foreground truncate leading-tight">
                     {user.name}
@@ -99,11 +102,7 @@ export function NavUser({ user }: NavUserProps) {
                     {user.nip}
                   </p>
                 </div>
-
-                {/* 2. TOMBOL TEMA DITEMPATKAN DI SINI */}
-                <div className="shrink-0 bg-muted/50 rounded-full">
-                  <ThemeToggle />
-                </div>
+                <ThemeToggle />
               </div>
 
               <DropdownMenuItem
@@ -114,7 +113,7 @@ export function NavUser({ user }: NavUserProps) {
                 Ubah Password
               </DropdownMenuItem>
 
-              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuSeparator />
 
               <DropdownMenuItem
                 disabled={isPending}
