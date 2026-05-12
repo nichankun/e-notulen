@@ -18,31 +18,32 @@ const STATUS_CONFIG = {
   live: {
     label: "Live Aktif",
     icon: Clock,
-    className: "bg-primary/10 text-primary border-primary/20 gap-1.5 px-2",
+    className:
+      "bg-primary/10 text-primary border-primary/20 gap-1.5 px-2 text-[10px]",
     iconClass: "animate-pulse",
   },
   archived: {
     label: "Selesai",
     icon: CheckCircle2,
     className:
-      "text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-400 gap-1.5 px-2",
+      "text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-400 gap-1.5 px-2 text-[10px]",
     iconClass: "",
   },
   draft: {
     label: "Draft",
     icon: FileEdit,
-    className: "text-muted-foreground gap-1.5 px-2",
+    className: "text-muted-foreground gap-1.5 px-2 text-[10px]",
     iconClass: "",
   },
 } as const;
 
-function StatusBadge({ status }: { status: Meeting["status"] }) {
+export function StatusBadge({ status }: { status: Meeting["status"] }) {
   const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
   if (!config) return null;
   const Icon = config.icon;
   return (
     <Badge variant="outline" className={config.className}>
-      <Icon className={`h-3.5 w-3.5 ${config.iconClass}`} />
+      <Icon className={`h-3 w-3 ${config.iconClass}`} />
       {config.label}
     </Badge>
   );

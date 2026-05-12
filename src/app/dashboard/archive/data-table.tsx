@@ -44,13 +44,12 @@ import {
   Loader2,
   SlidersHorizontal,
   Eye,
-  Clock,
-  CheckCircle2,
-  FileEdit,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { Meeting } from "@/db/database/schema";
+import { StatusBadge } from "./columns";
+import { DeleteMeetingButton } from "@/components/delete-meeting-button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -74,35 +73,6 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 
 const PAGE_SIZES = [5, 10, 20, 50];
 
-function StatusBadgeMobile({ status }: { status: Meeting["status"] }) {
-  if (status === "live")
-    return (
-      <Badge
-        variant="outline"
-        className="bg-primary/10 text-primary border-primary/20 gap-1 px-2 text-[10px]"
-      >
-        <Clock className="h-3 w-3 animate-pulse" /> Live Aktif
-      </Badge>
-    );
-  if (status === "archived")
-    return (
-      <Badge
-        variant="outline"
-        className="text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 gap-1 px-2 text-[10px]"
-      >
-        <CheckCircle2 className="h-3 w-3" /> Selesai
-      </Badge>
-    );
-  return (
-    <Badge
-      variant="secondary"
-      className="text-muted-foreground gap-1 px-2 text-[10px]"
-    >
-      <FileEdit className="h-3 w-3" /> Draft
-    </Badge>
-  );
-}
-
 function MobileCard({ item }: { item: Meeting }) {
   const destination =
     item.status === "archived"
@@ -110,27 +80,38 @@ function MobileCard({ item }: { item: Meeting }) {
       : `/dashboard/live/${item.id}`;
 
   return (
-    <div className="bg-card text-card-foreground border border-border rounded-2xl p-4 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
+      {/* Top row: tanggal + status */}
+      <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground font-medium">
           {item.date ? dateFormatter.format(new Date(item.date)) : "-"}
         </span>
-        <StatusBadgeMobile status={item.status} />
+        <StatusBadge status={item.status} />
       </div>
-      <p className="text-sm font-bold text-foreground leading-snug">
+
+      {/* Judul */}
+      <p className="text-sm font-bold text-foreground leading-snug line-clamp-2">
         {item.title}
       </p>
-      <div className="flex items-center justify-between pt-1 border-t border-border">
-        <span className="text-xs bg-muted text-muted-foreground font-medium px-2.5 py-1 rounded-full">
-          {item.attendanceCount ?? 0} Hadir
-        </span>
-        <Link
-          href={destination}
-          className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-xl hover:bg-primary/20 transition-colors"
+
+      {/* Bottom row: kehadiran + aksi */}
+      <div className="flex items-center justify-between pt-2 border-t border-border">
+        <Badge
+          variant="secondary"
+          className="text-xs font-medium px-2.5 py-0.5 rounded-full"
         >
-          <Eye className="h-3.5 w-3.5" />
-          Lihat
-        </Link>
+          {item.attendanceCount ?? 0} Hadir
+        </Badge>
+        <div className="flex items-center gap-1.5">
+          <DeleteMeetingButton id={item.id} />
+          <Link
+            href={destination}
+            className="flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 px-3 py-1.5 rounded-xl hover:bg-primary/20 transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Lihat
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -197,8 +178,8 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4 w-full">
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:max-w-sm">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder={placeholder}
@@ -213,22 +194,19 @@ export function DataTable<TData, TValue>({
         <div className="hidden sm:block">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-10 rounded-xl flex items-center gap-2"
-              >
+              <Button variant="outline" className="h-10 rounded-xl gap-2">
                 <SlidersHorizontal className="h-4 w-4" />
-                Tampilan Kolom
+                Kolom
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 rounded-xl">
+            <DropdownMenuContent align="end" className="w-44 rounded-xl">
               {table
                 .getAllColumns()
                 .filter((col) => col.getCanHide())
                 .map((col) => (
                   <DropdownMenuCheckboxItem
                     key={col.id}
-                    className="capitalize font-medium text-sm"
+                    className="text-sm font-medium capitalize"
                     checked={col.getIsVisible()}
                     onCheckedChange={(v) => col.toggleVisibility(!!v)}
                   >

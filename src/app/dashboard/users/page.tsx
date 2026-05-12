@@ -1,13 +1,12 @@
 import { columns, type User } from "./columns";
 import { DataTable } from "./data-table";
 import { CreateUserDialog } from "./create-user-dialog";
-
 import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
 
 async function getUsers(): Promise<User[]> {
-  const dbData = await db
+  const data = await db
     .select({
       id: users.id,
       name: users.name,
@@ -18,12 +17,12 @@ async function getUsers(): Promise<User[]> {
     .from(users)
     .orderBy(desc(users.createdAt));
 
-  return dbData.map((user) => ({
-    id: user.id,
-    name: user.name,
-    nip: user.nip,
-    role: (user.role as "admin" | "pegawai") ?? "pegawai",
-    agency: user.agency,
+  return data.map((u) => ({
+    id: u.id,
+    name: u.name,
+    nip: u.nip,
+    role: (u.role as "admin" | "pegawai") ?? "pegawai",
+    agency: u.agency,
   }));
 }
 
@@ -31,7 +30,7 @@ export default async function UsersPage() {
   const data = await getUsers();
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* HEADER */}
       <div className="flex items-end justify-between border-b pb-5">
         <div>

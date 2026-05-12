@@ -57,7 +57,7 @@ export default async function ArchivePage() {
   const ongoing = [...live, ...draft];
 
   return (
-    <div className="p-4 md:p-0 space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex items-end justify-between border-b pb-5">
         <div>

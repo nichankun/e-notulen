@@ -12,7 +12,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-
 import {
   Table,
   TableBody,
@@ -48,11 +47,31 @@ interface DataTableProps<TData, TValue> {
   placeholder?: string;
 }
 
+const PAGE_SIZES = [5, 10, 20, 50];
+
+function EmptyState({ colSpan }: { colSpan?: number }) {
+  const content = (
+    <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+      <Inbox className="h-10 w-10 mb-2 stroke-[1.5px] opacity-50" />
+      <p className="text-sm font-medium">Data tidak ditemukan</p>
+    </div>
+  );
+  if (colSpan) {
+    return (
+      <TableRow>
+        <TableCell colSpan={colSpan} className="h-48 text-center">
+          {content}
+        </TableCell>
+      </TableRow>
+    );
+  }
+  return content;
+}
+
 function MobileCard({ user }: { user: User }) {
   const isAdmin = user.role === "admin";
   return (
-    <div className="bg-card border rounded-2xl shadow-sm p-4 flex flex-col gap-3">
-      {/* Top: nama + role badge */}
+    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col gap-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-foreground text-sm truncate">
@@ -66,16 +85,14 @@ function MobileCard({ user }: { user: User }) {
           variant={isAdmin ? "outline" : "secondary"}
           className={
             isAdmin
-              ? "text-primary border-primary/30 bg-primary/10 shrink-0"
-              : "shrink-0"
+              ? "text-primary border-primary/30 bg-primary/10 shrink-0 text-[10px]"
+              : "shrink-0 text-[10px]"
           }
         >
           {isAdmin ? "Admin" : "Pegawai"}
         </Badge>
       </div>
-
-      {/* Bottom: instansi + aksi */}
-      <div className="flex items-center justify-between pt-1 border-t">
+      <div className="flex items-center justify-between pt-2 border-t border-border">
         <p className="text-xs text-muted-foreground">
           {user.agency || "Bapenda"}
         </p>
@@ -119,124 +136,101 @@ export function DataTable<TData, TValue>({
 
   const filteredUsers = table
     .getFilteredRowModel()
-    .rows.map((row) => row.original as User);
+    .rows.map((r) => r.original as User);
 
   return (
-    <div className="space-y-4 w-full animate-in fade-in duration-500">
+    <div className="space-y-4 w-full">
       {/* Search */}
-      <div className="relative w-full md:max-w-sm">
+      <div className="relative w-full sm:max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
           placeholder={placeholder}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className="pl-9 pr-9 h-10 bg-background rounded-xl transition-all"
+          className="pl-9 pr-9 h-10 bg-background rounded-xl"
         />
         {isPending && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
         )}
       </div>
 
-      {/* ── MOBILE: Card list ── */}
+      {/* Mobile */}
       <div className="sm:hidden space-y-3">
         {filteredUsers.length > 0 ? (
-          filteredUsers.map((user) => <MobileCard key={user.id} user={user} />)
+          filteredUsers.map((u) => <MobileCard key={u.id} user={u} />)
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <Inbox className="h-10 w-10 mb-2 stroke-[1.5px] opacity-50" />
-            <p className="text-sm font-medium">Data tidak ditemukan</p>
-          </div>
+          <EmptyState />
         )}
       </div>
 
-      {/* ── DESKTOP: Tabel ── */}
-      <div className="hidden sm:block rounded-xl border bg-card text-card-foreground overflow-hidden shadow-sm">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted">
-          <Table className="min-w-full">
-            <TableHeader className="bg-muted/50">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="h-12 px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider"
+      {/* Desktop */}
+      <div className="hidden sm:block rounded-xl border bg-card overflow-hidden">
+        <Table className="min-w-full">
+          <TableHeader className="bg-muted/50">
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id} className="hover:bg-transparent">
+                {hg.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className="h-12 px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider"
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className="px-4 py-3.5 whitespace-nowrap"
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </TableHead>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className="px-4 py-3.5 whitespace-nowrap"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-48 text-center"
-                  >
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <Inbox className="h-10 w-10 mb-2 stroke-[1.5px] opacity-50" />
-                      <p className="text-sm font-medium">
-                        Data tidak ditemukan
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+              ))
+            ) : (
+              <EmptyState colSpan={columns.length} />
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between px-2 gap-4">
-        <div
-          className="text-xs text-muted-foreground font-medium"
-          suppressHydrationWarning
-        >
-          Menampilkan {table.getFilteredRowModel().rows.length} entitas data.
-        </div>
-
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="flex items-center space-x-2">
+        <p className="text-xs text-muted-foreground font-medium">
+          Total {table.getFilteredRowModel().rows.length} pengguna
+        </p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <p className="text-xs font-medium text-muted-foreground hidden sm:block">
               Per Halaman
             </p>
             <Select
               value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(val) => table.setPageSize(Number(val))}
+              onValueChange={(v) => table.setPageSize(Number(v))}
             >
               <SelectTrigger className="h-8 w-17.5 bg-background rounded-lg text-xs font-bold">
-                <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
-                />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent side="top" className="rounded-xl">
-                {[5, 10, 20, 50].map((size) => (
+                {PAGE_SIZES.map((size) => (
                   <SelectItem key={size} value={`${size}`} className="text-xs">
                     {size}
                   </SelectItem>
@@ -244,12 +238,11 @@ export function DataTable<TData, TValue>({
               </SelectContent>
             </Select>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <div className="text-[11px] font-bold text-muted-foreground uppercase mr-2 hidden md:block">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-muted-foreground hidden md:block">
               Hal. {table.getState().pagination.pageIndex + 1} /{" "}
               {table.getPageCount() || 1}
-            </div>
+            </span>
             <Button
               variant="outline"
               size="icon"

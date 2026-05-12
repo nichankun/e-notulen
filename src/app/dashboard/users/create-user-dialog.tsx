@@ -108,9 +108,10 @@ export function CreateUserDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah User
+        {/* Teks penuh di md+, icon saja di mobile */}
+        <Button size="sm" className="h-8 gap-1.5">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Tambah User</span>
         </Button>
       </DialogTrigger>
 
@@ -120,7 +121,6 @@ export function CreateUserDialog() {
             <DialogHeader>
               <DialogTitle>Akun Berhasil Dibuat</DialogTitle>
             </DialogHeader>
-
             <p className="text-sm text-muted-foreground">
               NIP{" "}
               <span className="font-mono font-semibold text-foreground">
@@ -128,9 +128,7 @@ export function CreateUserDialog() {
               </span>{" "}
               telah terdaftar di sistem.
             </p>
-
             <div className="space-y-2 pt-2">
-              {/* WhatsApp — pakai style inline karena ini brand color eksternal */}
               <button
                 onClick={handleSendWhatsApp}
                 className="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors"
@@ -139,7 +137,6 @@ export function CreateUserDialog() {
                 <MessageCircle className="h-4 w-4" />
                 Kirim via WhatsApp
               </button>
-
               <Button
                 variant="ghost"
                 className="w-full text-muted-foreground"
@@ -154,7 +151,6 @@ export function CreateUserDialog() {
             <DialogHeader>
               <DialogTitle>Tambah Pegawai Baru</DialogTitle>
             </DialogHeader>
-
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
@@ -177,7 +173,6 @@ export function CreateUserDialog() {
                     </FormItem>
                   )}
                 />
-
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -214,7 +209,6 @@ export function CreateUserDialog() {
                     )}
                   />
                 </div>
-
                 <FormField
                   control={form.control}
                   name="password"
@@ -234,7 +228,6 @@ export function CreateUserDialog() {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="role"
@@ -262,7 +255,6 @@ export function CreateUserDialog() {
                     </FormItem>
                   )}
                 />
-
                 <Button
                   type="submit"
                   disabled={isLoading}
