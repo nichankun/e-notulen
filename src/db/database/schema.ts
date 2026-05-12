@@ -45,19 +45,25 @@ export const meetings = pgTable("meetings", {
   location: text("location"),
   leader: text("leader"),
 
-  // ── Kolom baru ──────────────────────────────────────────────────
-  invitationNumber: text("invitation_number"), // Nomor Surat Undangan
-  startTime: text("start_time"), // Waktu mulai, contoh: "09.00"
-  endTime: text("end_time"), // Waktu selesai, contoh: "11.30"
-  secretary: text("secretary"), // Nama Sekretaris
-  recorder: text("recorder"), // Nama Pencatat/Notulis
-  leaderTitle: text("leader_title"), // Jabatan Pimpinan Sidang
-  leaderRank: text("leader_rank"), // Pangkat/Golongan Pimpinan
+  // ── Kolom identitas rapat ────────────────────────────────────────
+  invitationNumber: text("invitation_number"),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  secretary: text("secretary"),
+  recorder: text("recorder"),
+  leaderTitle: text("leader_title"),
+  leaderRank: text("leader_rank"),
   // ────────────────────────────────────────────────────────────────
 
   status: meetingStatusEnum("status").default("live"),
   content: text("content"),
   photos: text("photos"),
+
+  // ── Kolom rekaman & AI ───────────────────────────────────────────
+  transcript: text("transcript"), // Raw transkrip dari rekaman
+  summaryHtml: text("summary_html"), // Rangkuman AI dalam format HTML
+  // ────────────────────────────────────────────────────────────────
+
   attendanceCount: integer("attendance_count").default(0),
   userId: uuid("user_id").references(() => users.id, {
     onDelete: "cascade",

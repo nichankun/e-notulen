@@ -36,19 +36,20 @@ export function EditorHeader({ title, leader, saveStatus }: EditorHeaderProps) {
   const status = statusConfig[saveStatus];
 
   return (
-    <div className="px-4 py-3 border-b bg-background flex items-center justify-between gap-3 shrink-0">
-      <div className="min-w-0 flex-1">
-        <h3 className="font-semibold text-sm text-foreground truncate">
+    // Padding vertikal dikurangi (py-1.5) dan padding horizontal sedikit disesuaikan (px-3)
+    <div className="hidden lg:flex px-3 py-1.5 border-b bg-background items-center justify-between gap-3 shrink-0">
+      <div className="min-w-0 flex-1 flex items-center gap-2">
+        <h3 className="font-medium text-sm text-foreground truncate max-w-[60%]">
           {title || "Judul Rapat"}
         </h3>
+        <span className="text-muted-foreground text-xs opacity-50">•</span>
         <p className="text-xs text-muted-foreground truncate">
-          Pimpinan: <span className="text-foreground">{leader || "-"}</span>
+          Pim: <span className="text-foreground">{leader || "-"}</span>
         </p>
       </div>
-
       <Badge
         variant="outline"
-        className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium ${status.className}`}
+        className={`shrink-0 flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium h-6 ${status.className}`}
       >
         {status.icon}
         {status.label}

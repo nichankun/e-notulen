@@ -128,3 +128,38 @@
     @apply font-sans;
   }
 }
+
+/* Mobile: branding di atas, form di bawah, hero frame & chips disembunyikan */
+@media (max-width: 768px) {
+  /* card jadi kolom */
+  .login-card {
+    flex-direction: column !important;
+  }
+
+  /* branding: lebih ringkas, tanpa border kanan */
+  .login-brand {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.08) !important;
+    padding: 1.5rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+
+  /* sembunyikan hero frame, chips, dan stats di mobile */
+  .login-hero-frame,
+  .login-chips,
+  .login-stats {
+    display: none !important;
+  }
+
+  /* judul lebih kecil */
+  .login-headline {
+    font-size: 22px !important;
+  }
+
+  /* form full width */
+  .login-form-panel {
+    width: 100% !important;
+    border-left: none !important;
+    padding: 1.5rem !important;
+  }
+}

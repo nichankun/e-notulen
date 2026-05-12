@@ -14,6 +14,8 @@ const updateMeetingSchema = z.object({
   content: z.string().optional(),
   status: z.enum(["draft", "live", "archived"]).optional(),
   photos: z.array(z.string()).optional(),
+  transcript: z.string().optional(), // ← tambah
+  summaryHtml: z.string().optional(), // ← tambah
 });
 
 // ==========================================
@@ -38,11 +40,10 @@ async function authenticateRequest() {
   };
 }
 
-// Mengekstrak logika otorisasi agar tidak diulang di GET, PATCH, dan DELETE
 function getAuthCondition(meetingId: string, userId: string, role: string) {
   return role === "admin"
-    ? eq(meetings.id, meetingId) // Admin bebas akses ID apa saja
-    : and(eq(meetings.id, meetingId), eq(meetings.userId, userId)); // Pegawai hanya miliknya
+    ? eq(meetings.id, meetingId)
+    : and(eq(meetings.id, meetingId), eq(meetings.userId, userId));
 }
 
 // ==========================================
@@ -95,7 +96,7 @@ export async function GET(
 }
 
 // ==========================================
-// PATCH: MENGUBAH NOTULEN/STATUS
+// PATCH: MENGUBAH NOTULEN/STATUS/TRANSCRIPT/SUMMARY
 // ==========================================
 export async function PATCH(
   request: Request,
@@ -124,18 +125,20 @@ export async function PATCH(
         {
           success: false,
           message: "Validasi data gagal",
-          errors: parse.error.flatten().fieldErrors, // Konsisten dengan format error Zod
+          errors: parse.error.flatten().fieldErrors,
         },
         { status: 400 },
       );
     }
 
-    const { content, status, photos } = parse.data;
+    const { content, status, photos, transcript, summaryHtml } = parse.data; // ← tambah
     const updateData: Partial<NewMeeting> = {};
 
     if (content !== undefined) updateData.content = content;
     if (status !== undefined) updateData.status = status;
     if (photos !== undefined) updateData.photos = JSON.stringify(photos);
+    if (transcript !== undefined) updateData.transcript = transcript; // ← tambah
+    if (summaryHtml !== undefined) updateData.summaryHtml = summaryHtml; // ← tambah
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
@@ -206,7 +209,6 @@ export async function DELETE(
       auth.user!.role,
     );
 
-    // Ambil data untuk mengecek lampiran foto
     const [existing] = await db
       .select()
       .from(meetings)
@@ -220,14 +222,13 @@ export async function DELETE(
       );
     }
 
-    // Pembersihan file Supabase yang sangat efisien
     if (existing.photos) {
       try {
         const photoUrls = JSON.parse(existing.photos) as string[];
         if (photoUrls.length > 0) {
           const fileNames = photoUrls
             .map((url) => url.split("/").pop())
-            .filter((name): name is string => Boolean(name)); // Perbaikan filter strict boolean
+            .filter((name): name is string => Boolean(name));
 
           await supabase.storage.from("notulen").remove(fileNames);
         }
@@ -236,7 +237,6 @@ export async function DELETE(
       }
     }
 
-    // Hapus dari Database
     await db.delete(meetings).where(condition);
 
     return NextResponse.json({

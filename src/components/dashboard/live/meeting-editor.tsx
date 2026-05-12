@@ -4,10 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
+import { CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-import { EditorHeader } from "./editor-header";
-import { EditorFooter } from "./editor-footer";
 import { RecordingToolbar } from "./recording-toolbar";
 import { EditorCanvas } from "./editor-canvas";
 import { useWakeLock } from "./hooks/use-wake-lock";
@@ -22,6 +21,8 @@ interface MeetingEditorProps {
   onFinish: () => void;
   isSaving: boolean;
   saveStatus: "idle" | "saving" | "saved" | "error";
+  initialTranscript?: string; // ← tambah
+  initialSummaryHtml?: string; // ← tambah
 }
 
 type ActiveTab = "transcript" | "summary";
@@ -33,15 +34,21 @@ export function MeetingEditor({
   content,
   setContent,
   onFinish,
-  isSaving,
   saveStatus,
+  initialTranscript = "", // ← tambah
+  initialSummaryHtml = "", // ← tambah
 }: MeetingEditorProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [rawTranscript, setRawTranscript] = useState<string>(
-    () => localStorage.getItem(`transcript-${id}`) ?? "",
-  );
-  const [summaryHtml, setSummaryHtml] = useState("");
+  const [rawTranscript, setRawTranscript] = useState<string>(() => {
+    // Prioritas: localStorage (sesi aktif) → DB (load awal)
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`transcript-${id}`);
+      if (saved) return saved;
+    }
+    return initialTranscript;
+  });
+  const [summaryHtml, setSummaryHtml] = useState(initialSummaryHtml);
   const [activeTab, setActiveTab] = useState<ActiveTab>("transcript");
 
   const editor = useEditor({
@@ -53,7 +60,6 @@ export function MeetingEditor({
   });
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
-
   const handleStop = useCallback(() => setIsListening(false), []);
   const handleError = useCallback(() => setIsListening(false), []);
   const handleTranscript = useCallback(
@@ -68,7 +74,7 @@ export function MeetingEditor({
     releaseWakeLock,
   });
 
-  // Simpan transkrip ke localStorage
+  // Sync transcript ke localStorage
   useEffect(() => {
     if (rawTranscript) {
       localStorage.setItem(`transcript-${id}`, rawTranscript);
@@ -77,7 +83,30 @@ export function MeetingEditor({
     }
   }, [rawTranscript, id]);
 
-  // Re-acquire wake lock jika tab kembali aktif
+  // Auto-save ke DB: content + transcript + summaryHtml
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      // Jangan save kalau semua kosong
+      if (!content && !rawTranscript && !summaryHtml) return;
+
+      try {
+        await fetch(`/api/meetings/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content,
+            transcript: rawTranscript || undefined,
+            summaryHtml: summaryHtml || undefined,
+          }),
+        });
+      } catch (err) {
+        console.error("Auto-save gagal:", err);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [content, rawTranscript, summaryHtml, id]);
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isListening) {
@@ -141,38 +170,78 @@ export function MeetingEditor({
   if (!editor) return null;
 
   return (
-    <Card className="h-full flex flex-col bg-background border shadow-md overflow-hidden flex-1 rounded-xl">
-      <EditorHeader title={title} leader={leader} saveStatus={saveStatus} />
+    <div className="h-full flex flex-col bg-background overflow-hidden flex-1 relative min-h-0">
+      {/* HEADER MINIMALIS */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 z-20">
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          {title && (
+            <p className="hidden lg:block text-sm font-semibold text-foreground truncate">
+              {title}
+            </p>
+          )}
+          <div className="flex items-center gap-1.5">
+            <p className="text-[10px] font-medium text-muted-foreground/40 uppercase tracking-widest shrink-0">
+              Pimpinan
+            </p>
+            <p className="text-[10px] font-semibold text-muted-foreground/70 truncate">
+              {leader || "-"}
+            </p>
+          </div>
+        </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <RecordingToolbar
-          isListening={isListening}
-          isSummarizing={isSummarizing}
-          hasTranscript={!!rawTranscript}
-          onToggleRecording={toggleRecording}
-          onSummarize={generateSummary}
-          onReset={handleReset}
-        />
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="flex flex-col items-end gap-0.5">
+            {saveStatus === "saving" && (
+              <span className="text-[10px] text-primary animate-pulse font-medium">
+                Menyimpan...
+              </span>
+            )}
+            {saveStatus === "saved" && (
+              <span className="text-[10px] text-emerald-500/60 font-medium">
+                Otomatis Tersimpan
+              </span>
+            )}
+          </div>
 
-        <EditorCanvas
-          activeTab={activeTab}
-          rawTranscript={rawTranscript}
-          summaryHtml={summaryHtml}
-          isListening={isListening}
-          onTranscriptChange={setRawTranscript}
-          onTabChange={setActiveTab}
-        />
+          <Button
+            onClick={onFinish}
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-[11px] font-bold border-emerald-500/20 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all active:scale-95"
+          >
+            <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+            SELESAI
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col overflow-hidden relative min-h-0">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <EditorCanvas
+            activeTab={activeTab}
+            rawTranscript={rawTranscript}
+            summaryHtml={summaryHtml}
+            isListening={isListening}
+            onTranscriptChange={setRawTranscript}
+            onTabChange={setActiveTab}
+          />
+        </div>
+
+        <div className="w-full bg-background border-t border-border p-4 shrink-0 fixed bottom-16 left-0 right-0 z-40 lg:relative lg:inset-auto lg:p-6 lg:border-t-0 lg:z-10">
+          <RecordingToolbar
+            isListening={isListening}
+            isSummarizing={isSummarizing}
+            hasTranscript={!!rawTranscript}
+            onToggleRecording={toggleRecording}
+            onSummarize={generateSummary}
+            onReset={handleReset}
+          />
+        </div>
 
         <div className="hidden">
           <EditorContent editor={editor} />
         </div>
       </div>
-
-      <EditorFooter
-        isSaving={isSaving}
-        isUploading={false}
-        onFinish={onFinish}
-      />
-    </Card>
+    </div>
   );
 }

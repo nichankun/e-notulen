@@ -61,10 +61,30 @@ export function useSpeechRecognition({
   const isIntentionallyListening = useRef<boolean>(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const isRecognitionActive = useRef<boolean>(false);
+  const startTimeRef = useRef<number | null>(null);
   const isIOSRef = useRef<boolean>(
     typeof navigator !== "undefined" &&
       /iPad|iPhone|iPod/.test(navigator.userAgent),
   );
+
+  // Simpan callback ke ref agar useEffect tidak re-run saat callback berubah
+  const onTranscriptRef = useRef(onTranscript);
+  const onStopRef = useRef(onStop);
+  const onErrorRef = useRef(onError);
+  const releaseWakeLockRef = useRef(releaseWakeLock);
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
+  useEffect(() => {
+    onStopRef.current = onStop;
+  }, [onStop]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+  useEffect(() => {
+    releaseWakeLockRef.current = releaseWakeLock;
+  }, [releaseWakeLock]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -82,10 +102,9 @@ export function useSpeechRecognition({
 
     const recognition = new SpeechRecognitionAPI();
     recognition.continuous = false;
-    recognition.interimResults = true; // ← true agar responsif, teks langsung muncul
+    recognition.interimResults = true;
     recognition.lang = "id-ID";
 
-    // Restart secepat mungkin — 0ms di Android, 300ms di iOS
     const restartDelay = isIOS ? 300 : 0;
 
     const startRecognition = () => {
@@ -106,10 +125,16 @@ export function useSpeechRecognition({
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const result = event.results[i];
-        // Hanya simpan hasil FINAL — interim diabaikan agar tidak dobel
         if (result?.isFinal) {
           const text = result[0]?.transcript.trim();
-          if (text) onTranscript(text + " ");
+          if (text) {
+            const elapsed = Math.floor(
+              (Date.now() - (startTimeRef.current ?? Date.now())) / 1000,
+            );
+            const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+            const ss = String(elapsed % 60).padStart(2, "0");
+            onTranscriptRef.current(`[${mm}:${ss}] ${text}\n`);
+          }
         }
       }
     };
@@ -117,7 +142,6 @@ export function useSpeechRecognition({
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       isRecognitionActive.current = false;
 
-      // no-speech = hening sebentar, restart saja
       if (event.error === "no-speech") {
         if (isIntentionallyListening.current && isMounted.current) {
           setTimeout(startRecognition, restartDelay);
@@ -127,8 +151,8 @@ export function useSpeechRecognition({
 
       if (event.error === "not-allowed") {
         isIntentionallyListening.current = false;
-        releaseWakeLock();
-        onError();
+        releaseWakeLockRef.current();
+        onErrorRef.current();
         toast.error(
           isIOS
             ? "Izinkan mikrofon di Settings → Safari → Microphone."
@@ -145,15 +169,14 @@ export function useSpeechRecognition({
     recognition.onend = () => {
       isRecognitionActive.current = false;
       if (isIntentionallyListening.current && isMounted.current) {
-        // Restart secepat mungkin tanpa delay di Android
         if (restartDelay === 0) {
           startRecognition();
         } else {
           setTimeout(startRecognition, restartDelay);
         }
       } else {
-        releaseWakeLock();
-        onStop();
+        releaseWakeLockRef.current();
+        onStopRef.current();
       }
     };
 
@@ -165,9 +188,9 @@ export function useSpeechRecognition({
       try {
         recognition.stop();
       } catch {}
-      releaseWakeLock();
+      releaseWakeLockRef.current();
     };
-  }, [releaseWakeLock, onTranscript, onStop, onError]);
+  }, []); // ← dependency array kosong, recognition hanya dibuat sekali
 
   const start = () => {
     if (!recognitionRef.current) {
@@ -179,6 +202,7 @@ export function useSpeechRecognition({
       return false;
     }
     isIntentionallyListening.current = true;
+    startTimeRef.current = Date.now();
     if (!isRecognitionActive.current) {
       try {
         recognitionRef.current.start();
@@ -192,6 +216,7 @@ export function useSpeechRecognition({
 
   const stop = () => {
     isIntentionallyListening.current = false;
+    startTimeRef.current = null;
     try {
       recognitionRef.current?.stop();
     } catch {}
