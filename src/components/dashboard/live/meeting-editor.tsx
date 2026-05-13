@@ -21,8 +21,8 @@ interface MeetingEditorProps {
   onFinish: () => void;
   isSaving: boolean;
   saveStatus: "idle" | "saving" | "saved" | "error";
-  initialTranscript?: string; // ← tambah
-  initialSummaryHtml?: string; // ← tambah
+  initialTranscript?: string;
+  initialSummaryHtml?: string;
 }
 
 type ActiveTab = "transcript" | "summary";
@@ -35,13 +35,12 @@ export function MeetingEditor({
   setContent,
   onFinish,
   saveStatus,
-  initialTranscript = "", // ← tambah
-  initialSummaryHtml = "", // ← tambah
+  initialTranscript = "",
+  initialSummaryHtml = "",
 }: MeetingEditorProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [rawTranscript, setRawTranscript] = useState<string>(() => {
-    // Prioritas: localStorage (sesi aktif) → DB (load awal)
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`transcript-${id}`);
       if (saved) return saved;
@@ -67,7 +66,8 @@ export function MeetingEditor({
     [],
   );
 
-  const { start, stop } = useSpeechRecognition({
+  // ← destructure canvasRef
+  const { start, stop, canvasRef } = useSpeechRecognition({
     onTranscript: handleTranscript,
     onStop: handleStop,
     onError: handleError,
@@ -83,12 +83,10 @@ export function MeetingEditor({
     }
   }, [rawTranscript, id]);
 
-  // Auto-save ke DB: content + transcript + summaryHtml
+  // Auto-save ke DB
   useEffect(() => {
     const timer = setTimeout(async () => {
-      // Jangan save kalau semua kosong
       if (!content && !rawTranscript && !summaryHtml) return;
-
       try {
         await fetch(`/api/meetings/${id}`, {
           method: "PATCH",
@@ -118,14 +116,15 @@ export function MeetingEditor({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [isListening, requestWakeLock]);
 
-  const toggleRecording = () => {
+  // ← fix: start() adalah async, harus di-await
+  const toggleRecording = async () => {
     if (isListening) {
       stop();
       releaseWakeLock();
       setIsListening(false);
       toast.info("Perekaman dihentikan");
     } else {
-      const started = start();
+      const started = await start();
       if (started) {
         setIsListening(true);
         requestWakeLock();
@@ -171,7 +170,7 @@ export function MeetingEditor({
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden flex-1 relative min-h-0">
-      {/* HEADER MINIMALIS */}
+      {/* HEADER */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 z-20">
         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           {title && (
@@ -235,6 +234,7 @@ export function MeetingEditor({
             onToggleRecording={toggleRecording}
             onSummarize={generateSummary}
             onReset={handleReset}
+            canvasRef={canvasRef} // ← tambah
           />
         </div>
 

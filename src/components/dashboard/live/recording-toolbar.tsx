@@ -1,5 +1,6 @@
 // components/dashboard/live/recording-toolbar.tsx
 import { Mic, Square, Sparkles, Loader2, RefreshCcw } from "lucide-react";
+import React from "react";
 
 interface RecordingToolbarProps {
   isListening: boolean;
@@ -8,6 +9,7 @@ interface RecordingToolbarProps {
   onToggleRecording: () => void;
   onSummarize: () => void;
   onReset: () => void;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>; // ← tambah
 }
 
 export function RecordingToolbar({
@@ -17,6 +19,7 @@ export function RecordingToolbar({
   onToggleRecording,
   onSummarize,
   onReset,
+  canvasRef, // ← tambah
 }: RecordingToolbarProps) {
   return (
     <div className="flex flex-col border-b">
@@ -33,6 +36,25 @@ export function RecordingToolbar({
           </span>
         )}
       </div>
+
+      {/* Audio visualizer — tampil hanya saat isListening */}
+      {isListening && (
+        <div
+          className="mx-4 mt-3 rounded-xl overflow-hidden"
+          style={{
+            background: "rgba(99,102,241,.06)",
+            border: "1px solid rgba(99,102,241,.15)",
+            height: "48px",
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={600}
+            height={48}
+            className="w-full h-full"
+          />
+        </div>
+      )}
 
       {/* Action buttons — Cancel / Stop / Pause style */}
       <div className="flex items-center justify-between px-8 py-4">
@@ -54,13 +76,8 @@ export function RecordingToolbar({
         <div className="flex flex-col items-center gap-1.5">
           <button
             onClick={onToggleRecording}
-            className={`w-14 h-14 rounded-full flex items-center justify-center
-                        transition-all active:scale-95
-                        ${
-                          isListening
-                            ? "bg-red-500 hover:bg-red-600"
-                            : "bg-red-500 hover:bg-red-600"
-                        }`}
+            className="w-14 h-14 rounded-full flex items-center justify-center
+                       transition-all active:scale-95 bg-red-500 hover:bg-red-600"
           >
             {isListening ? (
               <Square className="w-5 h-5 fill-white text-white" />
@@ -73,7 +90,7 @@ export function RecordingToolbar({
           </span>
         </div>
 
-        {/* Summarize / Pause */}
+        {/* Summarize */}
         <div className="flex flex-col items-center gap-1.5">
           <button
             onClick={onSummarize}
