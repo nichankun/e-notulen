@@ -7,6 +7,7 @@ type ActiveTab = "transcript" | "summary";
 interface EditorCanvasProps {
   activeTab: ActiveTab;
   rawTranscript: string;
+  interimTranscript?: string; // ← tambah
   summaryHtml: string;
   isListening: boolean;
   onTranscriptChange: (val: string) => void;
@@ -44,6 +45,7 @@ function parseSegments(raw: string): TranscriptSegment[] {
 export function EditorCanvas({
   activeTab,
   rawTranscript,
+  interimTranscript = "", // ← tambah
   summaryHtml,
   isListening,
   onTranscriptChange,
@@ -53,11 +55,12 @@ export function EditorCanvas({
   const segments = parseSegments(rawTranscript);
   const hasTimestamps = segments.some((s) => s.timestamp);
 
+  // Auto-scroll juga saat interim berubah
   useEffect(() => {
     if (isListening) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [rawTranscript, isListening]);
+  }, [rawTranscript, interimTranscript, isListening]);
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden min-h-0">
@@ -88,7 +91,7 @@ export function EditorCanvas({
 
       {activeTab === "transcript" && (
         <div className="flex-1 overflow-y-auto px-5 pt-3 min-h-0">
-          {rawTranscript ? (
+          {rawTranscript || interimTranscript ? (
             hasTimestamps ? (
               <div className="space-y-3">
                 {segments.map((seg, i) => (
@@ -110,7 +113,15 @@ export function EditorCanvas({
                   </div>
                 ))}
 
-                {isListening && (
+                {/* Interim: teks sementara yang sedang diproses Deepgram */}
+                {interimTranscript && (
+                  <p className="text-sm leading-snug text-muted-foreground/50 italic">
+                    {interimTranscript}
+                  </p>
+                )}
+
+                {/* Dot animasi hanya tampil saat listening tapi tidak ada interim */}
+                {isListening && !interimTranscript && (
                   <div className="flex items-center gap-1 pt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse [animation-delay:150ms]" />

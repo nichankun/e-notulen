@@ -40,6 +40,7 @@ export function MeetingEditor({
 }: MeetingEditorProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [rawTranscript, setRawTranscript] = useState<string>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`transcript-${id}`);
@@ -59,22 +60,34 @@ export function MeetingEditor({
   });
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
-  const handleStop = useCallback(() => setIsListening(false), []);
-  const handleError = useCallback(() => setIsListening(false), []);
+
+  const handleStop = useCallback(() => {
+    setIsListening(false);
+    setInterimTranscript("");
+  }, []);
+
+  const handleError = useCallback(() => {
+    setIsListening(false);
+    setInterimTranscript("");
+  }, []);
+
   const handleTranscript = useCallback(
     (text: string) => setRawTranscript((prev) => prev + text),
     [],
   );
 
-  // ← destructure canvasRef
+  const handleInterim = useCallback((text: string) => {
+    setInterimTranscript(text);
+  }, []);
+
   const { start, stop, canvasRef } = useSpeechRecognition({
     onTranscript: handleTranscript,
+    onInterim: handleInterim,
     onStop: handleStop,
     onError: handleError,
     releaseWakeLock,
   });
 
-  // Sync transcript ke localStorage
   useEffect(() => {
     if (rawTranscript) {
       localStorage.setItem(`transcript-${id}`, rawTranscript);
@@ -83,7 +96,6 @@ export function MeetingEditor({
     }
   }, [rawTranscript, id]);
 
-  // Auto-save ke DB
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!content && !rawTranscript && !summaryHtml) return;
@@ -101,7 +113,6 @@ export function MeetingEditor({
         console.error("Auto-save gagal:", err);
       }
     }, 3000);
-
     return () => clearTimeout(timer);
   }, [content, rawTranscript, summaryHtml, id]);
 
@@ -116,12 +127,12 @@ export function MeetingEditor({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [isListening, requestWakeLock]);
 
-  // ← fix: start() adalah async, harus di-await
   const toggleRecording = async () => {
     if (isListening) {
       stop();
       releaseWakeLock();
       setIsListening(false);
+      setInterimTranscript("");
       toast.info("Perekaman dihentikan");
     } else {
       const started = await start();
@@ -161,6 +172,7 @@ export function MeetingEditor({
   const handleReset = () => {
     setRawTranscript("");
     setSummaryHtml("");
+    setInterimTranscript("");
     setActiveTab("transcript");
     editor?.commands.setContent("");
     localStorage.removeItem(`transcript-${id}`);
@@ -170,7 +182,6 @@ export function MeetingEditor({
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden flex-1 relative min-h-0">
-      {/* HEADER */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 z-20">
         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
           {title && (
@@ -219,6 +230,7 @@ export function MeetingEditor({
           <EditorCanvas
             activeTab={activeTab}
             rawTranscript={rawTranscript}
+            interimTranscript={interimTranscript}
             summaryHtml={summaryHtml}
             isListening={isListening}
             onTranscriptChange={setRawTranscript}
@@ -234,7 +246,7 @@ export function MeetingEditor({
             onToggleRecording={toggleRecording}
             onSummarize={generateSummary}
             onReset={handleReset}
-            canvasRef={canvasRef} // ← tambah
+            canvasRef={canvasRef}
           />
         </div>
 
