@@ -39,10 +39,13 @@ export function ForgotPasswordDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <button className="text-sm text-primary hover:text-primary/80 transition-colors">
-          Lupa kata sandi?
-        </button>
-      </DialogTrigger>
+  <button
+    type="button"
+    className="text-sm font-medium text-primary hover:underline transition-all"
+  >
+    Lupa kata sandi?
+  </button>
+</DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-sm rounded-2xl p-6">
         <DialogHeader>
           <DialogTitle className="text-base font-medium">
@@ -113,13 +116,13 @@ export function RequestAccountDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="w-full h-11 rounded-lg text-sm font-medium text-primary border-primary/30 hover:bg-primary/5 hover:text-primary"
-        >
-          Minta pembuatan akun
-        </Button>
-      </DialogTrigger>
+  <Button
+    variant="outline"
+    className="w-full h-11 rounded-xl text-sm font-semibold border-border hover:bg-muted/50"
+  >
+    Minta Pembuatan Akun
+  </Button>
+</DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-sm rounded-2xl p-6">
         <DialogHeader>
           <DialogTitle className="text-base font-medium">

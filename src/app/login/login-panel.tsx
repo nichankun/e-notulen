@@ -1,54 +1,50 @@
 import { LoginForm } from "./login-form";
-import { ForgotPasswordDialog, RequestAccountDialog } from "./auth-dialogs";
+import { RequestAccountDialog } from "./auth-dialogs";
+import { HelpDropdown } from "./help-dropdown";
+import { ClipboardList } from "lucide-react";
 
 export function LoginPanel() {
   return (
-    <div className="login-form-panel w-65 xl:w-72.5 shrink-0 bg-card flex flex-col justify-center px-5 xl:px-7 py-6 xl:py-8">
-      <div className="flex items-center gap-2 mb-4 xl:mb-5">
-        <div
-          className="h-px flex-1"
-          style={{ background: "rgba(255,255,255,.1)" }}
-        />
-        <span
-          className="text-[10px] uppercase tracking-widest whitespace-nowrap"
-          style={{ color: "rgba(255,255,255,.4)" }}
-        >
-          Portal masuk
+    <div className="w-full max-w-95 flex flex-col">
+      {/* Logo Mobile (Hanya muncul di HP) */}
+      <div className="flex lg:hidden items-center gap-3 mb-10">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary text-primary-foreground">
+          <ClipboardList className="h-5 w-5" />
+        </div>
+        <span className="text-sm font-bold tracking-wide text-foreground">
+          Bapenda Prov. Sultra
         </span>
-        <div
-          className="h-px flex-1"
-          style={{ background: "rgba(255,255,255,.1)" }}
-        />
       </div>
 
-      <h2 className="text-[14px] xl:text-[15px] font-bold mb-1 text-card-foreground">
-        Masuk ke akun Anda
-      </h2>
-      <p className="text-[11px] mb-4 xl:mb-5 leading-relaxed text-muted-foreground">
-        Gunakan NIP dan kata sandi yang telah diberikan oleh Admin IT.
-      </p>
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold tracking-tight mb-2 text-foreground">
+          Masuk ke akun Anda
+        </h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Gunakan NIP dan kata sandi yang telah diberikan oleh Admin IT.
+        </p>
+      </div>
 
       <LoginForm />
 
-      <div className="text-center mt-3">
-        <ForgotPasswordDialog />
+      <div className="mt-8 flex flex-col items-center gap-6">
+        <div className="relative w-full">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 font-medium text-muted-foreground">
+              Belum punya akun?
+            </span>
+          </div>
+        </div>
+
+        <RequestAccountDialog />
       </div>
 
-      <div className="flex items-center gap-2 my-3 xl:my-4">
-        <div
-          className="h-px flex-1"
-          style={{ background: "rgba(255,255,255,.08)" }}
-        />
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          atau
-        </span>
-        <div
-          className="h-px flex-1"
-          style={{ background: "rgba(255,255,255,.08)" }}
-        />
+      <div className="mt-12 flex justify-center">
+        <HelpDropdown />
       </div>
-
-      <RequestAccountDialog />
     </div>
   );
 }
