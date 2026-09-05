@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { type Meeting, type Attendee } from "@/db/database/schema";
+import type { MeetingSummary } from "@/lib/meeting-summary";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
-import { supabase } from "@/lib/supabaseClient";
 
 import { MeetingEditor } from "@/components/dashboard/live/meeting-editor";
 import { LoadingScreen } from "./loading-screen";
@@ -23,7 +23,7 @@ export interface PhotoProps {
   isUploading: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>; // ← tambah | null
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemove: (idx: number) => void;
+  onRemove: (idx: number) => void | Promise<void>;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -45,14 +45,20 @@ export function LiveMeetingClient({ id }: { id: string }) {
   const [photos, setPhotos] = useState<string[]>([]);
   const [initialTranscript, setInitialTranscript] = useState("");
   const [initialSummaryHtml, setInitialSummaryHtml] = useState("");
+  const [initialSummaryData, setInitialSummaryData] =
+    useState<MeetingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [verificationCount, setVerificationCount] = useState(0);
+  const [isFinishing, setIsFinishing] = useState(false);
   const [progress, setProgress] = useState(13);
   const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    (typeof window !== "undefined" ? window.location.origin : "");
 
   // Init meeting data
   useEffect(() => {
@@ -70,6 +76,7 @@ export function LiveMeetingClient({ id }: { id: string }) {
         setNotulen(d.content || "");
         if (d.transcript) setInitialTranscript(d.transcript);
         if (d.summaryHtml) setInitialSummaryHtml(d.summaryHtml);
+        if (d.summaryData) setInitialSummaryData(d.summaryData as MeetingSummary);
 
         try {
           const parsed =
@@ -102,23 +109,6 @@ export function LiveMeetingClient({ id }: { id: string }) {
     return () => clearInterval(interval);
   }, [id]);
 
-  // Auto-save photos
-  useEffect(() => {
-    if (loading) return;
-    const timer = setTimeout(async () => {
-      try {
-        await fetch(`/api/meetings/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ photos }),
-        });
-      } catch {
-        console.error("Auto-save photos gagal");
-      }
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [photos, id, loading]);
-
   const handlePhotoUpload = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
@@ -132,14 +122,17 @@ export function LiveMeetingClient({ id }: { id: string }) {
             IMAGE_COMPRESSION_OPTIONS,
           );
           const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.jpg`;
-          const { error } = await supabase.storage
-            .from("notulen")
-            .upload(fileName, compressed);
-          if (error) throw error;
-          const { data } = supabase.storage
-            .from("notulen")
-            .getPublicUrl(fileName);
-          if (data.publicUrl) newUrls.push(data.publicUrl);
+          const formData = new FormData();
+          formData.append("file", compressed, fileName);
+          const response = await fetch(`/api/meetings/${id}/photos`, {
+            method: "POST",
+            body: formData,
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success || !result.url) {
+            throw new Error(result.message || "Gagal mengunggah foto");
+          }
+          newUrls.push(result.url);
         }
         setPhotos((prev) => [...prev, ...newUrls]);
         toast.success("Foto ditambahkan");
@@ -150,20 +143,44 @@ export function LiveMeetingClient({ id }: { id: string }) {
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
     },
-    [],
+    [id],
   );
 
   const handleRemovePhoto = useCallback(
-    (idx: number) => setPhotos((prev) => prev.filter((_, i) => i !== idx)),
-    [],
+    async (idx: number) => {
+      const photo = photos[idx];
+      if (!photo) return;
+
+      setIsUploading(true);
+      try {
+        const response = await fetch(`/api/meetings/${id}/photos`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: photo }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Gagal menghapus foto");
+        }
+        setPhotos((prev) => prev.filter((_, i) => i !== idx));
+        toast.success("Foto dihapus");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Gagal menghapus foto");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [id, photos],
   );
 
   const handleFinish = useCallback(async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
     try {
       const res = await fetch(`/api/meetings/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: notulen, photos, status: "archived" }),
+        body: JSON.stringify({ content: notulen, status: "archived" }),
       });
       if (res.ok) {
         localStorage.removeItem(`transcript-${id}`);
@@ -171,11 +188,16 @@ export function LiveMeetingClient({ id }: { id: string }) {
         setIsDialogOpen(false);
         router.push("/dashboard/archive");
         router.refresh();
+      } else {
+        const result = await res.json().catch(() => null);
+        toast.error(result?.message || "Gagal menyelesaikan rapat");
       }
     } catch {
       toast.error("Gagal menyelesaikan rapat");
+    } finally {
+      setIsFinishing(false);
     }
-  }, [id, notulen, photos, router]);
+  }, [id, isFinishing, notulen, router]);
 
   const handleTabToggle = useCallback(
     (key: MobileTab) => setMobileTab((prev) => (prev === key ? "editor" : key)),
@@ -190,11 +212,15 @@ export function LiveMeetingClient({ id }: { id: string }) {
     leader: meetingData?.leader || "",
     content: notulen,
     setContent: setNotulen,
-    onFinish: () => setIsDialogOpen(true),
+    onFinish: (summary: MeetingSummary | null) => {
+      setVerificationCount(summary?.verificationItems.length ?? 0);
+      setIsDialogOpen(true);
+    },
     isSaving: false,
     saveStatus: "idle" as const,
     initialTranscript,
     initialSummaryHtml,
+    initialSummaryData,
   };
 
   const photoProps: PhotoProps = {
@@ -255,7 +281,8 @@ export function LiveMeetingClient({ id }: { id: string }) {
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onFinish={handleFinish}
-        isRouting={false}
+        isRouting={isFinishing}
+        verificationCount={verificationCount}
       />
     </>
   );

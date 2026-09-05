@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { toast } from "sonner";
@@ -11,6 +11,10 @@ import { RecordingToolbar } from "./recording-toolbar";
 import { EditorCanvas } from "./editor-canvas";
 import { useWakeLock } from "./hooks/use-wake-lock";
 import { useSpeechRecognition } from "./hooks/use-speech-recognition";
+import { sanitizeSummaryHtml } from "@/lib/sanitize-html";
+import { summaryToHtml, type MeetingSummary } from "@/lib/meeting-summary";
+import { useMicrophoneTest } from "./hooks/use-microphone-test";
+import { MicrophoneTestDialog } from "./microphone-test-dialog";
 
 interface MeetingEditorProps {
   id: string;
@@ -18,11 +22,12 @@ interface MeetingEditorProps {
   leader?: string;
   content: string;
   setContent: (val: string) => void;
-  onFinish: () => void;
+  onFinish: (summary: MeetingSummary | null) => void;
   isSaving: boolean;
   saveStatus: "idle" | "saving" | "saved" | "error";
   initialTranscript?: string;
   initialSummaryHtml?: string;
+  initialSummaryData?: MeetingSummary | null;
 }
 
 type ActiveTab = "transcript" | "summary";
@@ -34,22 +39,33 @@ export function MeetingEditor({
   content,
   setContent,
   onFinish,
+  isSaving,
   saveStatus,
   initialTranscript = "",
   initialSummaryHtml = "",
+  initialSummaryData = null,
 }: MeetingEditorProps) {
   const [isListening, setIsListening] = useState(false);
+  const [isRecordingBusy, setIsRecordingBusy] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [isMicrophoneTestOpen, setIsMicrophoneTestOpen] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
   const [rawTranscript, setRawTranscript] = useState<string>(() => {
+    if (initialTranscript.trim()) return initialTranscript;
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(`transcript-${id}`);
-      if (saved) return saved;
+      return localStorage.getItem(`transcript-${id}`) || "";
     }
-    return initialTranscript;
+    return "";
   });
   const [summaryHtml, setSummaryHtml] = useState(initialSummaryHtml);
+  const [summaryData, setSummaryData] = useState<MeetingSummary | null>(
+    initialSummaryData,
+  );
   const [activeTab, setActiveTab] = useState<ActiveTab>("transcript");
+  const [localSaveStatus, setLocalSaveStatus] = useState<MeetingEditorProps["saveStatus"]>(
+    "idle",
+  );
+  const saveQueueRef = useRef(Promise.resolve());
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -60,6 +76,7 @@ export function MeetingEditor({
   });
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
+  const microphoneTest = useMicrophoneTest();
 
   const handleStop = useCallback(() => {
     setIsListening(false);
@@ -96,25 +113,42 @@ export function MeetingEditor({
     }
   }, [rawTranscript, id]);
 
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (!content && !rawTranscript && !summaryHtml) return;
-      try {
-        await fetch(`/api/meetings/${id}`, {
+  const saveDraft = useCallback(async () => {
+    const queuedSave = saveQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        setLocalSaveStatus("saving");
+        const response = await fetch(`/api/meetings/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             content,
-            transcript: rawTranscript || undefined,
-            summaryHtml: summaryHtml || undefined,
+            transcript: rawTranscript,
+            summaryHtml,
+            summaryData,
           }),
         });
-      } catch (err) {
-        console.error("Auto-save gagal:", err);
-      }
+
+        if (!response.ok) throw new Error("Draft gagal disimpan");
+        setLocalSaveStatus("saved");
+      })
+      .catch((error: unknown) => {
+        setLocalSaveStatus("error");
+        throw error;
+      });
+
+    saveQueueRef.current = queuedSave;
+    return queuedSave;
+  }, [content, id, rawTranscript, summaryHtml, summaryData]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void saveDraft().catch((error: unknown) => {
+        console.error("Auto-save gagal:", error);
+      });
     }, 3000);
     return () => clearTimeout(timer);
-  }, [content, rawTranscript, summaryHtml, id]);
+  }, [saveDraft]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -128,18 +162,25 @@ export function MeetingEditor({
   }, [isListening, requestWakeLock]);
 
   const toggleRecording = async () => {
-    if (isListening) {
-      stop();
-      releaseWakeLock();
-      setIsListening(false);
-      setInterimTranscript("");
-      toast.info("Perekaman dihentikan");
-    } else {
-      const started = await start();
-      if (started) {
-        setIsListening(true);
-        requestWakeLock();
+    if (isRecordingBusy) return;
+
+    setIsRecordingBusy(true);
+    try {
+      if (isListening) {
+        await stop();
+        releaseWakeLock();
+        setIsListening(false);
+        setInterimTranscript("");
+        toast.info("Perekaman dihentikan dan data terakhir diproses");
+      } else {
+        const started = await start();
+        if (started) {
+          setIsListening(true);
+          requestWakeLock();
+        }
       }
+    } finally {
+      setIsRecordingBusy(false);
     }
   };
 
@@ -153,10 +194,20 @@ export function MeetingEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: rawTranscript }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-      editor?.commands.setContent(result.data);
-      setSummaryHtml(result.data);
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        data?: MeetingSummary;
+        html?: string;
+      };
+      if (!response.ok || !result.data) {
+        throw new Error(result.error || "Gagal memproses AI");
+      }
+      const renderedHtml = result.html || summaryToHtml(result.data);
+      const safeHtml = sanitizeSummaryHtml(renderedHtml);
+      editor?.commands.setContent(safeHtml);
+      setSummaryHtml(safeHtml);
+      setSummaryData(result.data);
       setActiveTab("summary");
       toast.success("Rangkuman berhasil dibuat!", { id: toastId });
     } catch (error: unknown) {
@@ -169,9 +220,25 @@ export function MeetingEditor({
     }
   };
 
+  const handleFinishClick = async () => {
+    if (isListening || isRecordingBusy) {
+      toast.warning("Hentikan rekaman terlebih dahulu agar suara terakhir tidak hilang.");
+      return;
+    }
+
+    try {
+      await saveDraft();
+      onFinish(summaryData);
+    } catch {
+      toast.error("Draft belum berhasil disimpan. Periksa koneksi lalu coba lagi.");
+    }
+  };
+
   const handleReset = () => {
+    if (isListening || isRecordingBusy) return;
     setRawTranscript("");
     setSummaryHtml("");
+    setSummaryData(null);
     setInterimTranscript("");
     setActiveTab("transcript");
     editor?.commands.setContent("");
@@ -179,6 +246,9 @@ export function MeetingEditor({
   };
 
   if (!editor) return null;
+
+  const displayedSaveStatus =
+    isSaving || saveStatus !== "idle" ? (isSaving ? "saving" : saveStatus) : localSaveStatus;
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden flex-1 relative min-h-0">
@@ -201,12 +271,12 @@ export function MeetingEditor({
 
         <div className="flex items-center gap-4 shrink-0">
           <div className="flex flex-col items-end gap-0.5">
-            {saveStatus === "saving" && (
+            {displayedSaveStatus === "saving" && (
               <span className="text-[10px] text-primary animate-pulse font-medium">
                 Menyimpan...
               </span>
             )}
-            {saveStatus === "saved" && (
+            {displayedSaveStatus === "saved" && (
               <span className="text-[10px] text-emerald-500/60 font-medium">
                 Otomatis Tersimpan
               </span>
@@ -214,7 +284,8 @@ export function MeetingEditor({
           </div>
 
           <Button
-            onClick={onFinish}
+            onClick={handleFinishClick}
+            disabled={isListening || isRecordingBusy || isSummarizing}
             variant="outline"
             size="sm"
             className="h-8 px-3 text-[11px] font-bold border-emerald-500/20 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-all active:scale-95"
@@ -232,6 +303,7 @@ export function MeetingEditor({
             rawTranscript={rawTranscript}
             interimTranscript={interimTranscript}
             summaryHtml={summaryHtml}
+            summaryData={summaryData}
             isListening={isListening}
             onTranscriptChange={setRawTranscript}
             onTabChange={setActiveTab}
@@ -242,10 +314,13 @@ export function MeetingEditor({
           <RecordingToolbar
             isListening={isListening}
             isSummarizing={isSummarizing}
+            isMicrophoneTesting={microphoneTest.state.status === "testing"}
             hasTranscript={!!rawTranscript}
+            isBusy={isRecordingBusy}
             onToggleRecording={toggleRecording}
             onSummarize={generateSummary}
             onReset={handleReset}
+            onTestMicrophone={() => setIsMicrophoneTestOpen(true)}
             canvasRef={canvasRef}
           />
         </div>
@@ -254,6 +329,13 @@ export function MeetingEditor({
           <EditorContent editor={editor} />
         </div>
       </div>
+
+      <MicrophoneTestDialog
+        open={isMicrophoneTestOpen}
+        onOpenChange={setIsMicrophoneTestOpen}
+        state={microphoneTest.state}
+        onRun={() => void microphoneTest.runTest()}
+      />
     </div>
   );
 }

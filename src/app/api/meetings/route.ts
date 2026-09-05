@@ -2,23 +2,47 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { desc, eq } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { verifyAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { parseMeetingDateTime } from "@/lib/timezone";
 import { z } from "zod";
 
 // ==========================================
 // 1. ZOD SCHEMA (Validasi Input)
 // ==========================================
 const createMeetingSchema = z.object({
-  title: z.string().min(5, "Judul rapat minimal 5 karakter"),
+  title: z.string().trim().min(5, "Judul rapat minimal 5 karakter").max(200),
   date: z
     .string()
     .min(1, "Tanggal wajib diisi")
-    .refine((val) => !isNaN(Date.parse(val)), {
-      message: "Format tanggal tidak valid",
-    }),
-  location: z.string().min(3, "Lokasi minimal 3 karakter"),
-  leader: z.string().min(3, "Nama pimpinan minimal 3 karakter"),
+    .refine((val) => {
+      try {
+        parseMeetingDateTime(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Format tanggal tidak valid"),
+  location: z.string().trim().min(3, "Lokasi minimal 3 karakter").max(200),
+  leader: z.string().trim().min(3, "Nama pimpinan minimal 3 karakter").max(200),
+  invitationNumber: z.string().trim().max(200).optional(),
+  startTime: z
+    .string()
+    .trim()
+    .refine((val) => !val || /^(?:[01]\d|2[0-3])\.[0-5]\d$/.test(val), {
+      message: "Format jam tidak valid",
+    })
+    .optional(),
+  endTime: z
+    .string()
+    .trim()
+    .refine((val) => !val || /^(?:[01]\d|2[0-3])\.[0-5]\d$/.test(val), {
+      message: "Format jam tidak valid",
+    })
+    .optional(),
+  secretary: z.string().trim().max(200).optional(),
+  recorder: z.string().trim().max(200).optional(),
+  leaderTitle: z.string().trim().max(200).optional(),
+  leaderRank: z.string().trim().max(200).optional(),
 });
 
 // ==========================================
@@ -30,31 +54,15 @@ type AuthResult =
   | { user: null; error: string; status: number };
 
 async function authenticateRequest(): Promise<AuthResult> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-
-  if (!token) {
-    return {
-      user: null,
-      error: "Sesi habis atau tidak memiliki akses",
-      status: 401,
-    };
-  }
-
-  const payload = await verifyAuthToken(token);
-  if (!payload || !payload.id) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
     return { user: null, error: "Sesi tidak valid", status: 401 };
-  }
-
-  const userId = String(payload.id);
-  if (!userId || userId.trim() === "" || userId === "undefined") {
-    return { user: null, error: "Identitas pengguna tidak valid", status: 400 };
   }
 
   return {
     user: {
-      id: userId,
-      role: (payload.role as string) || "pegawai",
+      id: user.id,
+      role: user.role,
     },
     error: null,
   };
@@ -98,7 +106,10 @@ export async function GET() {
             .where(eq(meetings.userId, userId))
             .orderBy(desc(meetings.date)); // Pegawai lihat miliknya
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { success: true, data },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error: unknown) {
     console.error("API GET Meetings Error:", error);
     return NextResponse.json(
@@ -139,16 +150,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, date, location, leader } = parse.data;
+    const {
+      title,
+      date,
+      location,
+      leader,
+      invitationNumber,
+      startTime,
+      endTime,
+      secretary,
+      recorder,
+      leaderTitle,
+      leaderRank,
+    } = parse.data;
 
     // SIMPAN KE DATABASE
     const [inserted] = await db
       .insert(meetings)
       .values({
         title,
-        date: new Date(date), // Memastikan string tanggal diconvert ke objek Date
+        date: parseMeetingDateTime(date),
         location,
         leader,
+        invitationNumber: invitationNumber || null,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        secretary: secretary || null,
+        recorder: recorder || null,
+        leaderTitle: leaderTitle || null,
+        leaderRank: leaderRank || null,
         status: "live",
         attendanceCount: 0,
         userId,

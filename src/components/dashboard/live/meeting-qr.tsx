@@ -1,6 +1,7 @@
 "use client";
 
 import { QRCodeCanvas } from "qrcode.react";
+import { useEffect, useState } from "react";
 import { Download, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,6 +13,29 @@ interface MeetingQRCodeProps {
 
 export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
   const canvasId = `qr-code-canvas-${meetingId}`;
+  const [attendanceUrl, setAttendanceUrl] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    fetch(`/api/meetings/${meetingId}/attendance-token`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Gagal membuat token presensi");
+        const result = await response.json();
+        if (active && result.success && result.token && origin) {
+          setAttendanceUrl(
+            `${origin}/attend/${meetingId}?token=${encodeURIComponent(result.token)}`,
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setAttendanceUrl("");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [meetingId, origin]);
 
   const downloadQRCode = () => {
     const canvas = document.getElementById(
@@ -49,10 +73,10 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
 
       {/* CONTAINER QR CODE (Diperkecil sedikit) */}
       <div className="bg-white border rounded-xl shadow-sm mb-4 flex items-center justify-center min-h-40 min-w-40">
-        {origin ? (
+        {attendanceUrl ? (
           <QRCodeCanvas
             id={canvasId}
-            value={`${origin}/attend/${meetingId}`}
+            value={attendanceUrl}
             size={140}
             fgColor="#0f172a"
             bgColor="#ffffff"
@@ -72,7 +96,7 @@ export function MeetingQRCode({ meetingId, origin }: MeetingQRCodeProps) {
         variant="outline"
         size="sm"
         onClick={downloadQRCode}
-        disabled={!origin}
+        disabled={!attendanceUrl}
         className="w-30 text-xs h-8"
       >
         <Download className="mr-1.5 h-3.5 w-3.5" />

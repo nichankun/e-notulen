@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.pnpm-store
 /.pnp
 .pnp.*
 .yarn/*
@@ -15,6 +16,9 @@
 
 # next.js
 /.next/
+/.next-verify/
+/.next-verify-final/
+/.next-verify-production/
 /out/
 
 # production

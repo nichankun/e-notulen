@@ -6,8 +6,10 @@ import {
   unique,
   uuid,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { type InferSelectModel, type InferInsertModel } from "drizzle-orm";
+import type { MeetingSummary } from "@/lib/meeting-summary";
 
 // --- ENUMS ---
 export const userRoleEnum = pgEnum("user_role", ["admin", "pegawai"]);
@@ -62,11 +64,12 @@ export const meetings = pgTable("meetings", {
   // ── Kolom rekaman & AI ───────────────────────────────────────────
   transcript: text("transcript"), // Raw transkrip dari rekaman
   summaryHtml: text("summary_html"), // Rangkuman AI dalam format HTML
+  summaryData: jsonb("summary_data").$type<MeetingSummary | null>(),
   // ────────────────────────────────────────────────────────────────
 
   attendanceCount: integer("attendance_count").default(0),
   userId: uuid("user_id").references(() => users.id, {
-    onDelete: "cascade",
+    onDelete: "restrict",
   }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at")

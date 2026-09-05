@@ -1,11 +1,10 @@
 import { db } from "@/db";
-import { users } from "@/db/database/schema";
+import { meetings, users } from "@/db/database/schema";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
-import { verifyAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 // ==========================================
 // 1. HELPERS & TYPE GUARDS
@@ -23,44 +22,42 @@ function isPgUniqueError(err: unknown): err is { code: string } {
 
 // Memusatkan logika Auth dan penanganan Error Respons
 async function authenticateAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
+  const user = await getAuthenticatedUser();
 
-  if (!token)
+  if (!user) {
     return { error: "Sesi tidak valid atau telah habis", status: 401 };
+  }
 
-  const payload = await verifyAuthToken(token);
-
-  if (!payload || !payload.id || payload.role !== "admin") {
+  if (user.role !== "admin") {
     return {
       error: "Akses Ditolak: Hanya Administrator yang diizinkan",
       status: 403,
     };
   }
 
-  return { user: { id: String(payload.id) } };
+  return { user: { id: user.id } };
 }
 
 // ==========================================
 // 2. ZOD SCHEMAS
 // ==========================================
 const userSchema = z.object({
-  name: z.string().min(3, "Nama minimal 3 karakter"),
-  nip: z.string().min(5, "NIP minimal 5 karakter"),
-  password: z.string().min(6, "Password minimal 6 karakter"),
+  name: z.string().trim().min(3, "Nama minimal 3 karakter").max(150),
+  nip: z.string().trim().min(5, "NIP minimal 5 karakter").max(50),
+  password: z.string().min(6, "Password minimal 6 karakter").max(128),
   role: z.enum(["admin", "pegawai"]),
-  agency: z.string().min(2, "Instansi wajib diisi"),
+  agency: z.string().trim().min(2, "Instansi wajib diisi").max(200),
 });
 
 const patchUserSchema = z.object({
-  id: z.string().min(1, "ID tidak valid"),
-  name: z.string().min(3, "Nama minimal 3 karakter"),
-  nip: z.string().min(5, "NIP minimal 5 karakter"),
+  id: z.string().uuid("ID tidak valid"),
+  name: z.string().trim().min(3, "Nama minimal 3 karakter").max(150),
+  nip: z.string().trim().min(5, "NIP minimal 5 karakter").max(50),
   role: z.enum(["admin", "pegawai"]),
-  agency: z.string().min(2, "Instansi wajib diisi"),
+  agency: z.string().trim().min(2, "Instansi wajib diisi").max(200),
   password: z
     .union([
-      z.string().min(6, "Password baru minimal 6 karakter"),
+      z.string().min(6, "Password baru minimal 6 karakter").max(128),
       z.literal(""),
     ])
     .optional(),
@@ -165,7 +162,18 @@ export async function PATCH(req: Request) {
       updateData.password = await bcrypt.hash(password, 10);
     }
 
-    await db.update(users).set(updateData).where(eq(users.id, id));
+    const updated = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning({ id: users.id });
+
+    if (updated.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Data pengguna tidak ditemukan" },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -202,7 +210,7 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const targetId = searchParams.get("id");
 
-    if (!targetId || targetId.trim() === "") {
+    if (!targetId || !z.string().uuid().safeParse(targetId).success) {
       return NextResponse.json(
         { success: false, message: "ID pengguna tidak valid" },
         { status: 400 },
@@ -218,6 +226,22 @@ export async function DELETE(req: Request) {
             "Sistem menolak: Anda tidak dapat menghapus akun Anda sendiri",
         },
         { status: 403 },
+      );
+    }
+
+    const [ownedMeeting] = await db
+      .select({ id: meetings.id })
+      .from(meetings)
+      .where(eq(meetings.userId, targetId))
+      .limit(1);
+
+    if (ownedMeeting) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Pengguna masih memiliki rapat. Hapus atau pindahkan rapat terlebih dahulu.",
+        },
+        { status: 409 },
       );
     }
 

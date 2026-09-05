@@ -7,8 +7,6 @@ import { cookies } from "next/headers";
 export async function POST() {
   try {
     const cookieStore = await cookies();
-    const isProd =
-      process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") ?? false;
 
     // Menghapus cookie dengan parameter keamanan yang persis sama
     // dengan saat diciptakan. Ini menjamin browser (terutama Safari/iOS)
@@ -16,7 +14,7 @@ export async function POST() {
     cookieStore.delete({
       name: "auth_token",
       path: "/",
-      secure: isProd,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     });
 

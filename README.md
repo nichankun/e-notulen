@@ -9,11 +9,21 @@ Aplikasi manajemen notulen rapat digital berbasis web. Dibuat dengan Next.js, Dr
 ## ✨ Fitur
 
 - 📝 Buat & kelola notulen rapat dengan rich text editor (Tiptap)
+- 🎙️ Live transcription Bahasa Indonesia dengan pemrosesan audio, tes mikrofon, buffer, dan reconnect
+- 🧾 Rangkuman AI terstruktur dengan bukti waktu, PIC, deadline, status, confidence, dan verifikasi manusia
 - 📄 Export notulen ke PDF
 - ✍️ Tanda tangan digital
 - 🔒 Autentikasi berbasis JWT
 - 🌙 Dark mode / Light mode
 - 📱 Responsif di semua perangkat
+
+### Catatan kesiapan produksi audio
+
+Sebelum dipakai untuk notula resmi, operator wajib menjalankan **Tes mic** dan
+memeriksa hasil transkrip serta rangkuman. Jika AI menandai item **Perlu
+verifikasi**, petugas harus mencocokkan kembali dengan transkrip dan bukti waktu
+sebelum rapat disahkan. Checklist sepuluh skenario tersedia di
+[`docs/production-audio-acceptance.md`](docs/production-audio-acceptance.md).
 
 ---
 
@@ -37,7 +47,7 @@ Aplikasi manajemen notulen rapat digital berbasis web. Dibuat dengan Next.js, Dr
 
 ### Prasyarat
 
-- Node.js >= 18
+- Node.js >= 20.9
 - pnpm >= 9
 - Akun [Supabase](https://supabase.com) (untuk database PostgreSQL)
 
@@ -69,7 +79,19 @@ pnpm dlx drizzle-kit generate
 pnpm dlx drizzle-kit migrate
 ```
 
+Jika database sudah berisi data, selalu periksa migration yang dihasilkan
+sebelum menjalankannya. Schema saat ini mencegah penghapusan user yang masih
+memiliki rapat (`user_id` memakai `RESTRICT`), sehingga migration perubahan
+foreign key tersebut harus diterapkan ke database yang sudah berjalan.
+
+Buat bucket Storage Supabase bernama `notulen` dan nonaktifkan izin upload
+anonim. Upload dan penghapusan foto sekarang dilakukan server menggunakan
+`SUPABASE_SERVICE_ROLE_KEY`.
+
 ### 5. (Opsional) Seed data awal
+
+Isi `SEED_ADMIN_NIP` dan `SEED_ADMIN_PASSWORD` terlebih dahulu. Password seed
+minimal 12 karakter dan tidak lagi menggunakan kredensial default.
 
 ```bash
 pnpm db:seed
@@ -96,12 +118,23 @@ DATABASE_URL=postgresql://...
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 # Auth JWT
 JWT_SECRET=your-secret-key-min-32-chars
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Integrasi server-side
+GEMINI_API_KEY=...
+DEEPGRAM_API_KEY=...
+
+# Hanya untuk proses seed admin
+SEED_ADMIN_NIP=...
+SEED_ADMIN_PASSWORD=...
+SEED_ADMIN_NAME=Super Admin IT
+SEED_ADMIN_AGENCY=BAPENDA PROV. SULTRA
 ```
 
 ---
@@ -128,10 +161,14 @@ e-notulen/
 1. Push repo ke GitHub
 2. Import project di [vercel.com](https://vercel.com)
 3. Tambahkan semua environment variables di dashboard Vercel
-4. Deploy!
+4. Terapkan migration database yang sudah diperiksa
+5. Deploy!
+
+Setelah deploy, operator perlu membuat/mengunduh ulang QR Code untuk setiap
+rapat live. QR Code lama tidak memiliki token presensi dan akan ditolak.
 
 ---
 
 ## 📄 Lisensi
 
-MIT License. Lihat [LICENSE](./LICENSE) untuk detail.
+MIT License.

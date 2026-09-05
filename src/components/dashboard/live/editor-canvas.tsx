@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { sanitizeSummaryHtml } from "@/lib/sanitize-html";
+import type { MeetingSummary } from "@/lib/meeting-summary";
+import { StructuredSummary } from "./structured-summary";
 
 type ActiveTab = "transcript" | "summary";
 
@@ -9,6 +12,7 @@ interface EditorCanvasProps {
   rawTranscript: string;
   interimTranscript?: string; // ← tambah
   summaryHtml: string;
+  summaryData?: MeetingSummary | null;
   isListening: boolean;
   onTranscriptChange: (val: string) => void;
   onTabChange: (tab: ActiveTab) => void;
@@ -47,6 +51,7 @@ export function EditorCanvas({
   rawTranscript,
   interimTranscript = "", // ← tambah
   summaryHtml,
+  summaryData = null,
   isListening,
   onTranscriptChange,
   onTabChange,
@@ -54,6 +59,8 @@ export function EditorCanvas({
   const bottomRef = useRef<HTMLDivElement>(null);
   const segments = parseSegments(rawTranscript);
   const hasTimestamps = segments.some((s) => s.timestamp);
+  const safeSummaryHtml = sanitizeSummaryHtml(summaryHtml);
+  const hasSummary = Boolean(summaryData || safeSummaryHtml);
 
   // Auto-scroll juga saat interim berubah
   useEffect(() => {
@@ -64,7 +71,7 @@ export function EditorCanvas({
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden min-h-0">
-      {summaryHtml && (
+      {hasSummary && (
         <div className="flex border-b px-4 shrink-0">
           <button
             onClick={() => onTabChange("transcript")}
@@ -133,14 +140,21 @@ export function EditorCanvas({
                 <div ref={bottomRef} />
               </div>
             ) : (
-              <textarea
-                value={rawTranscript}
-                onChange={(e) => onTranscriptChange(e.target.value)}
-                disabled={isListening}
-                className={`w-full h-full min-h-80 text-sm leading-snug bg-transparent border-none outline-none resize-none text-foreground pb-48 lg:pb-6 ${
-                  isListening ? "cursor-not-allowed opacity-60" : ""
-                }`}
-              />
+              <div className="flex h-full flex-col">
+                <textarea
+                  value={rawTranscript}
+                  onChange={(e) => onTranscriptChange(e.target.value)}
+                  disabled={isListening}
+                  className={`w-full flex-1 min-h-80 text-sm leading-snug bg-transparent border-none outline-none resize-none text-foreground pb-48 lg:pb-6 ${
+                    isListening ? "cursor-not-allowed opacity-60" : ""
+                  }`}
+                />
+                {interimTranscript && (
+                  <p className="shrink-0 pb-48 lg:pb-6 text-sm leading-snug text-muted-foreground/50 italic">
+                    {interimTranscript}
+                  </p>
+                )}
+              </div>
             )
           ) : (
             <p className="text-sm text-muted-foreground text-center mt-10">
@@ -151,11 +165,17 @@ export function EditorCanvas({
         </div>
       )}
 
-      {activeTab === "summary" && summaryHtml && (
+      {activeTab === "summary" && summaryData && (
+        <div className="flex-1 overflow-y-auto px-5 pt-3 pb-48 lg:pb-6 min-h-0">
+          <StructuredSummary summary={summaryData} />
+        </div>
+      )}
+
+      {activeTab === "summary" && !summaryData && safeSummaryHtml && (
         <div className="flex-1 overflow-y-auto px-5 pt-3 pb-48 lg:pb-6 min-h-0">
           <div
             className="prose prose-sm dark:prose-invert max-w-none text-foreground [&_h3]:text-sm [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-0.5"
-            dangerouslySetInnerHTML={{ __html: summaryHtml }}
+            dangerouslySetInnerHTML={{ __html: safeSummaryHtml }}
           />
         </div>
       )}

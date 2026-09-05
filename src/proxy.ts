@@ -1,27 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { getJwtSecretKey } from "@/lib/jwt";
 
 const getSecretKey = () => {
-  const secret = process.env.JWT_SECRET;
-  // Opsional: Proteksi ekstra jika aplikasi sudah masuk server production
-  if (!secret && process.env.NODE_ENV === "production") {
-    console.warn(
-      "Peringatan: JWT_SECRET tidak ditemukan di environment variables!",
-    );
-  }
-  return new TextEncoder().encode(
-    secret || "rahasia-negara-bapenda-sultra-super-aman-2026",
-  );
+  return getJwtSecretKey();
 };
 
 export async function proxy(request: NextRequest) {
   const token = request.cookies.get("auth_token")?.value;
   const { pathname } = request.nextUrl;
-
-  console.log("[Proxy] pathname:", pathname);
-  console.log("[Proxy] token exists:", !!token);
-  console.log("[Proxy] JWT_SECRET exists:", !!process.env.JWT_SECRET);
 
   // 1. Jika TIDAK ADA token
   if (!token) {
@@ -33,10 +21,10 @@ export async function proxy(request: NextRequest) {
 
   // 2. Jika ADA token, verifikasi
   try {
-    const { payload } = await jwtVerify(token, getSecretKey());
+    const { payload } = await jwtVerify(token, getSecretKey(), {
+      algorithms: ["HS256"],
+    });
     const role = payload.role as string;
-
-    console.log("[Proxy] JWT valid, role:", role);
 
     // Cegah user yang sudah login kembali ke halaman login
     if (pathname === "/" || pathname === "/login") {
@@ -47,18 +35,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
-    const response = NextResponse.next();
-    response.headers.set("x-user-role", role);
-
-    // Karena sistem presensi e-notulen sudah tidak lagi menggunakan NIP,
-    // pastikan payload.nip ini memang masih dibutuhkan oleh komponen lain (misal untuk profil).
-    if (payload.nip) {
-      response.headers.set("x-user-nip", payload.nip as string);
-    }
-
-    return response;
+    return NextResponse.next();
   } catch (err) {
-    console.error("[Proxy] JWT verify failed:", err);
+    console.error("JWT verify failed:", err);
 
     let response;
 

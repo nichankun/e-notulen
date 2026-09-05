@@ -13,6 +13,7 @@ export function ResultStats({
   date,
 }: ResultStatsProps) {
   const dateLabel = new Date(date).toLocaleDateString("id-ID", {
+    timeZone: "Asia/Makassar",
     day: "numeric",
     month: "short",
   });

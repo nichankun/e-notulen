@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Building2, CalendarDays } from "lucide-react";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Makassar",
   weekday: "long",
   day: "numeric",
   month: "long",
@@ -13,6 +14,7 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
 });
 
 const shortDateFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Makassar",
   day: "numeric",
   month: "short",
   year: "numeric",

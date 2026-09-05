@@ -2,12 +2,23 @@
   "name": "e-notulen",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.6.0",
+    "pnpm": ">=9"
+  },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "db:seed": "tsx src/db/seed.ts"
+    "lint": "eslint src tests scripts",
+    "typecheck": "next typegen && tsc --noEmit --incremental false",
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.mts\"",
+    "db:generate": "node scripts/drizzle-kit.cjs generate",
+    "db:check": "node scripts/drizzle-kit.cjs check",
+    "db:migrate": "node scripts/drizzle-kit.cjs migrate",
+    "db:seed": "tsx src/db/seed.ts",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm db:check",
+    "verify": "pnpm check && pnpm build"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

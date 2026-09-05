@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +18,7 @@ interface FinishMeetingDialogProps {
   onOpenChange: (open: boolean) => void;
   onFinish: () => void;
   isRouting: boolean;
+  verificationCount: number;
 }
 
 export function FinishMeetingDialog({
@@ -24,6 +26,7 @@ export function FinishMeetingDialog({
   onOpenChange,
   onFinish,
   isRouting,
+  verificationCount,
 }: FinishMeetingDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
@@ -36,6 +39,15 @@ export function FinishMeetingDialog({
             Data absensi dan notulensi akan diarsipkan secara permanen. Anda
             tidak dapat mengubahnya lagi setelah sesi ini resmi ditutup.
           </AlertDialogDescription>
+          {verificationCount > 0 && (
+            <div className="mt-4 flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+              <p>
+                Ada {verificationCount} item rangkuman yang perlu diverifikasi.
+                Pastikan transkrip dan bukti waktunya sudah diperiksa sebelum mengesahkan notula.
+              </p>
+            </div>
+          )}
         </AlertDialogHeader>
 
         <AlertDialogFooter className="gap-3 mt-6">

@@ -6,35 +6,39 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { z } from "zod";
+import { getJwtSecretKey } from "@/lib/jwt";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 // ==========================================
 // 1. ZOD SCHEMA (Validasi Input)
 // ==========================================
 const loginSchema = z.object({
-  nip: z.string().min(1, "NIP wajib diisi"),
-  password: z.string().min(1, "Kata sandi wajib diisi"),
+  nip: z.string().trim().min(1, "NIP wajib diisi").max(50),
+  password: z.string().min(1, "Kata sandi wajib diisi").max(128),
 });
-
-// ==========================================
-// 2. JWT CONFIGURATION
-// ==========================================
-// PENTING: Dibungkus dalam function agar tidak dieksekusi
-// secara otomatis saat Next.js melakukan "pnpm build".
-const getSecretKey = () => {
-  const secret =
-    process.env.JWT_SECRET || "rahasia-negara-bapenda-sultra-super-aman-2026";
-  return new TextEncoder().encode(secret);
-};
 
 // ==========================================
 // POST: PROSES LOGIN & SET COOKIE
 // ==========================================
 export async function POST(request: Request) {
   try {
-    // Pengecekan dipindah ke DALAM fungsi runtime
-    if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
-      console.warn("WARNING: JWT_SECRET environment variable is missing!");
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength > 10_000) {
+      return NextResponse.json(
+        { success: false, message: "Permintaan terlalu besar" },
+        { status: 413 },
+      );
     }
+
+    const limit = rateLimit(`login:${getClientIp(request)}`, 10, 15 * 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, message: "Terlalu banyak percobaan login. Coba lagi nanti." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+      );
+    }
+
+    const secretKey = getJwtSecretKey();
 
     // 1. Validasi Input Payload
     const body: unknown = await request.json();
@@ -81,23 +85,19 @@ export async function POST(request: Request) {
     const token = await new SignJWT({
       id: user.id,
       role: user.role,
-      nip: user.nip,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime("24h") // Token aktif selama 1 hari
-      .sign(getSecretKey()); // Memanggil function secret key di sini
+      .sign(secretKey);
 
     // 5. Set HTTP-Only Cookie
     const cookieStore = await cookies();
-    const isProd =
-      process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") ?? false;
-
     cookieStore.set("auth_token", token, {
       httpOnly: true,
       path: "/",
       maxAge: 86400, // 24 jam dalam detik
-      secure: isProd,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
     });
 

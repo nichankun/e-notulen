@@ -9,6 +9,7 @@ import { DeleteMeetingButton } from "@/components/delete-meeting-button";
 import { Meeting } from "@/db/database/schema";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Makassar",
   day: "2-digit",
   month: "short",
   year: "numeric",

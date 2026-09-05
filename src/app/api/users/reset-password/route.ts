@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { verifyAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 // ==========================================
 // 1. ZOD SCHEMA (Validasi Ganti Password)
@@ -13,8 +13,12 @@ import { verifyAuthToken } from "@/lib/auth";
 const resetPasswordSchema = z
   .object({
     oldPassword: z.string().min(1, "Password lama wajib diisi"),
-    newPassword: z.string().min(6, "Password baru minimal 6 karakter"),
-    confirmPassword: z.string().optional(),
+    newPassword: z.string().min(6, "Password baru minimal 6 karakter").max(128),
+    confirmPassword: z.string().min(1, "Konfirmasi password wajib diisi").max(128),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password tidak cocok",
+    path: ["confirmPassword"],
   })
   .refine((data) => data.oldPassword !== data.newPassword, {
     message: "Password baru tidak boleh sama dengan password lama",
@@ -25,29 +29,15 @@ const resetPasswordSchema = z
 // 2. HELPER: OTENTIKASI SESI
 // ==========================================
 async function authenticateRequest() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-
-  if (!token) {
+  const user = await getAuthenticatedUser();
+  if (!user) {
     return {
       error: "Sesi Anda telah habis. Silakan login kembali.",
       status: 401,
     };
   }
 
-  const payload = await verifyAuthToken(token);
-
-  if (!payload || !payload.id) {
-    return { error: "Sesi tidak valid atau telah kedaluwarsa.", status: 401 };
-  }
-
-  const userId = String(payload.id);
-
-  if (!userId || userId.trim() === "" || userId === "undefined") {
-    return { error: "Identitas pengguna tidak valid.", status: 401 };
-  }
-
-  return { user: { id: userId } };
+  return { user: { id: user.id } };
 }
 
 // ==========================================
@@ -61,6 +51,18 @@ export async function PATCH(req: Request) {
       return NextResponse.json(
         { success: false, message: auth.error },
         { status: auth.status },
+      );
+    }
+
+    const limit = rateLimit(
+      `reset-password:${auth.user!.id}:${getClientIp(req)}`,
+      5,
+      15 * 60 * 1000,
+    );
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, message: "Terlalu banyak percobaan. Coba lagi nanti." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
       );
     }
 

@@ -66,6 +66,7 @@ const columnLabels: Record<string, string> = {
 };
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Makassar",
   day: "2-digit",
   month: "short",
   year: "numeric",
@@ -151,6 +152,8 @@ export function DataTable<TData, TValue>({
   const [searchValue, setSearchValue] = React.useState("");
   const [isPending, startTransition] = React.useTransition();
 
+  // TanStack Table intentionally returns mutable table APIs that React Compiler cannot memoize.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,

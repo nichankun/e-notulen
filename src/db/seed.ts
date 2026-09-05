@@ -1,40 +1,45 @@
 import { db } from "@/db/index";
 import { users } from "@/db/database/schema";
 import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs"; // Gunakan bcrypt!
+import bcrypt from "bcryptjs";
 
 async function main() {
-  console.log("🌱 Memulai proses seeding...");
-  const targetNip = "199702092025041008"; // Gunakan variabel agar sinkron
+  const targetNip = process.env.SEED_ADMIN_NIP;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  const adminName = process.env.SEED_ADMIN_NAME || "Super Admin IT";
+  const adminAgency = process.env.SEED_ADMIN_AGENCY || null;
 
-  try {
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.nip, targetNip))
-      .limit(1);
-
-    if (existingUser.length > 0) {
-      console.log("⚠️ User Admin sudah ada. Seeding dilewati.");
-      return;
-    }
-
-    // Hash password sebelum masuk ke DB
-    const hashedPassword = await bcrypt.hash("admin123", 10);
-
-    await db.insert(users).values({
-      nip: targetNip,
-      password: hashedPassword,
-      name: "Super Admin IT",
-      role: "admin",
-    });
-
-    console.log("✅ BERHASIL! User admin telah dibuat.");
-  } catch (error) {
-    console.error("❌ Gagal seeding:", error);
-  } finally {
-    process.exit(0);
+  if (!targetNip || !adminPassword || adminPassword.length < 12) {
+    throw new Error(
+      "SEED_ADMIN_NIP and SEED_ADMIN_PASSWORD (minimum 12 characters) are required",
+    );
   }
+
+  console.log("Memulai proses seeding admin...");
+
+  const [existingUser] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.nip, targetNip))
+    .limit(1);
+
+  if (existingUser) {
+    console.log("User admin sudah ada. Seeding dilewati.");
+    return;
+  }
+
+  await db.insert(users).values({
+    nip: targetNip,
+    password: await bcrypt.hash(adminPassword, 12),
+    name: adminName,
+    agency: adminAgency,
+    role: "admin",
+  });
+
+  console.log("User admin berhasil dibuat.");
 }
 
-main();
+main().catch((error: unknown) => {
+  console.error("Gagal seeding:", error);
+  process.exitCode = 1;
+});

@@ -36,13 +36,13 @@ const formSchema = z.object({
   startTime: z
     .string()
     .optional()
-    .refine((val) => !val || /^\d{2}\.\d{2}$/.test(val), {
+    .refine((val) => !val || /^(?:[01]\d|2[0-3])\.[0-5]\d$/.test(val), {
       message: "Format: HH.MM (contoh: 09.00)",
     }),
   endTime: z
     .string()
     .optional()
-    .refine((val) => !val || /^\d{2}\.\d{2}$/.test(val), {
+    .refine((val) => !val || /^(?:[01]\d|2[0-3])\.[0-5]\d$/.test(val), {
       message: "Format: HH.MM (contoh: 11.30)",
     }),
   secretary: z.string().optional(),

@@ -43,6 +43,7 @@ export function MobileHeader({
         {meeting?.date && (
           <p className="text-xs text-muted-foreground mt-0.5">
             {new Date(meeting.date).toLocaleDateString("id-ID", {
+              timeZone: "Asia/Makassar",
               weekday: "short",
               day: "numeric",
               month: "short",

@@ -1,33 +1,47 @@
 // components/dashboard/live/recording-toolbar.tsx
-import { Mic, Square, Sparkles, Loader2, RefreshCcw } from "lucide-react";
+import { Mic, Square, Sparkles, Loader2, RefreshCcw, SlidersHorizontal } from "lucide-react";
 import React from "react";
 
 interface RecordingToolbarProps {
   isListening: boolean;
+  isBusy: boolean;
   isSummarizing: boolean;
+  isMicrophoneTesting: boolean;
   hasTranscript: boolean;
   onToggleRecording: () => void;
   onSummarize: () => void;
   onReset: () => void;
+  onTestMicrophone: () => void;
   canvasRef: React.RefObject<HTMLCanvasElement | null>; // ← tambah
 }
 
 export function RecordingToolbar({
   isListening,
+  isBusy,
   isSummarizing,
+  isMicrophoneTesting,
   hasTranscript,
   onToggleRecording,
   onSummarize,
   onReset,
+  onTestMicrophone,
   canvasRef, // ← tambah
 }: RecordingToolbarProps) {
   return (
     <div className="flex flex-col border-b">
       {/* Top label row */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-medium text-foreground">
-          Live Transcription
-        </span>
+        <span className="text-sm font-medium text-foreground">Live Transcription</span>
+        <button
+          type="button"
+          onClick={onTestMicrophone}
+          disabled={isListening || isBusy || isMicrophoneTesting}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          title="Tes kualitas mikrofon"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          {isMicrophoneTesting ? "Mengukur..." : "Tes mic"}
+        </button>
         {/* Recording indicator dot */}
         {isListening && (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -62,7 +76,7 @@ export function RecordingToolbar({
         <div className="flex flex-col items-center gap-1.5">
           <button
             onClick={onReset}
-            disabled={!hasTranscript}
+            disabled={!hasTranscript || isListening || isBusy}
             className="w-12 h-12 rounded-full bg-muted flex items-center justify-center
                        disabled:opacity-30 hover:bg-muted/80 transition-colors active:scale-95"
             title="Hapus semua"
@@ -76,6 +90,7 @@ export function RecordingToolbar({
         <div className="flex flex-col items-center gap-1.5">
           <button
             onClick={onToggleRecording}
+            disabled={isBusy}
             className="w-14 h-14 rounded-full flex items-center justify-center
                        transition-all active:scale-95 bg-red-500 hover:bg-red-600"
           >
@@ -86,7 +101,7 @@ export function RecordingToolbar({
             )}
           </button>
           <span className="text-[11px] text-muted-foreground">
-            {isListening ? "Stop" : "Rekam"}
+            {isBusy ? (isListening ? "Memproses" : "Menyiapkan") : isListening ? "Stop" : "Rekam"}
           </span>
         </div>
 

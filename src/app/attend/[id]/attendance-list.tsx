@@ -61,6 +61,7 @@ export function AttendanceList({ attendees }: { attendees: Attendee[] }) {
                 <p className="text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                   {person.scannedAt
                     ? new Date(person.scannedAt).toLocaleTimeString("id-ID", {
+                        timeZone: "Asia/Makassar",
                         hour: "2-digit",
                         minute: "2-digit",
                       })

@@ -1,10 +1,6 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
 
-import { db } from "@/db";
-import { users } from "@/db/database/schema";
-import { verifyAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { Header } from "@/components/dashboard/header";
@@ -20,35 +16,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const authToken = cookieStore.get("auth_token")?.value;
-
-  if (!authToken) redirect("/");
-
-  const payload = await verifyAuthToken(authToken);
-  if (!payload?.id) redirect("/");
-
-  const userId = String(payload.id);
-  if (!userId || userId === "undefined") redirect("/");
-
-  const [currentUser] = await db
-    .select({
-      name: users.name,
-      nip: users.nip,
-      role: users.role,
-      agency: users.agency,
-    })
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
+  const currentUser = await getAuthenticatedUser();
   if (!currentUser) redirect("/");
 
   // Data User lengkap untuk dipassing ke Sidebar & Mobile Nav
   const userData = {
     name: currentUser.name,
     nip: currentUser.nip,
-    role: currentUser.role ?? "pegawai",
+    role: currentUser.role,
     agency: currentUser.agency ?? "BAPENDA PROV. SULTRA",
   };
 

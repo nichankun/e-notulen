@@ -7,17 +7,37 @@ import { AttendanceList } from "./attendance-list";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
-export function AttendanceClient({ id }: { id: string }) {
+export function AttendanceClient({ id, token }: { id: string; token: string }) {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(token));
+  const [sessionClosed, setSessionClosed] = useState(!token);
+  const [deviceId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const storageKey = "e-notulen-device-id";
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing) return existing;
+    const generated =
+      typeof window.crypto?.randomUUID === "function"
+        ? window.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    window.localStorage.setItem(storageKey, generated);
+    return generated;
+  });
+
+  const attendeesUrl = token
+    ? `/api/meetings/${id}/attendees?token=${encodeURIComponent(token)}`
+    : `/api/meetings/${id}/attendees`;
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || sessionClosed) {
+      return;
+    }
     const fetchAttendees = async () => {
       try {
-        const res = await fetch(`/api/meetings/${id}/attendees`);
-        if (res.status === 403) {
+        const res = await fetch(attendeesUrl);
+        if (res.status === 401 || res.status === 403) {
+          setSessionClosed(true);
           toast.error("Sesi Rapat telah ditutup.");
           return;
         }
@@ -34,7 +54,7 @@ export function AttendanceClient({ id }: { id: string }) {
     fetchAttendees();
     const interval = setInterval(fetchAttendees, 5000);
     return () => clearInterval(interval);
-  }, [id]);
+  }, [attendeesUrl, id, sessionClosed]);
 
   if (loading) {
     return (
@@ -71,6 +91,19 @@ export function AttendanceClient({ id }: { id: string }) {
     );
   }
 
+  if (sessionClosed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="max-w-sm w-full text-center space-y-3">
+          <h2 className="text-xl font-bold text-foreground">Sesi Presensi Ditutup</h2>
+          <p className="text-sm text-muted-foreground">
+            Gunakan QR Code terbaru dari operator rapat untuk melakukan presensi.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -91,15 +124,7 @@ export function AttendanceClient({ id }: { id: string }) {
             <AttendanceForm
               onSubmit={async (values) => {
                 try {
-                  let deviceId = localStorage.getItem("bapenda_device_id");
-                  if (!deviceId) {
-                    deviceId = crypto.randomUUID
-                      ? crypto.randomUUID()
-                      : `device-${Date.now()}-${Math.random().toString(36).substring(2)}`;
-                    localStorage.setItem("bapenda_device_id", deviceId);
-                  }
-
-                  const res = await fetch(`/api/meetings/${id}/attendees`, {
+                  const res = await fetch(attendeesUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ ...values, deviceId }),

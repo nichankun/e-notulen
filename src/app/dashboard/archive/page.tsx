@@ -1,9 +1,8 @@
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { desc, eq } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { columns } from "./columns";
 import { DataTable } from "./data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,17 +19,11 @@ async function fetchMeetings(role: string, userId: string): Promise<Meeting[]> {
 }
 
 export default async function ArchivePage() {
-  const cookieStore = await cookies();
-  const authToken = cookieStore.get("auth_token")?.value;
-  if (!authToken) redirect("/");
+  const user = await getAuthenticatedUser();
+  if (!user) redirect("/");
 
-  const payload = await verifyAuthToken(authToken);
-  if (!payload?.id) redirect("/");
-
-  const userId = String(payload.id);
-  if (!userId || userId === "undefined") redirect("/");
-
-  const role = (payload.role as string) || "pegawai";
+  const userId = user.id;
+  const role = user.role;
 
   let allMeetings: Meeting[] = [];
   let fetchError = false;

@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ success: false, message: "Sesi tidak valid" }, { status: 401 });
+    }
+
     // Hanya ambil 'error' agar TypeScript/ESLint tidak protes
     const { error } = await supabase.storage.getBucket("notulen");
 

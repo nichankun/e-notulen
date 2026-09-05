@@ -4,6 +4,8 @@ import { CreateUserDialog } from "./create-user-dialog";
 import { db } from "@/db";
 import { users } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
+import { redirect } from "next/navigation";
+import { getAuthenticatedUser } from "@/lib/auth";
 
 async function getUsers(): Promise<User[]> {
   const data = await db
@@ -27,6 +29,10 @@ async function getUsers(): Promise<User[]> {
 }
 
 export default async function UsersPage() {
+  const currentUser = await getAuthenticatedUser();
+  if (!currentUser) redirect("/");
+  if (currentUser.role !== "admin") redirect("/dashboard");
+
   const data = await getUsers();
 
   return (

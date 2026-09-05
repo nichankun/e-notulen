@@ -8,6 +8,7 @@ interface MeetingHeaderProps {
 }
 
 const headerDateFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Makassar",
   weekday: "short",
   day: "numeric",
   month: "short",

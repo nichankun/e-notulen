@@ -2,9 +2,8 @@ import Link from "next/link";
 import { db } from "@/db";
 import { meetings } from "@/db/database/schema";
 import { count, eq, and, avg } from "drizzle-orm";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { verifyAuthToken } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 import {
   CalendarCheck,
   Users,
@@ -27,6 +26,7 @@ interface StatCardProps {
 }
 
 const monthFormatter = new Intl.DateTimeFormat("id-ID", {
+  timeZone: "Asia/Makassar",
   month: "long",
   year: "numeric",
 });
@@ -55,17 +55,11 @@ async function fetchStats(userId: string, role: string) {
 }
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies();
-  const authToken = cookieStore.get("auth_token")?.value;
-  if (!authToken) redirect("/");
+  const user = await getAuthenticatedUser();
+  if (!user) redirect("/");
 
-  const payload = await verifyAuthToken(authToken);
-  if (!payload?.id) redirect("/");
-
-  const userId = String(payload.id);
-  if (!userId || userId === "undefined") redirect("/");
-
-  const role = (payload.role as string) || "pegawai";
+  const userId = user.id;
+  const role = user.role;
 
   let stats = { total: 0, pending: 0, avgAttendance: 0 };
   let fetchError = false;

@@ -2,6 +2,7 @@ import { Text, View, Image as PdfImage } from "@react-pdf/renderer";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import { styles } from "./pdf-styles";
 import { parseHtmlContent } from "./pdf-html-parser";
+import { summaryToHtml } from "@/lib/meeting-summary";
 
 // ==========================================
 // 1. KOP SURAT
@@ -77,6 +78,7 @@ function Divider() {
 
 export function PdfMeetingInfo({ meetingData }: { meetingData: Meeting }) {
   const dateStr = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Makassar",
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -116,7 +118,7 @@ export function PdfMeetingInfo({ meetingData }: { meetingData: Meeting }) {
       <InfoRow label="Waktu Sidang/Rapat" value={waktu} />
       <InfoRowMulti
         label="Acara"
-        items={[`1. Pembahasan ${meetingData.title}`, "2. Dan seterusnya."]}
+        items={[meetingData.title || BLANK]}
       />
 
       <Divider />
@@ -134,7 +136,7 @@ export function PdfMeetingInfo({ meetingData }: { meetingData: Meeting }) {
       {/* Seksi 3: Peserta */}
       <InfoRowMulti
         label="Peserta sidang/rapat"
-        items={["1. (Terlampir pada daftar hadir)", "2. Dan seterusnya."]}
+        items={["(Terlampir pada daftar hadir)"]}
       />
     </View>
   );
@@ -150,19 +152,20 @@ export function PdfRisalah({
   content: string;
   meetingData: Meeting;
 }) {
+  const printableContent = meetingData.summaryData
+    ? summaryToHtml(meetingData.summaryData)
+    : content;
+
   return (
     <View>
       <View style={styles.infoRow}>
         <Text style={styles.infoLabel}>Kegiatan Sidang/Rapat</Text>
         <Text style={styles.infoColon}>:</Text>
         <View style={styles.infoValue}>
-          {content && content.trim() !== "" ? (
-            parseHtmlContent(content)
+          {printableContent && printableContent.trim() !== "" ? (
+            parseHtmlContent(printableContent)
           ) : (
-            <Text>
-              (Disesuaikan dengan kondisi kegiatan
-              sidang/rapat)............................................
-            </Text>
+            <Text>{BLANK}</Text>
           )}
         </View>
       </View>
@@ -212,10 +215,13 @@ export function PdfAttendanceTable({ attendees }: { attendees: Attendee[] }) {
           <View style={[styles.tableColHeader, { width: "10%" }]}>
             <Text style={styles.tableCellHeader}>No</Text>
           </View>
-          <View style={[styles.tableColHeader, { width: "60%" }]}>
+          <View style={[styles.tableColHeader, { width: "50%" }]}>
             <Text style={styles.tableCellHeader}>Nama / Jabatan</Text>
           </View>
-          <View style={[styles.tableColHeader, { width: "30%" }]}>
+          <View style={[styles.tableColHeader, { width: "20%" }]}>
+            <Text style={styles.tableCellHeader}>Peran</Text>
+          </View>
+          <View style={[styles.tableColHeader, { width: "20%" }]}>
             <Text style={styles.tableCellHeader}>Tanda Tangan</Text>
           </View>
         </View>
@@ -227,7 +233,7 @@ export function PdfAttendanceTable({ attendees }: { attendees: Attendee[] }) {
             >
               <Text style={styles.tableCell}>{idx + 1}</Text>
             </View>
-            <View style={[styles.tableCol, { width: "60%" }]}>
+            <View style={[styles.tableCol, { width: "50%" }]}>
               <Text style={styles.tableCell}>{person.name}</Text>
               {person.department && person.department !== "-" && (
                 <Text
@@ -237,11 +243,14 @@ export function PdfAttendanceTable({ attendees }: { attendees: Attendee[] }) {
                 </Text>
               )}
             </View>
+            <View style={[styles.tableCol, { width: "20%" }]}>
+              <Text style={styles.tableCell}>{person.role || "peserta"}</Text>
+            </View>
             <View
               style={[
                 styles.tableCol,
                 {
-                  width: "30%",
+                  width: "20%",
                   alignItems: "center",
                   justifyContent: "center",
                 },
