@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { attendees, meetings } from "@/db/database/schema";
 import { getAuthenticatedUser } from "@/lib/auth";
+import { isFinalizedMeetingStatus } from "@/lib/meeting-status";
 import {
   createAttendeeSessionToken,
   verifyAttendeeSessionToken,
@@ -100,8 +101,10 @@ export async function GET(
     }
 
     if (
-      access.meeting.status !== "live" &&
-      (access.kind === "public" || access.meeting.status !== "archived")
+      access.kind === "public"
+        ? access.meeting.status !== "live"
+        : access.meeting.status !== "live" &&
+          !isFinalizedMeetingStatus(access.meeting.status)
     ) {
       return NextResponse.json(
         { success: false, message: "Akses rapat ditutup" },

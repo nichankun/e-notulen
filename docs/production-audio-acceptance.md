@@ -34,4 +34,29 @@ Dokumen ini adalah checklist wajib sebelum fitur live transcription dipakai seba
 - Semua item dengan keyakinan rendah atau informasi ambigu ditandai **Perlu verifikasi**.
 - Petugas memeriksa transkrip dan rangkuman sebelum rapat diarsipkan atau dibagikan.
 
-Catat tanggal, browser, perangkat mikrofon, durasi, gangguan jaringan, serta temuan koreksi untuk setiap skenario.
+## Catatan pelaksanaan
+
+> Isi satu catatan untuk setiap sesi. Pilih status **Belum diuji**, **Lulus**, atau **Gagal** dan lampirkan bukti/temuan aktual. Jangan menyimpulkan skenario lulus hanya dari pemeriksaan kode.
+
+### Metadata sesi
+
+| Tanggal dan waktu | Lingkungan/URL | Browser dan versi | OS/perangkat | Mikrofon | Penguji |
+| --- | --- | --- | --- | --- | --- |
+| Belum dijalankan | Belum ditentukan | Belum ditentukan | Belum ditentukan | Belum ditentukan | Belum ditentukan |
+
+### Hasil skenario
+
+| No. | Status | Durasi aktual | Gangguan jaringan | Temuan, koreksi, dan bukti |
+| --- | --- | --- | --- | --- |
+| 1 | Belum diuji | — | — | — |
+| 2 | Belum diuji | — | — | — |
+| 3 | Belum diuji | — | — | — |
+| 4 | Belum diuji | — | — | — |
+| 5 | Belum diuji | — | — | — |
+| 6 | Belum diuji | — | — | — |
+| 7 | Belum diuji | — | — | — |
+| 8 | Belum diuji | — | — | — |
+| 9 | Belum diuji | — | — | — |
+| 10 | Belum diuji | — | — | — |
+
+Untuk skenario 10, catat timestamp atau kutipan transkrip yang mendukung setiap keputusan dan tindak lanjut, serta item yang harus dikoreksi/diverifikasi. Gunakan data rapat uji yang memang boleh diproses oleh layanan transkripsi.

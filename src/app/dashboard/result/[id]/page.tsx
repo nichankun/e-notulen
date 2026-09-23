@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ResultStats } from "./result-stats";
 import { PdfSection } from "./pdf-section";
+import { isFinalizedMeetingStatus } from "@/lib/meeting-status";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -25,7 +26,7 @@ async function getMeetingData(id: string, userId: string, role: string) {
   ]);
 
   const meetingData = meetingResult[0];
-  if (!meetingData || meetingData.status !== "archived") notFound();
+  if (!meetingData || !isFinalizedMeetingStatus(meetingData.status)) notFound();
 
   const attendeeList = await db
     .select()

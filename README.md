@@ -47,7 +47,7 @@ sebelum rapat disahkan. Checklist sepuluh skenario tersedia di
 
 ### Prasyarat
 
-- Node.js >= 20.9
+- Node.js >= 22.6.0
 - pnpm >= 9
 - Akun [Supabase](https://supabase.com) (untuk database PostgreSQL)
 
@@ -67,7 +67,7 @@ pnpm install
 ### 3. Setup environment variables
 
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
 Isi file `.env` dengan nilai yang sesuai (lihat bagian [Environment Variables](#-environment-variables)).
@@ -75,14 +75,15 @@ Isi file `.env` dengan nilai yang sesuai (lihat bagian [Environment Variables](#
 ### 4. Jalankan migrasi database
 
 ```bash
-pnpm dlx drizzle-kit generate
-pnpm dlx drizzle-kit migrate
+pnpm db:check
+pnpm db:migrate
 ```
 
-Jika database sudah berisi data, selalu periksa migration yang dihasilkan
-sebelum menjalankannya. Schema saat ini mencegah penghapusan user yang masih
-memiliki rapat (`user_id` memakai `RESTRICT`), sehingga migration perubahan
-foreign key tersebut harus diterapkan ke database yang sudah berjalan.
+`pnpm db:migrate` menerapkan migration yang sudah tersedia ke database pada
+`DATABASE_URL`. Jika Anda mengubah schema, buat migration dengan
+`pnpm db:generate`, periksa file SQL yang dihasilkan, lalu terapkan dengan
+`pnpm db:migrate`. Selalu periksa dampak migration sebelum menerapkannya ke
+database yang sudah berisi data.
 
 Buat bucket Storage Supabase bernama `notulen` dan nonaktifkan izin upload
 anonim. Upload dan penghapusan foto sekarang dilakukan server menggunakan
@@ -103,13 +104,13 @@ pnpm db:seed
 pnpm dev
 ```
 
-Buka [http://localhost:3000](http://localhost:3000) di browser.
+Buka [http://localhost:3001](http://localhost:3001) di browser.
 
 ---
 
 ## 🔑 Environment Variables
 
-Buat file `.env` berdasarkan `.env.example`:
+Buat file `.env` berdasarkan `env.example`:
 
 ```env
 # Database
@@ -124,7 +125,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 JWT_SECRET=your-secret-key-min-32-chars
 
 # App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3001
 
 # Integrasi server-side
 GEMINI_API_KEY=...

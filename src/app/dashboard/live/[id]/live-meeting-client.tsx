@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { type Meeting, type Attendee } from "@/db/database/schema";
 import type { MeetingSummary } from "@/lib/meeting-summary";
+import { isFinalizedMeetingStatus } from "@/lib/meeting-status";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
 
@@ -72,6 +73,10 @@ export function LiveMeetingClient({ id }: { id: string }) {
         }
 
         const d = json.data;
+        if (isFinalizedMeetingStatus(d.status)) {
+          router.replace(`/dashboard/result/${id}`);
+          return;
+        }
         setMeetingData(d);
         setNotulen(d.content || "");
         if (d.transcript) setInitialTranscript(d.transcript);

@@ -7,6 +7,7 @@ import { Eye, Clock, CheckCircle2, FileEdit } from "lucide-react";
 import Link from "next/link";
 import { DeleteMeetingButton } from "@/components/delete-meeting-button";
 import { Meeting } from "@/db/database/schema";
+import { isFinalizedMeetingStatus } from "@/lib/meeting-status";
 
 const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Makassar",
@@ -24,6 +25,13 @@ const STATUS_CONFIG = {
     iconClass: "animate-pulse",
   },
   archived: {
+    label: "Selesai",
+    icon: CheckCircle2,
+    className:
+      "text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-900 dark:text-emerald-400 gap-1.5 px-2 text-[10px]",
+    iconClass: "",
+  },
+  completed: {
     label: "Selesai",
     icon: CheckCircle2,
     className:
@@ -105,7 +113,7 @@ export const columns: ColumnDef<Meeting>[] = [
     cell: ({ row }) => {
       const item = row.original;
       const destination =
-        item.status === "archived"
+        isFinalizedMeetingStatus(item.status)
           ? `/dashboard/result/${item.id}`
           : `/dashboard/live/${item.id}`;
       return (

@@ -6,6 +6,10 @@ import { getAuthenticatedUser } from "@/lib/auth";
 import { getSupabaseAdmin } from "@/lib/supabaseServer";
 import { sanitizeSummaryHtml } from "@/lib/sanitize-html";
 import { meetingSummarySchema } from "@/lib/meeting-summary-schema";
+import {
+  canTransitionMeetingStatus,
+  isFinalizedMeetingStatus,
+} from "@/lib/meeting-status";
 import { z } from "zod";
 
 // ==========================================
@@ -13,7 +17,7 @@ import { z } from "zod";
 // ==========================================
 const updateMeetingSchema = z.object({
   content: z.string().max(200_000).optional(),
-  status: z.enum(["draft", "live", "archived"]).optional(),
+  status: z.enum(["draft", "live", "archived", "completed"]).optional(),
   transcript: z.string().max(200_000).optional(),
   summaryHtml: z.string().max(50_000).optional(),
   summaryData: meetingSummarySchema.nullable().optional(),
@@ -147,7 +151,7 @@ export async function PATCH(
       );
     }
 
-    if (currentMeeting.status === "archived" || currentMeeting.status === "completed") {
+    if (isFinalizedMeetingStatus(currentMeeting.status)) {
       return NextResponse.json(
         { success: false, message: "Rapat yang sudah diarsipkan tidak dapat diubah." },
         { status: 409 },
@@ -156,12 +160,7 @@ export async function PATCH(
 
     if (
       status !== undefined &&
-      status !== currentMeeting.status &&
-      !(
-        (currentMeeting.status === "draft" &&
-          (status === "live" || status === "archived")) ||
-        (currentMeeting.status === "live" && status === "archived")
-      )
+      !canTransitionMeetingStatus(currentMeeting.status, status)
     ) {
       return NextResponse.json(
         { success: false, message: "Perubahan status rapat tidak diizinkan." },

@@ -7,6 +7,7 @@ import { columns } from "./columns";
 import { DataTable } from "./data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Clock, FileEdit } from "lucide-react";
+import { isFinalizedMeetingStatus } from "@/lib/meeting-status";
 
 type Meeting = typeof meetings.$inferSelect;
 
@@ -44,7 +45,7 @@ export default async function ArchivePage() {
     );
   }
 
-  const done = allMeetings.filter((m) => m.status === "archived");
+  const done = allMeetings.filter((m) => isFinalizedMeetingStatus(m.status));
   const live = allMeetings.filter((m) => m.status === "live");
   const draft = allMeetings.filter((m) => m.status === "draft");
   const ongoing = [...live, ...draft];

@@ -50,6 +50,7 @@ import Link from "next/link";
 import { Meeting } from "@/db/database/schema";
 import { StatusBadge } from "./columns";
 import { DeleteMeetingButton } from "@/components/delete-meeting-button";
+import { isFinalizedMeetingStatus } from "@/lib/meeting-status";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -76,7 +77,7 @@ const PAGE_SIZES = [5, 10, 20, 50];
 
 function MobileCard({ item }: { item: Meeting }) {
   const destination =
-    item.status === "archived"
+    isFinalizedMeetingStatus(item.status)
       ? `/dashboard/result/${item.id}`
       : `/dashboard/live/${item.id}`;
 
