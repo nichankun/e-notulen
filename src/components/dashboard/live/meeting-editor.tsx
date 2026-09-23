@@ -94,7 +94,7 @@ export function MeetingEditor({
   );
 
   const handleInterim = useCallback((text: string) => {
-    setInterimTranscript(text);
+    setInterimTranscript((current) => (current === text ? current : text));
   }, []);
 
   const { start, stop, canvasRef } = useSpeechRecognition({

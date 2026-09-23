@@ -12,9 +12,65 @@ interface UseSpeechRecognitionProps {
   releaseWakeLock: () => void;
 }
 
-const MAX_AUDIO_BUFFER_BYTES = 1_000_000;
-const MAX_SOCKET_BUFFERED_BYTES = 512_000;
+// 256 KB PCM 16 kHz mono is roughly eight seconds. Keeping this bounded avoids
+// replaying stale speech after a poor connection recovers.
+const MAX_AUDIO_BUFFER_BYTES = 256_000;
+const MAX_SOCKET_BUFFERED_BYTES = 64_000;
 const MAX_RECONNECT_ATTEMPTS = 5;
+const AUDIO_DRAIN_INTERVAL_MS = 50;
+
+interface DeepgramWord {
+  word?: string;
+  punctuated_word?: string;
+  speaker?: number;
+}
+
+interface DeepgramAlternative {
+  transcript?: string;
+  words?: DeepgramWord[];
+}
+
+interface DeepgramResultsMessage {
+  type?: string;
+  is_final?: boolean;
+  channel?: {
+    alternatives?: DeepgramAlternative[];
+  };
+}
+
+interface SpeakerSegment {
+  speaker: number | null;
+  text: string;
+}
+
+function getSpeakerSegments(alternative: DeepgramAlternative): SpeakerSegment[] {
+  const words = alternative.words ?? [];
+  const segments: SpeakerSegment[] = [];
+
+  for (const word of words) {
+    const text = (word.punctuated_word || word.word || "").trim();
+    if (!text) continue;
+
+    const speaker = Number.isInteger(word.speaker) ? word.speaker! : null;
+    const previous = segments[segments.length - 1];
+    if (previous && previous.speaker === speaker) {
+      previous.text += ` ${text}`;
+    } else {
+      segments.push({ speaker, text });
+    }
+  }
+
+  if (segments.length > 0) return segments;
+
+  const fallback = alternative.transcript?.trim();
+  return fallback ? [{ speaker: null, text: fallback }] : [];
+}
+
+function formatSpeakerSegment(segment: SpeakerSegment): string {
+  return segment.speaker === null
+    ? segment.text
+    : `Pembicara ${segment.speaker + 1}: ${segment.text}`;
+}
 
 export function useSpeechRecognition({
   onTranscript,
@@ -42,6 +98,7 @@ export function useSpeechRecognition({
   const startTimeRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const keepAliveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioDrainTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onTranscriptRef = useRef(onTranscript);
@@ -80,6 +137,10 @@ export function useSpeechRecognition({
     if (keepAliveTimerRef.current) {
       clearInterval(keepAliveTimerRef.current);
       keepAliveTimerRef.current = null;
+    }
+    if (audioDrainTimerRef.current) {
+      clearInterval(audioDrainTimerRef.current);
+      audioDrainTimerRef.current = null;
     }
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
@@ -216,7 +277,7 @@ export function useSpeechRecognition({
 
       const targetSampleRate = Math.min(16000, audioCtx.sampleRate);
       const workletNode = new AudioWorkletNode(audioCtx, "pcm-processor", {
-        processorOptions: { targetSampleRate, chunkMs: 40 },
+        processorOptions: { targetSampleRate, chunkMs: 20 },
       });
       const silentOutput = audioCtx.createGain();
       silentOutput.gain.value = 0;
@@ -247,11 +308,15 @@ export function useSpeechRecognition({
         interim_results: "true",
         punctuate: "true",
         smart_format: "true",
-        endpointing: "400",
+        // Fast enough for captions while still tolerating short natural pauses.
+        endpointing: "150",
+        // Do not wait for Smart Format to infer a longer phrase before returning
+        // the finalized text. Interim results remain the lowest-latency preview.
+        no_delay: "true",
         utterance_end_ms: "1000",
         filler_words: "false",
         vad_events: "true",
-        diarize: "true",
+        diarize_model: "latest",
       });
       ["BAPENDA", "APBD", "Sulawesi Tenggara"].forEach((term) =>
         params.append("keyterm", term),
@@ -291,6 +356,14 @@ export function useSpeechRecognition({
       };
 
       const sendAudio = (socket: WebSocket, data: ArrayBuffer) => {
+        // Preserve chronological order: when a short queue exists, put the new
+        // chunk behind it and drain from the oldest audio first.
+        if (audioQueueRef.current.length > 0) {
+          queueAudio(data);
+          flushAudio(socket);
+          return;
+        }
+
         if (
           socket.readyState !== WebSocket.OPEN ||
           socket.bufferedAmount >= MAX_SOCKET_BUFFERED_BYTES
@@ -387,6 +460,15 @@ export function useSpeechRecognition({
             reconnectAttemptRef.current = 0;
             flushAudio(socket);
 
+            if (audioDrainTimerRef.current) {
+              clearInterval(audioDrainTimerRef.current);
+            }
+            audioDrainTimerRef.current = setInterval(() => {
+              if (wsRef.current === socket && socket.readyState === WebSocket.OPEN) {
+                flushAudio(socket);
+              }
+            }, AUDIO_DRAIN_INTERVAL_MS);
+
             if (keepAliveTimerRef.current) {
               clearInterval(keepAliveTimerRef.current);
             }
@@ -400,27 +482,30 @@ export function useSpeechRecognition({
           socket.onmessage = (event) => {
             if (!isMountedRef.current) return;
             try {
-              const data = JSON.parse(event.data as string);
+              if (typeof event.data !== "string") return;
+              const data = JSON.parse(event.data) as DeepgramResultsMessage;
               if (data.type === "Results") {
                 const alt = data.channel?.alternatives?.[0];
-                const transcript = alt?.transcript ?? "";
-                if (!transcript) return;
+                if (!alt?.transcript?.trim()) return;
+
+                const speakerSegments = getSpeakerSegments(alt);
+                if (speakerSegments.length === 0) return;
 
                 if (data.is_final) {
-                  const firstWord = alt?.words?.find(
-                    (word: { speaker?: unknown }) =>
-                      typeof word.speaker === "number",
-                  );
-                  const speakerLabel =
-                    typeof firstWord?.speaker === "number"
-                      ? `Pembicara ${firstWord.speaker + 1}: `
-                      : "";
+                  const timestamp = getTimestamp();
                   onTranscriptRef.current(
-                    `${getTimestamp()} ${speakerLabel}${transcript}\n`,
+                    speakerSegments
+                      .map(
+                        (segment) =>
+                          `${timestamp} ${formatSpeakerSegment(segment)}\n`,
+                      )
+                      .join(""),
                   );
                   onInterimRef.current?.("");
                 } else {
-                  onInterimRef.current?.(transcript);
+                  onInterimRef.current?.(
+                    speakerSegments.map(formatSpeakerSegment).join(" "),
+                  );
                 }
               }
 
@@ -449,6 +534,10 @@ export function useSpeechRecognition({
             if (keepAliveTimerRef.current) {
               clearInterval(keepAliveTimerRef.current);
               keepAliveTimerRef.current = null;
+            }
+            if (audioDrainTimerRef.current) {
+              clearInterval(audioDrainTimerRef.current);
+              audioDrainTimerRef.current = null;
             }
 
             console.warn(

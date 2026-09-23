@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { sanitizeSummaryHtml } from "@/lib/sanitize-html";
 import type { MeetingSummary } from "@/lib/meeting-summary";
 import { StructuredSummary } from "./structured-summary";
@@ -46,6 +46,40 @@ function parseSegments(raw: string): TranscriptSegment[] {
   return segments.filter((s) => s.text.trim());
 }
 
+const TranscriptSegmentList = memo(function TranscriptSegmentList({
+  segments,
+  isListening,
+}: {
+  segments: TranscriptSegment[];
+  isListening: boolean;
+}) {
+  return (
+    <>
+      {segments.map((seg, index) => (
+        <div
+          key={`${seg.timestamp}-${index}`}
+          className="[content-visibility:auto] [contain-intrinsic-size:auto_40px]"
+        >
+          {seg.timestamp && (
+            <p className="text-[11px] text-muted-foreground/60 tabular-nums mb-0.5">
+              {seg.timestamp}
+            </p>
+          )}
+          <p
+            className={`text-sm leading-snug whitespace-pre-wrap ${
+              index === segments.length - 1 && isListening
+                ? "text-muted-foreground"
+                : "text-foreground"
+            }`}
+          >
+            {seg.text}
+          </p>
+        </div>
+      ))}
+    </>
+  );
+});
+
 export function EditorCanvas({
   activeTab,
   rawTranscript,
@@ -57,16 +91,33 @@ export function EditorCanvas({
   onTabChange,
 }: EditorCanvasProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const segments = parseSegments(rawTranscript);
-  const hasTimestamps = segments.some((s) => s.timestamp);
+  const scrollFrameRef = useRef<number | null>(null);
+  const segments = useMemo(() => parseSegments(rawTranscript), [rawTranscript]);
+  const hasTimestamps = useMemo(
+    () => segments.some((segment) => segment.timestamp),
+    [segments],
+  );
   const safeSummaryHtml = sanitizeSummaryHtml(summaryHtml);
   const hasSummary = Boolean(summaryData || safeSummaryHtml);
 
   // Auto-scroll juga saat interim berubah
   useEffect(() => {
-    if (isListening) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!isListening) return;
+
+    if (scrollFrameRef.current !== null) {
+      cancelAnimationFrame(scrollFrameRef.current);
     }
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+      scrollFrameRef.current = null;
+    });
+
+    return () => {
+      if (scrollFrameRef.current !== null) {
+        cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+    };
   }, [rawTranscript, interimTranscript, isListening]);
 
   return (
@@ -101,24 +152,10 @@ export function EditorCanvas({
           {rawTranscript || interimTranscript ? (
             hasTimestamps ? (
               <div className="space-y-3">
-                {segments.map((seg, i) => (
-                  <div key={i}>
-                    {seg.timestamp && (
-                      <p className="text-[11px] text-muted-foreground/60 tabular-nums mb-0.5">
-                        {seg.timestamp}
-                      </p>
-                    )}
-                    <p
-                      className={`text-sm leading-snug whitespace-pre-wrap ${
-                        i === segments.length - 1 && isListening
-                          ? "text-muted-foreground"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {seg.text}
-                    </p>
-                  </div>
-                ))}
+                <TranscriptSegmentList
+                  segments={segments}
+                  isListening={isListening}
+                />
 
                 {/* Interim: teks sementara yang sedang diproses Deepgram */}
                 {interimTranscript && (
