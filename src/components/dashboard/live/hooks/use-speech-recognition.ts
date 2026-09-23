@@ -308,8 +308,8 @@ export function useSpeechRecognition({
         interim_results: "true",
         punctuate: "true",
         smart_format: "true",
-        // Fast enough for captions while still tolerating short natural pauses.
-        endpointing: "150",
+        // Give conversational speech a short pause window before finalizing.
+        endpointing: "300",
         // Do not wait for Smart Format to infer a longer phrase before returning
         // the finalized text. Interim results remain the lowest-latency preview.
         no_delay: "true",

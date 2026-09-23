@@ -59,4 +59,14 @@ Dokumen ini adalah checklist wajib sebelum fitur live transcription dipakai seba
 | 9 | Belum diuji | — | — | — |
 | 10 | Belum diuji | — | — | — |
 
+### Temuan awal dari uji lokal
+
+Temuan berikut berasal dari eksplorasi di `localhost`, bukan sesi penerimaan produksi. Skenario formal tetap **Belum diuji** sampai metadata dan hasil akhir tiap skenario dicatat.
+
+| Tanggal | Lingkungan/browser | Mikrofon/jarak/durasi | Observasi |
+| --- | --- | --- | --- |
+| 23 September 2026 | `localhost:3001`, Chrome di Windows | Belum diketahui | Pengguna melaporkan suara pelan/jauh dan pembicara lain tidak selalu terdeteksi; tampilan hanya memberi label Pembicara 1. Dalam percobaan sebelumnya, “bisa” sempat tampil sebagai “rumah” pada teks sementara. Belum dikonfirmasi apakah teks final juga salah. |
+
+Tindak lanjut: ulangi suara pelan dan jauh dengan mencatat model mikrofon, jarak aktual, jumlah pembicara, serta apakah mereka berbicara bersamaan. Bandingkan label dan kata setelah transkrip difinalkan.
+
 Untuk skenario 10, catat timestamp atau kutipan transkrip yang mendukung setiap keputusan dan tindak lanjut, serta item yang harus dikoreksi/diverifikasi. Gunakan data rapat uji yang memang boleh diproses oleh layanan transkripsi.

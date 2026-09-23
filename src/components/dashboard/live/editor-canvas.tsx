@@ -159,9 +159,14 @@ export function EditorCanvas({
 
                 {/* Interim: teks sementara yang sedang diproses Deepgram */}
                 {interimTranscript && (
-                  <p className="text-sm leading-snug text-muted-foreground/50 italic">
-                    {interimTranscript}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-muted-foreground/60">
+                      Sementara · bisa berubah
+                    </p>
+                    <p className="text-sm leading-snug text-muted-foreground/70 italic">
+                      {interimTranscript}
+                    </p>
+                  </div>
                 )}
 
                 {/* Dot animasi hanya tampil saat listening tapi tidak ada interim */}
@@ -187,9 +192,14 @@ export function EditorCanvas({
                   }`}
                 />
                 {interimTranscript && (
-                  <p className="shrink-0 pb-48 lg:pb-6 text-sm leading-snug text-muted-foreground/50 italic">
-                    {interimTranscript}
-                  </p>
+                  <div className="shrink-0 pb-48 lg:pb-6 space-y-1">
+                    <p className="text-[10px] text-muted-foreground/60">
+                      Sementara · bisa berubah
+                    </p>
+                    <p className="text-sm leading-snug text-muted-foreground/70 italic">
+                      {interimTranscript}
+                    </p>
+                  </div>
                 )}
               </div>
             )
