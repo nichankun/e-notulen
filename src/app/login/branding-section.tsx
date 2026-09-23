@@ -5,7 +5,6 @@ import { ClipboardList } from "lucide-react";
 export function BrandingSection() {
   return (
     <div className="hidden lg:flex w-full max-w-120 xl:max-w-140 shrink-0 flex-col justify-between px-12 py-14 bg-primary relative overflow-hidden">
-      {/* Dekorasi Lingkaran Subtle */}
       <div className="absolute top-[-10%] left-[-10%] w-64 h-64 rounded-full bg-white/5 blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-80 h-80 rounded-full bg-white/5 blur-3xl pointer-events-none" />
 
