@@ -15,6 +15,7 @@ import { sanitizeSummaryHtml } from "@/lib/sanitize-html";
 import { summaryToHtml, type MeetingSummary } from "@/lib/meeting-summary";
 import { useMicrophoneTest } from "./hooks/use-microphone-test";
 import { MicrophoneTestDialog } from "./microphone-test-dialog";
+import type { AudioCaptureProfileId } from "./audio-capture-profile";
 
 interface MeetingEditorProps {
   id: string;
@@ -49,6 +50,7 @@ export function MeetingEditor({
   const [isRecordingBusy, setIsRecordingBusy] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isMicrophoneTestOpen, setIsMicrophoneTestOpen] = useState(false);
+  const [audioProfile, setAudioProfile] = useState<AudioCaptureProfileId>("room");
   const [interimTranscript, setInterimTranscript] = useState("");
   const [rawTranscript, setRawTranscript] = useState<string>(() => {
     if (initialTranscript.trim()) return initialTranscript;
@@ -76,7 +78,7 @@ export function MeetingEditor({
   });
 
   const { requestWakeLock, releaseWakeLock } = useWakeLock();
-  const microphoneTest = useMicrophoneTest();
+  const microphoneTest = useMicrophoneTest(audioProfile);
 
   const handleStop = useCallback(() => {
     setIsListening(false);
@@ -98,6 +100,7 @@ export function MeetingEditor({
   }, []);
 
   const { start, stop, canvasRef } = useSpeechRecognition({
+    audioProfile,
     onTranscript: handleTranscript,
     onInterim: handleInterim,
     onStop: handleStop,
@@ -315,6 +318,8 @@ export function MeetingEditor({
             isListening={isListening}
             isSummarizing={isSummarizing}
             isMicrophoneTesting={microphoneTest.state.status === "testing"}
+            audioProfile={audioProfile}
+            onAudioProfileChange={setAudioProfile}
             hasTranscript={!!rawTranscript}
             isBusy={isRecordingBusy}
             onToggleRecording={toggleRecording}
@@ -335,6 +340,7 @@ export function MeetingEditor({
         onOpenChange={setIsMicrophoneTestOpen}
         state={microphoneTest.state}
         onRun={() => void microphoneTest.runTest()}
+        audioProfile={audioProfile}
       />
     </div>
   );

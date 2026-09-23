@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useAudioVisualizer } from "./use-audio-visualizer";
+import {
+  getAudioCaptureConstraints,
+  type AudioCaptureProfileId,
+} from "../audio-capture-profile";
 
 interface UseSpeechRecognitionProps {
+  audioProfile: AudioCaptureProfileId;
   onTranscript: (text: string) => void;
   onInterim?: (text: string) => void;
   onStop: () => void;
@@ -73,6 +78,7 @@ function formatSpeakerSegment(segment: SpeakerSegment): string {
 }
 
 export function useSpeechRecognition({
+  audioProfile,
   onTranscript,
   onInterim,
   onStop,
@@ -235,14 +241,7 @@ export function useSpeechRecognition({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: { ideal: 16000 },
-          sampleSize: { ideal: 16 },
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
+        audio: getAudioCaptureConstraints(audioProfile),
       });
       if (!isMountedRef.current || isStoppingRef.current) {
         stream.getTracks().forEach((track) => track.stop());
@@ -581,7 +580,7 @@ export function useSpeechRecognition({
       onErrorRef.current();
       return false;
     }
-  }, [cleanup, startVisualizer]);
+  }, [audioProfile, cleanup, startVisualizer]);
 
   return { start, stop, canvasRef };
 }

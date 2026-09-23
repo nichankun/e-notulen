@@ -16,6 +16,7 @@ import type {
   MicrophoneTestState,
   MicrophoneTestStatus,
 } from "./hooks/use-microphone-test";
+import type { AudioCaptureProfileId } from "./audio-capture-profile";
 
 const statusLabel: Record<MicrophoneTestStatus, string> = {
   idle: "Belum dites",
@@ -31,11 +32,13 @@ export function MicrophoneTestDialog({
   onOpenChange,
   state,
   onRun,
+  audioProfile,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   state: MicrophoneTestState;
   onRun: () => void;
+  audioProfile: AudioCaptureProfileId;
 }) {
   const isTesting = state.status === "testing";
   const isGood = state.status === "passed";
@@ -47,7 +50,10 @@ export function MicrophoneTestDialog({
         <DialogHeader>
           <DialogTitle>Tes mikrofon 3 detik</DialogTitle>
           <DialogDescription>
-            Tes ini tidak menyimpan rekaman. Gunakan mikrofon yang akan dipakai saat rapat.
+            Tes ini tidak menyimpan rekaman. Gunakan mikrofon dan jarak yang akan dipakai saat rapat.
+            {audioProfile === "room"
+              ? " Profil Ruang rapat mencoba mempertahankan suara jauh; suara kipas atau AC juga bisa lebih terdengar."
+              : " Profil Suara dekat memakai peredam bising browser untuk ucapan dekat mikrofon."}
           </DialogDescription>
         </DialogHeader>
 
@@ -65,6 +71,18 @@ export function MicrophoneTestDialog({
             </div>
             <Badge variant="outline">{statusLabel[state.status]}</Badge>
           </div>
+
+          {state.captureSettings && (
+            <div className="space-y-1 rounded-md border p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">Pemrosesan mikrofon dari browser</p>
+              <p>
+                {state.captureSettings.sampleRate ?? "?"} Hz · {state.captureSettings.channelCount ?? "?"} kanal
+              </p>
+              <p>
+                AGC {formatSetting(state.captureSettings.autoGainControl)} · peredam bising {formatSetting(state.captureSettings.noiseSuppression)} · peredam gema {formatSetting(state.captureSettings.echoCancellation)}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-muted-foreground">
@@ -91,4 +109,9 @@ export function MicrophoneTestDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function formatSetting(value: boolean | null): string {
+  if (value === null) return "tidak diketahui";
+  return value ? "aktif" : "nonaktif";
 }

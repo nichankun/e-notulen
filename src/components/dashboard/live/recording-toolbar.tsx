@@ -1,12 +1,25 @@
 // components/dashboard/live/recording-toolbar.tsx
 import { Mic, Square, Sparkles, Loader2, RefreshCcw, SlidersHorizontal } from "lucide-react";
 import React from "react";
+import {
+  AUDIO_CAPTURE_PROFILE_OPTIONS,
+  type AudioCaptureProfileId,
+} from "./audio-capture-profile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface RecordingToolbarProps {
   isListening: boolean;
   isBusy: boolean;
   isSummarizing: boolean;
   isMicrophoneTesting: boolean;
+  audioProfile: AudioCaptureProfileId;
+  onAudioProfileChange: (profile: AudioCaptureProfileId) => void;
   hasTranscript: boolean;
   onToggleRecording: () => void;
   onSummarize: () => void;
@@ -20,6 +33,8 @@ export function RecordingToolbar({
   isBusy,
   isSummarizing,
   isMicrophoneTesting,
+  audioProfile,
+  onAudioProfileChange,
   hasTranscript,
   onToggleRecording,
   onSummarize,
@@ -30,25 +45,50 @@ export function RecordingToolbar({
   return (
     <div className="flex flex-col border-b">
       {/* Top label row */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border">
         <span className="text-sm font-medium text-foreground">Live Transcription</span>
-        <button
-          type="button"
-          onClick={onTestMicrophone}
-          disabled={isListening || isBusy || isMicrophoneTesting}
-          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          title="Tes kualitas mikrofon"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          {isMicrophoneTesting ? "Mengukur..." : "Tes mic"}
-        </button>
-        {/* Recording indicator dot */}
-        {isListening && (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            Recording
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={audioProfile}
+            onValueChange={(value) => {
+              const selectedProfile = AUDIO_CAPTURE_PROFILE_OPTIONS.find(
+                (profile) => profile.id === value,
+              );
+              if (selectedProfile) onAudioProfileChange(selectedProfile.id);
+            }}
+            disabled={isListening || isBusy || isMicrophoneTesting}
+          >
+            <SelectTrigger
+              aria-label="Profil penangkapan mikrofon"
+              className="h-8 w-[140px] rounded-md border px-2 text-xs"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AUDIO_CAPTURE_PROFILE_OPTIONS.map((profile) => (
+                <SelectItem key={profile.id} value={profile.id}>
+                  {profile.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <button
+            type="button"
+            onClick={onTestMicrophone}
+            disabled={isListening || isBusy || isMicrophoneTesting}
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            title="Tes kualitas mikrofon"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {isMicrophoneTesting ? "Mengukur..." : "Tes mic"}
+          </button>
+          {isListening && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Recording
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Audio visualizer — tampil hanya saat isListening */}

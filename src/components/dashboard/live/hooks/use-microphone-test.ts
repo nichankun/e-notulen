@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  getAudioCaptureConstraints,
+  type AudioCaptureProfileId,
+} from "../audio-capture-profile";
 
 export type MicrophoneTestStatus =
   | "idle"
@@ -15,7 +19,16 @@ export interface MicrophoneTestState {
   levelPercent: number;
   peakPercent: number;
   averageDb: number | null;
+  captureSettings: MicrophoneCaptureSettings | null;
   message: string;
+}
+
+export interface MicrophoneCaptureSettings {
+  sampleRate: number | null;
+  channelCount: number | null;
+  autoGainControl: boolean | null;
+  noiseSuppression: boolean | null;
+  echoCancellation: boolean | null;
 }
 
 const INITIAL_STATE: MicrophoneTestState = {
@@ -23,21 +36,24 @@ const INITIAL_STATE: MicrophoneTestState = {
   levelPercent: 0,
   peakPercent: 0,
   averageDb: null,
+  captureSettings: null,
   message: "Tes suara akan berlangsung selama 3 detik.",
 };
 
-const MIC_CONSTRAINTS: MediaStreamConstraints = {
-  audio: {
-    channelCount: 1,
-    sampleRate: { ideal: 16000 },
-    sampleSize: { ideal: 16 },
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true,
-  },
-};
+function readCaptureSettings(
+  track: MediaStreamTrack,
+): MicrophoneCaptureSettings {
+  const settings = track.getSettings();
+  return {
+    sampleRate: settings.sampleRate ?? null,
+    channelCount: settings.channelCount ?? null,
+    autoGainControl: settings.autoGainControl ?? null,
+    noiseSuppression: settings.noiseSuppression ?? null,
+    echoCancellation: settings.echoCancellation ?? null,
+  };
+}
 
-export function useMicrophoneTest() {
+export function useMicrophoneTest(profile: AudioCaptureProfileId) {
   const [state, setState] = useState<MicrophoneTestState>(INITIAL_STATE);
   const mountedRef = useRef(true);
 
@@ -62,7 +78,10 @@ export function useMicrophoneTest() {
     });
 
     try {
-      stream = await navigator.mediaDevices.getUserMedia(MIC_CONSTRAINTS);
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: getAudioCaptureConstraints(profile),
+      });
+      const captureSettings = readCaptureSettings(stream.getAudioTracks()[0]);
       audioContext = new AudioContext({ latencyHint: "interactive" });
       await audioContext.resume();
 
@@ -126,6 +145,7 @@ export function useMicrophoneTest() {
         levelPercent: Math.min(100, Math.max(0, ((averageDb + 60) / 60) * 100)),
         peakPercent,
         averageDb: Math.round(averageDb),
+        captureSettings,
         message:
           averageDb < -42
             ? "Suara terlalu pelan. Dekatkan mikrofon atau naikkan volume input."
@@ -151,7 +171,7 @@ export function useMicrophoneTest() {
       stream?.getTracks().forEach((track) => track.stop());
       await audioContext?.close().catch(() => undefined);
     }
-  }, [state.status]);
+  }, [profile, state.status]);
 
   return { state, runTest };
 }

@@ -66,7 +66,8 @@ Temuan berikut berasal dari eksplorasi di `localhost`, bukan sesi penerimaan pro
 | Tanggal | Lingkungan/browser | Mikrofon/jarak/durasi | Observasi |
 | --- | --- | --- | --- |
 | 23 September 2026 | `localhost:3001`, Chrome di Windows | Belum diketahui | Pengguna melaporkan suara pelan/jauh dan pembicara lain tidak selalu terdeteksi; tampilan hanya memberi label Pembicara 1. Dalam percobaan sebelumnya, “bisa” sempat tampil sebagai “rumah” pada teks sementara. Belum dikonfirmasi apakah teks final juga salah. |
+| 23 September 2026 | Android; browser dan URL belum diketahui | Belum diketahui | Pengguna mengonfirmasi E-Notulen masih kurang responsif saat diuji di Android juga. Detail browser, mikrofon, jarak, jumlah pembicara, dan contoh kata final belum dicatat. |
 
-Tindak lanjut: ulangi suara pelan dan jauh dengan mencatat model mikrofon, jarak aktual, jumlah pembicara, serta apakah mereka berbicara bersamaan. Bandingkan label dan kata setelah transkrip difinalkan.
+Tindak lanjut: bandingkan profil **Ruang rapat** dan **Suara dekat** pada perangkat, jarak, dan kalimat yang sama. Catat browser, pengaturan aktual yang ditampilkan tes mic, model mikrofon, jarak aktual, jumlah pembicara, serta apakah mereka berbicara bersamaan. Bandingkan label dan kata setelah transkrip difinalkan. Laporan Android di atas adalah temuan pengguna, bukan hasil uji yang telah direproduksi.
 
 Untuk skenario 10, catat timestamp atau kutipan transkrip yang mendukung setiap keputusan dan tindak lanjut, serta item yang harus dikoreksi/diverifikasi. Gunakan data rapat uji yang memang boleh diproses oleh layanan transkripsi.
